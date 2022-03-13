@@ -1,0 +1,404 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:angel3_range_header/angel3_range_header.dart';
+import 'package:alfred/alfred.dart';
+import 'package:path/path.dart';
+import 'package:sodium/sodium.dart';
+import 'package:vup/app.dart';
+import 'package:skynet/src/encode_endian/encode_endian.dart';
+import 'package:skynet/src/encode_endian/base.dart';
+
+import 'package:http/http.dart' as http;
+
+Future handleChunkedFile(
+  HttpRequest req,
+  HttpResponse res,
+  DirectoryFile df,
+  int totalSize, {
+  bool storeLocalFile = false,
+}) async {
+  final rangeHeader = req.headers.value('range');
+
+  logger.verbose(
+      'handleChunkedFile $rangeHeader storeLocalFile: $storeLocalFile');
+
+  var ext = extension(df.name).isEmpty
+      ? ''
+      : extension(df.name).substring(1).toLowerCase();
+
+  if (rangeHeader?.startsWith('bytes=') != true) {
+    res.setContentTypeFromExtension(ext);
+    await res.addStream(openRead(
+      df,
+      0,
+      totalSize,
+      storeLocalFile: storeLocalFile,
+    ));
+    return res.close();
+  } else {
+    var header = RangeHeader.parse(rangeHeader!);
+    final items = RangeHeader.foldItems(header.items);
+    var totalFileSize = totalSize;
+    header = RangeHeader(items);
+
+    for (var item in header.items) {
+      var invalid = false;
+
+      if (item.start != -1) {
+        invalid = item.end != -1 && item.end < item.start;
+      } else {
+        invalid = item.end == -1;
+      }
+
+      if (invalid) {
+        res.statusCode = 416;
+        res.write('416 Semantically invalid, or unbounded range.');
+        return res.close();
+      }
+
+      if (item.end >= totalFileSize) {
+        res.setContentTypeFromExtension(ext);
+        await res.addStream(openRead(
+          df,
+          0,
+          totalSize,
+          storeLocalFile: storeLocalFile,
+        ));
+        return res.close();
+      }
+
+      // Ensure it's within range.
+      if (item.start >= totalFileSize || item.end >= totalFileSize) {
+        res.statusCode = 416;
+        res.write('416 Given range $item is out of bounds.');
+        return res.close();
+      }
+    }
+
+    if (header.items.isEmpty) {
+      res.statusCode = 416;
+      res.write('416 `Range` header may not be empty.');
+      return res.close();
+    } else if (header.items.length == 1) {
+      var item = header.items[0];
+
+      Stream<List<int>> stream;
+      var len = 0;
+
+      var total = totalFileSize;
+
+      if (item.start == -1) {
+        if (item.end == -1) {
+          len = total;
+          stream = openRead(
+            df,
+            0,
+            totalSize,
+            storeLocalFile: storeLocalFile,
+          );
+        } else {
+          len = item.end + 1;
+          stream = openRead(
+            df,
+            0,
+            item.end + 1,
+            storeLocalFile: storeLocalFile,
+          );
+        }
+      } else {
+        if (item.end == -1) {
+          len = total - item.start;
+          stream = openRead(
+            df,
+            item.start,
+            totalSize,
+            storeLocalFile: storeLocalFile,
+          );
+        } else {
+          len = item.end - item.start + 1;
+          stream = openRead(
+            df,
+            item.start,
+            item.end + 1,
+            storeLocalFile: storeLocalFile,
+          );
+        }
+      }
+
+      res.setContentTypeFromExtension(ext);
+
+      res.statusCode = 206;
+      res.headers.add('content-length', len.toString());
+      res.headers.add(
+        'content-range',
+        'bytes ' + item.toContentRange(total),
+      );
+      await stream.cast<List<int>>().pipe(res);
+      return res.close();
+    } else {}
+  }
+}
+
+Map<String, Completer> downloadingChunkLock = {};
+
+Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
+    {required bool storeLocalFile}) async* {
+  logger.verbose('using openRead $start < $totalSize');
+
+  int chunk = (start / df.file.chunkSize).floor();
+
+  int offset = start % df.file.chunkSize;
+
+  final outDir = Directory(join(
+    storageService.temporaryDirectory,
+    'streamed_files',
+    df.file.hash,
+  ));
+
+  outDir.createSync(recursive: true);
+
+  late Uri url;
+  Map<String, String>? customHeaders;
+
+  if (df.file.url.startsWith('remote-')) {
+    final uri = Uri.parse(df.file.url);
+    final remoteId = uri.scheme.substring(7);
+    print('remote "$remoteId" "${uri.host}"');
+
+    url = Uri.parse('http://192.168.1.1:9090/skyfs/${uri.host}');
+
+    customHeaders = {
+      'Authorization': 'Basic ${base64.encode(utf8.encode('user:password'))}'
+    };
+  } else {
+    url = Uri.parse(
+      storageService.mySky.skynetClient.resolveSkylink(
+        df.file.url,
+        trusted: true, // TODO Maybe remove this
+      )!,
+    );
+  }
+
+  final secretKey = SecureKey.fromList(
+    storageService.dac.sodium,
+    base64Url.decode(df.file.key),
+  );
+
+  StreamSubscription? sub;
+
+  final totalEncSize =
+      ((df.file.size / df.file.chunkSize).floor() * (df.file.chunkSize + 16)) +
+          (df.file.size % df.file.chunkSize) +
+          16 +
+          df.file.padding;
+
+  final downloadedEncData = <int>[];
+
+  bool isDone = false;
+
+  int servedBytes = start;
+
+  while (start < totalSize) {
+    final chunkCacheFile = File(join(outDir.path, chunk.toString()));
+
+    if (!chunkCacheFile.existsSync()) {
+      final chunkLockKey = df.file.hash + '-' + chunk.toString();
+      if (downloadingChunkLock.containsKey(chunkLockKey)) {
+        logger.verbose('[chunk] wait $chunk');
+        sub?.cancel();
+        while (!downloadingChunkLock[chunkLockKey]!.isCompleted) {
+          await Future.delayed(Duration(milliseconds: 10));
+        }
+      } else {
+        final completer = Completer();
+        downloadingChunkLock[chunkLockKey] = completer;
+
+        int retryCount = 0;
+
+        while (true) {
+          // TODO Check if retry makes sense with multi-chunk streaming
+          try {
+            logger.verbose('[chunk] dl $chunk');
+            final encChunkSize = (df.file.chunkSize + 16);
+            final encStartByte = chunk * encChunkSize;
+
+            final end = min(encStartByte + encChunkSize - 1, totalEncSize - 1);
+
+            if (downloadedEncData.isEmpty) {
+              logger.info('[chunk] send http range request');
+              final request = http.Request('GET', url);
+
+              if (customHeaders != null) {
+                request.headers.addAll(
+                  customHeaders,
+                );
+              } else {
+                request.headers.addAll(
+                  storageService.mySky.skynetClient.headers ?? {},
+                );
+              }
+              request.headers['range'] = 'bytes=$encStartByte-';
+
+              final response = await storageService
+                  .mySky.skynetClient.httpClient
+                  .send(request);
+
+              if (response.statusCode != 206) {
+                throw 'HTTP ${response.statusCode}';
+              }
+
+              final maxMemorySize = (32 * (df.file.chunkSize + 16));
+              // totalDownloadLength = response.contentLength!;
+              sub = response.stream.listen(
+                (value) {
+                  // TODO Stop request when too fast
+                  if (downloadedEncData.length > maxMemorySize) {
+                    sub?.cancel();
+                    downloadedEncData.removeRange(
+                        maxMemorySize, downloadedEncData.length);
+                    return;
+                  }
+                  downloadedEncData.addAll(value);
+                },
+                onDone: () {
+                  isDone = true;
+                },
+                onError: (e, st) {
+                  logger.error('[chunk] $e $st');
+                },
+              );
+            }
+            bool isLastChunk = (end + 1) == totalEncSize;
+
+            if (isLastChunk) {
+              while (!isDone) {
+                await Future.delayed(Duration(milliseconds: 10));
+              }
+            } else {
+              while (downloadedEncData.length < (df.file.chunkSize + 16)) {
+                await Future.delayed(Duration(milliseconds: 10));
+              }
+            }
+
+            final bytes = Uint8List.fromList(
+              isLastChunk
+                  ? downloadedEncData
+                  : downloadedEncData.sublist(0, (df.file.chunkSize + 16)),
+            );
+            if (isLastChunk) {
+              downloadedEncData.clear();
+            } else {
+              downloadedEncData.removeRange(0, (df.file.chunkSize + 16));
+            }
+
+            final nonce = Uint8List.fromList(
+              encodeEndian(
+                  chunk, storageService.dac.sodium.crypto.secretBox.nonceBytes,
+                  endianType: EndianType.littleEndian) as List<int>,
+            );
+
+            final r = storageService.dac.sodium.crypto.secretBox
+                .openEasy(cipherText: bytes, nonce: nonce, key: secretKey);
+
+            if (isLastChunk) {
+              await chunkCacheFile.writeAsBytes(
+                r.sublist(
+                  0,
+                  r.length - df.file.padding,
+                ),
+              );
+            } else {
+              await chunkCacheFile.writeAsBytes(r);
+            }
+            completer.complete();
+            break;
+          } catch (e, st) {
+            retryCount++;
+            if (retryCount > 10) {
+              completer.complete();
+              downloadingChunkLock.remove(chunkLockKey);
+              throw 'Too many retries. ($e $st)';
+            }
+            try {
+              sub?.cancel();
+            } catch (_) {}
+            downloadedEncData.clear();
+
+            logger.warning('[chunk] download error (try #$retryCount): $e $st');
+            await Future.delayed(Duration(seconds: 1));
+          }
+        }
+      }
+    } else {
+      sub?.cancel();
+    }
+    logger.verbose('[chunk] serve $chunk');
+
+    start += chunkCacheFile.lengthSync() - offset;
+
+    if (start > totalSize) {
+      final end = chunkCacheFile.lengthSync() - (start - totalSize);
+      logger.verbose('[chunk] LIMIT to $end');
+      yield* chunkCacheFile.openRead(
+        offset,
+        end,
+      );
+    } else {
+      yield* chunkCacheFile.openRead(
+        offset,
+      );
+    }
+
+    offset = 0;
+    // servedBytes+=offset
+
+    chunk++;
+
+    if (storeLocalFile) {
+      if (!localFiles.containsKey(df.file.hash)) {
+        final chunkFiles = outDir.listSync();
+        final totalSize = chunkFiles.fold<int>(
+          0,
+          (previousValue, element) =>
+              previousValue + (element as File).lengthSync(),
+        );
+
+        if (totalSize == df.file.size) {
+          logger.verbose('[serve_chunked_file] storing file offline.');
+          final decryptedFile = File(
+            storageService.getLocalFilePath(
+              df.file.hash,
+              df.name,
+            ),
+          );
+
+          decryptedFile.createSync(recursive: true);
+
+          final sink = decryptedFile.openWrite();
+
+          for (int i = 0; i < chunkFiles.length; i++) {
+            await sink.addStream(File(join(outDir.path, '$i')).openRead());
+          }
+
+          final hash = await storageService.getMultiHashForFile(decryptedFile);
+
+          if (hash == df.file.hash) {
+            localFiles.put(df.file.hash, {
+              'ts': DateTime.now().millisecondsSinceEpoch,
+            });
+          } else {
+            logger.error(
+              '[serve_chunked_file] offline file hash check failed',
+            );
+          }
+        }
+      }
+    }
+  }
+
+  sub?.cancel();
+}

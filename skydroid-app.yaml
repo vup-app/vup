@@ -1,0 +1,26 @@
+name: Vup Beta
+authorName: redsolver
+packageName: app.vup
+
+icon: sia://BACRekBFkdxn3XJVKq9XRvT7ORQiarVjaRKbdWXs9Twycg
+
+localized:
+  en-US:
+    description: |-
+      ## Features
+      - TODO
+    summary: Private and decentralized cloud storage
+
+# !!! DO NO EDIT BELOW THIS LINE !!!
+
+builds:
+  - versionName: 0.8.7
+    versionCode: 87
+    sha256: bcde25f1842164a2f6feffa0a039151bff1f1f12c2e9292a1be78dc558fd7589
+    apkLink: sia://AACqd9wLrXvhDUaj2IPBkJhNsF9GFgxVHQBaxf4of9jOtw
+
+currentVersionName: 0.8.7
+currentVersionCode: 87
+
+added: 1635794570056
+lastUpdated: 1646683497475

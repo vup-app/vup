@@ -1,0 +1,136 @@
+PODS:
+  - audio_session (0.0.1):
+    - FlutterMacOS
+  - bitsdojo_window_macos (0.0.1):
+    - FlutterMacOS
+  - bonsoir (1.0.1):
+    - FlutterMacOS
+  - connectivity_plus_macos (0.0.1):
+    - FlutterMacOS
+    - ReachabilitySwift
+  - desktop_drop (0.0.1):
+    - FlutterMacOS
+  - device_info_plus_macos (0.0.1):
+    - FlutterMacOS
+  - ffmpeg-kit-macos-full (4.5.1)
+  - ffmpeg_kit_flutter_full (4.5.1):
+    - ffmpeg_kit_flutter_full/full (= 4.5.1)
+    - FlutterMacOS
+  - ffmpeg_kit_flutter_full/full (4.5.1):
+    - ffmpeg-kit-macos-full (= 4.5.1)
+    - FlutterMacOS
+  - file_selector_macos (0.0.1):
+    - FlutterMacOS
+  - flutter_local_notifications (0.0.1):
+    - FlutterMacOS
+  - FlutterMacOS (1.0.0)
+  - just_audio (0.0.1):
+    - FlutterMacOS
+  - network_info_plus_macos (0.0.1):
+    - FlutterMacOS
+  - package_info_plus_macos (0.0.1):
+    - FlutterMacOS
+  - path_provider_macos (0.0.1):
+    - FlutterMacOS
+  - ReachabilitySwift (5.0.0)
+  - share_plus_macos (0.0.1):
+    - FlutterMacOS
+  - Sodium (0.9.1)
+  - sodium_libs (0.1.0):
+    - FlutterMacOS
+    - Sodium
+  - tray_manager (0.0.1):
+    - FlutterMacOS
+  - url_launcher_macos (0.0.1):
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - audio_session (from `Flutter/ephemeral/.symlinks/plugins/audio_session/macos`)
+  - bitsdojo_window_macos (from `Flutter/ephemeral/.symlinks/plugins/bitsdojo_window_macos/macos`)
+  - bonsoir (from `Flutter/ephemeral/.symlinks/plugins/bonsoir/macos`)
+  - connectivity_plus_macos (from `Flutter/ephemeral/.symlinks/plugins/connectivity_plus_macos/macos`)
+  - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
+  - device_info_plus_macos (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus_macos/macos`)
+  - ffmpeg_kit_flutter_full (from `Flutter/ephemeral/.symlinks/plugins/ffmpeg_kit_flutter_full/macos`)
+  - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
+  - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+  - just_audio (from `Flutter/ephemeral/.symlinks/plugins/just_audio/macos`)
+  - network_info_plus_macos (from `Flutter/ephemeral/.symlinks/plugins/network_info_plus_macos/macos`)
+  - package_info_plus_macos (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus_macos/macos`)
+  - path_provider_macos (from `Flutter/ephemeral/.symlinks/plugins/path_provider_macos/macos`)
+  - share_plus_macos (from `Flutter/ephemeral/.symlinks/plugins/share_plus_macos/macos`)
+  - sodium_libs (from `Flutter/ephemeral/.symlinks/plugins/sodium_libs/macos`)
+  - tray_manager (from `Flutter/ephemeral/.symlinks/plugins/tray_manager/macos`)
+  - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
+
+SPEC REPOS:
+  trunk:
+    - ffmpeg-kit-macos-full
+    - ReachabilitySwift
+    - Sodium
+
+EXTERNAL SOURCES:
+  audio_session:
+    :path: Flutter/ephemeral/.symlinks/plugins/audio_session/macos
+  bitsdojo_window_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/bitsdojo_window_macos/macos
+  bonsoir:
+    :path: Flutter/ephemeral/.symlinks/plugins/bonsoir/macos
+  connectivity_plus_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/connectivity_plus_macos/macos
+  desktop_drop:
+    :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
+  device_info_plus_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus_macos/macos
+  ffmpeg_kit_flutter_full:
+    :path: Flutter/ephemeral/.symlinks/plugins/ffmpeg_kit_flutter_full/macos
+  file_selector_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
+  flutter_local_notifications:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+  just_audio:
+    :path: Flutter/ephemeral/.symlinks/plugins/just_audio/macos
+  network_info_plus_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/network_info_plus_macos/macos
+  package_info_plus_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus_macos/macos
+  path_provider_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/path_provider_macos/macos
+  share_plus_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/share_plus_macos/macos
+  sodium_libs:
+    :path: Flutter/ephemeral/.symlinks/plugins/sodium_libs/macos
+  tray_manager:
+    :path: Flutter/ephemeral/.symlinks/plugins/tray_manager/macos
+  url_launcher_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
+
+SPEC CHECKSUMS:
+  audio_session: dea1f41890dbf1718f04a56f1d6150fd50039b72
+  bitsdojo_window_macos: 7e9b1bbb09bdce418d9657ead7fc9d824203ff0d
+  bonsoir: 9369e22a6b60a2b16e717b957e397117ee1ada5d
+  connectivity_plus_macos: f6e86fd000e971d361e54b5afcadc8c8fa773308
+  desktop_drop: 69eeff437544aa619c8db7f4481b3a65f7696898
+  device_info_plus_macos: 1ad388a1ef433505c4038e7dd9605aadd1e2e9c7
+  ffmpeg-kit-macos-full: 8bf0ab8d570a487f9da07d564f6e49bd6f008bac
+  ffmpeg_kit_flutter_full: d71c4f46f3ba8e2f8596deca52654c83787074e1
+  file_selector_macos: ff6dc948d4ddd34e8602a1f60b7d0b4cc6051a47
+  flutter_local_notifications: 3805ca215b2fb7f397d78b66db91f6a747af52e4
+  FlutterMacOS: 57701585bf7de1b3fc2bb61f6378d73bbdea8424
+  just_audio: 9b67ca7b97c61cfc9784ea23cd8cc55eb226d489
+  network_info_plus_macos: d2b9e6c01c291449b91a584217aa53b113847dbd
+  package_info_plus_macos: f010621b07802a241d96d01876d6705f15e77c1c
+  path_provider_macos: 160cab0d5461f0c0e02995469a98f24bdb9a3f1f
+  ReachabilitySwift: 985039c6f7b23a1da463388634119492ff86c825
+  share_plus_macos: 853ee48e7dce06b633998ca0735d482dd671ade4
+  Sodium: 23d11554ecd556196d313cf6130d406dfe7ac6da
+  sodium_libs: 13906415c0f2fd6dab0200e75b823ad6c726e74c
+  tray_manager: 9064e219c56d75c476e46b9a21182087930baf90
+  url_launcher_macos: 597e05b8e514239626bcf4a850fcf9ef5c856ec3
+
+PODFILE CHECKSUM: 0d3963a09fc94f580682bd88480486da345dc3f0
+
+COCOAPODS: 1.11.2
