@@ -1,5 +1,9 @@
 # Vup Changelog
 
+## main
+
+- Updated macOS icon
+
 ## Beta 0.8.7
 
 - the portal auth settings page now shows the current portal and stats
