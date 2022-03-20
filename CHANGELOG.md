@@ -3,6 +3,7 @@
 ## main
 
 - Updated macOS icon
+- Added iOS permissions to pick and upload all file types
 
 ## Beta 0.8.7
 
