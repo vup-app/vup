@@ -1,13 +1,16 @@
+import 'package:uuid/uuid.dart';
 import 'package:vup/app.dart';
 import 'package:vup/page/settings/advanced.dart';
 import 'package:vup/page/settings/cache.dart';
 import 'package:vup/page/settings/custom_themes.dart';
+import 'package:vup/page/settings/devices.dart';
 import 'package:vup/page/settings/jellyfin.dart';
 import 'package:vup/page/settings/portal_auth.dart';
 import 'package:vup/page/settings/scripts.dart';
 import 'package:vup/page/settings/ui_settings.dart';
 import 'package:vup/page/settings/web_server.dart';
 import 'package:vup/page/settings/webdav.dart';
+import 'package:vup/view/share_dialog.dart';
 import 'package:vup/widget/app_bar_wrapper.dart';
 import 'package:vup/widget/theme_switch.dart';
 
@@ -33,6 +36,10 @@ class _SettingsPageState extends State<SettingsPage> {
     SettingsPane(
       title: 'Portal Auth',
       build: () => PortalAuthSettingsPage(),
+    ),
+    SettingsPane(
+      title: 'Devices',
+      build: () => DevicesSettingsPage(),
     ),
     /*  SettingsPane(
       title: 'Manage file system index',
@@ -149,6 +156,45 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: const EdgeInsets.all(16.0),
           child: SelectableText('Log file: ${logger.logFilePath}'),
         ),
+        Center(
+          child: ElevatedButton(
+            onPressed: () async {
+              try {
+                showLoadingDialog(
+                  context,
+                  'Uploading log file and generating share link...',
+                );
+                final uuid = Uuid().v4();
+
+                await storageService.dac.createDirectory(
+                  'vup.hns/.internal/shared-static-directories',
+                  uuid,
+                );
+                final shareUri = storageService.dac.parsePath(
+                    'vup.hns/.internal/shared-static-directories/$uuid');
+
+                await storageService.startFileUploadingTask(
+                  shareUri.toString(),
+                  logger.logFile,
+                );
+
+                final shareSeed = await storageService.dac.getShareUriReadOnly(
+                  shareUri.toString(),
+                );
+
+                final shareLink = 'https://share.vup.app/#${shareSeed}';
+                context.pop();
+                showShareResultDialog(context, shareLink);
+              } catch (e, st) {
+                context.pop();
+                showErrorDialog(context, e, st);
+              }
+            },
+            child: Text(
+              'Generate share link for log file',
+            ),
+          ),
+        )
       ],
     );
     return Scaffold(

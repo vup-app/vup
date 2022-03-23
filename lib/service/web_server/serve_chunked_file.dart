@@ -169,11 +169,18 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
     final remoteId = uri.scheme.substring(7);
     print('remote "$remoteId" "${uri.host}"');
 
-    url = Uri.parse('http://192.168.1.1:9090/skyfs/${uri.host}');
+    final remote = storageService.customRemotes[remoteId]!;
 
-    customHeaders = {
-      'Authorization': 'Basic ${base64.encode(utf8.encode('user:password'))}'
-    };
+    final Map remoteConfig = remote['config'] as Map;
+
+    if (remote['type'] == 'webdav') {
+      url = Uri.parse('${remoteConfig['url']}/skyfs/${uri.host}');
+
+      customHeaders = {
+        'Authorization':
+            'Basic ${base64.encode(utf8.encode('${remoteConfig['username']}:${remoteConfig['password']}'))}'
+      };
+    }
   } else {
     url = Uri.parse(
       storageService.mySky.skynetClient.resolveSkylink(

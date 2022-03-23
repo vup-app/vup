@@ -16,7 +16,7 @@ class YTDLUtils {
     String path,
     String format, {
     Function? onProgress,
-    Function? onHashAvailable,
+    Function? onUploadIdAvailable,
     Stream<Null>? cancelStream,
     List<String>? additionalArgs,
   }) async {
@@ -136,16 +136,15 @@ class YTDLUtils {
       }
     }
 
-    await uploadPool.withResource(
-      () async {
-        if (isCancelled) return;
-        await storageService.uploadOneFile(
-          path,
-          files.first,
-          onHashAvailable: onHashAvailable,
-        );
-      },
-    );
+    /* uploadPool.withResource(
+      () async { */
+    if (!isCancelled) {
+      await storageService.startFileUploadingTask(
+        path,
+        files.first,
+        onUploadIdAvailable: onUploadIdAvailable,
+      );
+    }
 
     for (final file in files) {
       print('[yt-dlp] delete $file from cache');

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:random_string/random_string.dart';
 import 'package:simple_observable/simple_observable.dart';
 import 'package:skynet/dacs.dart';
@@ -34,6 +35,7 @@ class MySkyService extends VupService {
       storageService.dac.onUserLogin();
       isLoggedIn.value = true;
       registerDeviceId();
+      await directoryCacheSyncService.init(dataBox.get('deviceId'));
       await activityService.init(dataBox.get('deviceId'));
       await playlistService.init();
       await quotaService.init();
@@ -52,6 +54,50 @@ class MySkyService extends VupService {
       info('registerDeviceId $newDeviceId');
 
       dataBox.put('deviceId', newDeviceId);
+    }
+    Future.delayed(Duration(seconds: 50)).then((value) {
+      updateDeviceList();
+    });
+  }
+
+  final deviceIndexPath = 'vup.hns/devices/index.json';
+
+  Future<Map> fetchDeviceList() async {
+    final res = await storageService.dac.mySkyProvider.getJSONEncrypted(
+      deviceIndexPath,
+    );
+
+    return res.data ?? {'devices': {}};
+  }
+
+  void updateDeviceList() async {
+    info('updateDeviceList');
+    final res = await storageService.dac.mySkyProvider.getJSONEncrypted(
+      deviceIndexPath,
+    );
+
+    final deviceId = dataBox.get('deviceId');
+
+    final data = res.data ?? {'devices': {}};
+
+    if (data['devices'][deviceId] == null) {
+      info('adding this device...');
+      final deviceInfoPlugin = DeviceInfoPlugin();
+      final deviceInfo = await deviceInfoPlugin.deviceInfo;
+      final map = deviceInfo.toMap();
+
+      data['devices'][deviceId] = {
+        'created': DateTime.now().millisecondsSinceEpoch,
+        'info': map,
+      };
+
+      await storageService.dac.mySkyProvider.setJSONEncrypted(
+        deviceIndexPath,
+        data,
+        res.revision + 1,
+      );
+
+      info('added device to index.');
     }
   }
 

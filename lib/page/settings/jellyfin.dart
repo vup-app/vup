@@ -401,6 +401,7 @@ class _JellyfinServerSettingsPageState
                                 'tvshows',
                                 'movies',
                                 'books',
+                                'mixed',
                               ]) // playlists
                                 DropdownMenuItem(
                                   child: Text({
@@ -408,6 +409,7 @@ class _JellyfinServerSettingsPageState
                                         'tvshows': 'TV Shows (tvshows)',
                                         'movies': 'Movies (movies)',
                                         'books': 'Podcasts, Audiobooks (books)',
+                                        'mixed': 'Generic folder view (mixed)',
                                       }[type] ??
                                       ''),
                                   value: type,

@@ -41,7 +41,7 @@ class WebServerService extends VupService {
       };
     }
 
-    app.get('/*', (req, res) async {
+    app.get('*', (req, res) async {
       final path = Uri.decodeComponent(
         req.requestedUri.path,
       );
@@ -156,7 +156,7 @@ class WebServerService extends VupService {
       }
     });
 
-    app.head('/*', (req, res) async {
+    app.head('*', (req, res) async {
       final path = Uri.decodeFull(req.requestedUri.path);
       if (path.endsWith('/')) {
       } else {

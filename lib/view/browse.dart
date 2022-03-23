@@ -105,6 +105,7 @@ class _BrowseViewState extends State<BrowseView> {
     return Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
         LogicalKeySet(LogicalKeyboardKey.escape): NavigateUpIntent(),
+        LogicalKeySet(LogicalKeyboardKey.backspace): NavigateUpIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA):
             SelectAllIntent(),
       },

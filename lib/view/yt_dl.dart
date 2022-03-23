@@ -43,7 +43,7 @@ class _YTDLDialogState extends State<YTDLDialog> {
   // final _maxDLCountCtrl = TextEditingController(text: '8');
 
   final downloadProgress = <String, double?>{};
-  final uploadFileHashes = <String, String>{};
+  final uploadFileIds = <String, String>{};
 
   int downloadedCount = 0;
 
@@ -348,7 +348,7 @@ mp3: better compatibility''', // mkv: more features
                         trailing = StateNotifierBuilder<FileState>(
                           stateNotifier:
                               storageService.dac.getFileStateChangeNotifier(
-                            uploadFileHashes[url]!,
+                            uploadFileIds[url]!,
                           ),
                           builder: (context, state, _) {
                             if (state.type == FileStateType.idle) {
@@ -610,9 +610,9 @@ mp3: better compatibility''', // mkv: more features
             downloadProgress[url] = progress;
           });
         },
-        onHashAvailable: (hash) {
+        onUploadIdAvailable: (uploadId) {
           setState(() {
-            uploadFileHashes[url] = hash;
+            uploadFileIds[url] = uploadId;
             downloadProgress[url] = -1;
           });
         },

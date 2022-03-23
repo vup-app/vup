@@ -221,101 +221,101 @@ class _ShareDialogState extends State<ShareDialog> {
       ),
     );
   }
+}
 
-  void showShareResultDialog(BuildContext context, String shareLink) {
-    final qrImage = QrImage(
-      data: shareLink,
-      version: QrVersions.auto,
-      // size: 300.0,
-      backgroundColor: Colors.white,
-    );
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Share link'),
-            IconButton(
-              onPressed: () {
-                context.pop();
-              },
-              icon: Icon(
-                Icons.close,
-              ),
+void showShareResultDialog(BuildContext context, String shareLink) {
+  final qrImage = QrImage(
+    data: shareLink,
+    version: QrVersions.auto,
+    // size: 300.0,
+    backgroundColor: Colors.white,
+  );
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('Share link'),
+          IconButton(
+            onPressed: () {
+              context.pop();
+            },
+            icon: Icon(
+              Icons.close,
+            ),
+          )
+        ],
+      ),
+      content: context.isMobile
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: MediaQuery.of(context).size.width - 150,
+                  height: MediaQuery.of(context).size.width - 150,
+                  child: qrImage,
+                ),
+                SizedBox(
+                  height: 8,
+                ),
+                Text(shareLink),
+                SizedBox(
+                  height: 16,
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    FlutterClipboard.copy(
+                      shareLink,
+                    );
+                  },
+                  child: Text(
+                    'Copy to clipboard',
+                  ),
+                )
+              ],
             )
-          ],
-        ),
-        content: context.isMobile
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
+          : SizedBox(
+              width: 600,
+              child: Row(
                 children: [
                   SizedBox(
-                    width: MediaQuery.of(context).size.width - 150,
-                    height: MediaQuery.of(context).size.width - 150,
+                    width: 300,
+                    height: 300,
                     child: qrImage,
                   ),
                   SizedBox(
-                    height: 8,
+                    width: 8,
                   ),
-                  Text(shareLink),
-                  SizedBox(
-                    height: 16,
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      FlutterClipboard.copy(
-                        shareLink,
-                      );
-                    },
-                    child: Text(
-                      'Copy to clipboard',
-                    ),
-                  )
-                ],
-              )
-            : SizedBox(
-                width: 600,
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 300,
-                      height: 300,
-                      child: qrImage,
-                    ),
-                    SizedBox(
-                      width: 8,
-                    ),
-                    Flexible(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(shareLink),
-                          /* Text(
+                  Flexible(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(shareLink),
+                        /* Text(
                             'WARNING: Once you shared this link with someone, they will be able to read this directory, all subdirectories and their future changes FOREVER! (A long time!)',
                           ),
                       */
-                          SizedBox(
-                            height: 16,
+                        SizedBox(
+                          height: 16,
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            FlutterClipboard.copy(
+                              shareLink,
+                            );
+                          },
+                          child: Text(
+                            'Copy to clipboard',
                           ),
-                          ElevatedButton(
-                            onPressed: () {
-                              FlutterClipboard.copy(
-                                shareLink,
-                              );
-                            },
-                            child: Text(
-                              'Copy to clipboard',
-                            ),
-                          )
-                        ],
-                      ),
+                        )
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-      ),
-      barrierDismissible: false,
-    );
-  }
+            ),
+    ),
+    barrierDismissible: false,
+  );
 }

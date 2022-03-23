@@ -88,8 +88,48 @@ Future<List> processImage(List list) async {
         if (!hasThumbnail) {
           Map<String, IfdTag> data = await readExifFromBytes(bytes);
           if (data.isNotEmpty) {
-            ext['exif'] =
-                data.map((key, value) => MapEntry(key, value.printable));
+            if (data.containsKey('Image DateTime')) {
+              ext['exif'] ??= {};
+              ext['exif']['DateTime'] = data['Image DateTime']!.printable;
+            }
+            if (data.containsKey('GPS GPSLatitude')) {
+              final latRef = data['GPS GPSLatitudeRef']!;
+              final isNorth = latRef.printable == 'N';
+              final lat = data['GPS GPSLatitude']!;
+              final ratios = (lat.values as IfdRatios).ratios;
+
+              var latValue = ratios[0].toDouble() +
+                  ratios[1].toDouble() / 60 +
+                  ratios[2].toDouble() / 3600;
+              if (!isNorth) {
+                latValue = -latValue;
+              }
+
+              final longRef = data['GPS GPSLongitudeRef']!;
+              final isEast = longRef.printable == 'E';
+              final long = data['GPS GPSLongitude']!;
+              final longRatios = (long.values as IfdRatios).ratios;
+
+              var longValue = longRatios[0].toDouble() +
+                  longRatios[1].toDouble() / 60 +
+                  longRatios[2].toDouble() / 3600;
+              if (!isEast) {
+                longValue = -longValue;
+              }
+
+              if (latValue > 0 || latValue < 0) {
+                ext['exif']['GPSLatitude'] = latValue;
+                ext['exif']['GPSLongitude'] = longValue;
+              }
+
+              final altitude = (data['GPS GPSAltitude']!.values as IfdRatios)
+                  .ratios
+                  .first
+                  .toDouble();
+              if (altitude > 0) {
+                ext['exif']['GPSAltitude'] = altitude;
+              }
+            }
           }
         }
       } catch (e) {}

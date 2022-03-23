@@ -71,6 +71,8 @@ class StorageService extends VupService {
 
   get trashPath => 'home/.trash';
 
+  final customRemotes = {};
+
   Future<void> init(Sodium sodium) async {
     mySkyProvider = NativeMySkyProvider(mySky.skynetClient);
 
@@ -99,14 +101,6 @@ class StorageService extends VupService {
       thumbnailCache: thumbnailCache,
     );
     await dac.init();
-
-    // ? dac.directoryIndexCache.compact();
-    /* File('/home/red/projects/compress_compare/data.json')
-        .writeAsStringSync(
-      json.encode(
-        dac.directoryIndexCache.toMap(),
-      ),
-    ); */
   }
 
   Future<FileData?> uploadOneFile(
@@ -115,9 +109,10 @@ class StorageService extends VupService {
     bool create = true,
     int? modified,
     bool encrypted = true,
-    Function? onHashAvailable,
+    // Function? onHashAvailable,
     bool returnFileData = false,
     bool metadataOnly = false,
+    FileStateNotifier? fileStateNotifier,
   }) async {
     final changeNotifier = dac.getUploadingFilesChangeNotifier(
       dac.parsePath(path).toString(),
@@ -127,41 +122,15 @@ class StorageService extends VupService {
     String? name;
     try {
       final multihash = await getMultiHashForFile(file);
-      if (onHashAvailable != null) {
+      /*     if (onHashAvailable != null) {
         onHashAvailable(multihash);
-      }
+      } */
+
+      fileStateNotifier ??=
+          storageService.dac.getFileStateChangeNotifier(multihash);
+
       final sha1Hash = await getSHA1HashForFile(file);
       name = basename(file.path);
-
-      final fileStateNotifier = dac.getFileStateChangeNotifier(multihash);
-
-      fileStateNotifier.updateFileState(
-        FileState(
-          type: FileStateType.uploading,
-          progress: 0, // TODO Maybe use null instead
-        ),
-      );
-
-      final now = DateTime.now().millisecondsSinceEpoch;
-
-      changeNotifier.addUploadingFile(
-        DirectoryFile(
-          created: now,
-          file: FileData(
-            chunkSize: 0,
-            encryptionType: 'none',
-            hash: multihash,
-            hashes: [sha1Hash],
-            key: '',
-            size: file.lengthSync(),
-            ts: now,
-            url: '',
-          ),
-          modified: now,
-          name: name,
-          version: 0,
-        ),
-      );
 
       final ext = extension(file.path).toLowerCase();
 
@@ -512,6 +481,7 @@ class StorageService extends VupService {
                 file,
                 multihash,
                 encryptedCacheFile,
+                fileStateNotifier: fileStateNotifier,
               );
               return res;
             } catch (e, st) {
@@ -552,7 +522,9 @@ class StorageService extends VupService {
       );
 
       if (videoThumbnailFile != null) {
-        await videoThumbnailFile.delete();
+        if (videoThumbnailFile.existsSync()) {
+          await videoThumbnailFile.delete();
+        }
       }
       if (modified != null) {
         fileData.ts = modified;
@@ -605,6 +577,69 @@ class StorageService extends VupService {
     } else {
       return true;
     }
+  }
+
+  Future<FileData?> startFileUploadingTask(
+    String path,
+    File file, {
+    bool create = true,
+    int? modified,
+    bool encrypted = true,
+    Function? onUploadIdAvailable,
+    bool returnFileData = false,
+    bool metadataOnly = false,
+  }) async {
+    final changeNotifier = storageService.dac.getUploadingFilesChangeNotifier(
+      storageService.dac.parsePath(path).toString(),
+    );
+
+    final uploadId = Uuid().v4();
+    if (onUploadIdAvailable != null) {
+      onUploadIdAvailable(uploadId);
+    }
+    final fileStateNotifier =
+        storageService.dac.getFileStateChangeNotifier(uploadId);
+
+    fileStateNotifier.updateFileState(
+      FileState(
+        type: FileStateType.uploading,
+        progress: 0, // TODO Maybe use null instead
+      ),
+    );
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    changeNotifier.addUploadingFile(
+      DirectoryFile(
+        created: now,
+        file: FileData(
+          chunkSize: 0,
+          encryptionType: 'none',
+          hash: uploadId,
+          hashes: [],
+          key: '',
+          size: file.lengthSync(),
+          ts: now,
+          url: '',
+        ),
+        modified: now,
+        name: basename(file.path),
+        version: 0,
+      ),
+    );
+
+    return await uploadPool.withResource(
+      () => uploadOneFile(
+        path,
+        file,
+        fileStateNotifier: fileStateNotifier,
+        create: create,
+        modified: modified,
+        encrypted: encrypted,
+        // onHashAvailable: onHashAvailable,
+        returnFileData: returnFileData,
+        metadataOnly: metadataOnly,
+      ),
+    );
   }
 
   Future<void> syncDirectory(
@@ -700,13 +735,10 @@ class StorageService extends VupService {
 
             if (existing == null) {
               if (mode != SyncMode.receiveOnly) {
-                futures.add(uploadPool.withResource(
-                  () => storageService.uploadOneFile(
-                    remotePath,
-                    entity,
-                    modified:
-                        (entity.lastModifiedSync()).millisecondsSinceEpoch,
-                  ),
+                futures.add(storageService.startFileUploadingTask(
+                  remotePath,
+                  entity,
+                  modified: (entity.lastModifiedSync()).millisecondsSinceEpoch,
                 ));
               }
             } else {
@@ -730,14 +762,14 @@ class StorageService extends VupService {
                     if (mode != SyncMode.receiveOnly) {
                       // print('UPLOAD');
 
-                      futures.add(uploadPool.withResource(
-                        () => storageService.uploadOneFile(
+                      futures.add(
+                        storageService.startFileUploadingTask(
                           remotePath,
                           entity,
                           create: false,
                           modified: localModified,
                         ),
-                      ));
+                      );
                     }
                   } else {
                     if (mode != SyncMode.sendOnly) {
@@ -1197,17 +1229,24 @@ class StorageService extends VupService {
   Future<EncryptAndUploadResponse> encryptAndUploadFileInChunks(
     File file,
     String fileMultiHash,
-    File outFile,
-  ) async {
+    File outFile, {
+    FileStateNotifier? fileStateNotifier,
+  }) async {
     int padding = 0;
     const maxChunkSize = 1 * 1000 * 1000; // 1 MiB
 
-    final fileStateNotifier = dac.getFileStateChangeNotifier(fileMultiHash);
+    fileStateNotifier ??= dac.getFileStateChangeNotifier(fileMultiHash);
 
     fileStateNotifier.updateFileState(FileState(
       type: FileStateType.encrypting,
       progress: 0,
     ));
+/* 
+    bool isCancelled = false;
+
+    final _cancelSub = fileStateNotifier.onCancel.listen((_) {
+      isCancelled = true;
+    }); */
 
     outFile.createSync(recursive: true);
 
@@ -1344,7 +1383,7 @@ class StorageService extends VupService {
         outFile.path,
         '/skyfs/$fileId',
         onProgress: (c, t) {
-          fileStateNotifier.updateFileState(
+          fileStateNotifier!.updateFileState(
             FileState(
               type: FileStateType.uploading,
               progress: c / t,
@@ -1361,7 +1400,7 @@ class StorageService extends VupService {
           filename: 'fs-dac.hns',
           fingerprint: Uuid().v4(),
           onProgress: (value) {
-            fileStateNotifier.updateFileState(
+            fileStateNotifier!.updateFileState(
               FileState(
                 type: FileStateType.uploading,
                 progress: value,
@@ -1379,7 +1418,7 @@ class StorageService extends VupService {
           outFile.lengthSync(),
           outFile.openRead().map((event) => Uint8List.fromList(event)),
           onProgress: (value) {
-            fileStateNotifier.updateFileState(
+            fileStateNotifier!.updateFileState(
               FileState(
                 type: FileStateType.uploading,
                 progress: value,

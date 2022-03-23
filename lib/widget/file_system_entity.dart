@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dart_chromecast/casting/cast.dart';
+import 'package:dart_chromecast/utils/mdns_find_chromecast.dart'
+    as find_chromecast;
 import 'package:clipboard/clipboard.dart';
 import 'package:context_menus/context_menus.dart';
 import 'package:file_picker/file_picker.dart';
@@ -337,6 +340,14 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                   );
                 },
               ),
+            ContextMenuButtonConfig(
+              "Copy temporary streaming link",
+              onPressed: () async {
+                FlutterClipboard.copy(
+                  await temporaryStreamingServerService.makeFileAvailable(file),
+                );
+              },
+            ),
             if (hasWriteAccess) ...[
               ContextMenuButtonConfig(
                 "Rename file",
@@ -431,26 +442,195 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                 // FilePicker.platform.saveFile()
               },
             ),
-            /*    if ((Platform.isAndroid || Platform.isIOS || Platform.isMacOS))
+            if (devModeEnabled)
               ContextMenuButtonConfig(
-                "TODO Play file with Cast",
+                'Stream to Cast device',
                 onPressed: () async {
                   if (Platform.isAndroid) {
                     await requestAndroidBackgroundPermissions();
                   }
-                  final info = NetworkInfo();
-                  final ipAddress = await info.getWifiIP();
+                  showLoadingDialog(context,
+                      'Seaching for Cast devices in your local network...');
 
-                  final uri = Uri.http(
-                    '$ipAddress:$webServerPort',
-                    (widget.pathNotifier.value + [file.name]).join('/'),
-                  );
+                  final streamUrl = await temporaryStreamingServerService
+                      .makeFileAvailable(file);
 
-                  /* print('uri $uri');
+                  List<find_chromecast.CastDevice> devices =
+                      await find_chromecast.find_chromecasts();
+                  print(devices);
+                  context.pop();
+                  if (devices.length == 0) {
+                    showInfoDialog(
+                      context,
+                      'No Cast devices found',
+                      'No devices with Cast support were found on your local network.',
+                    );
+                    return;
+                  }
+                  final find_chromecast.CastDevice? selectedDevice =
+                      await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                                title: Text('Choose a Cast device'),
+                                content: SizedBox(
+                                  height: dialogHeight,
+                                  width: dialogWidth,
+                                  child: ListView(
+                                    children: [
+                                      for (final d in devices)
+                                        ListTile(
+                                          title: Text('${d.ip}:${d.port}'),
+                                          subtitle: Text('${d.name}'),
+                                          onTap: () => context.pop(d),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => context.pop(),
+                                    child: Text(
+                                      'Cancel',
+                                    ),
+                                  ),
+                                ],
+                              ));
 
-                  return; */
-                  final results = await CastDiscoveryService().search();
+                  if (selectedDevice != null) {
+                    final CastSender castSender = CastSender(
+                      CastDevice(
+                        name: selectedDevice.name,
+                        host: selectedDevice.ip,
+                        port: selectedDevice.port,
+                        type: '_googlecast._tcp',
+                      ),
+                    );
+
+                    castSender.castSessionController.stream
+                        .listen((CastSession? castSession) async {
+                      if (castSession!.isConnected) {
+                        print('cast state ${castSession.toMap()}');
+                      }
+                    });
+
+                    CastMediaStatus? prevMediaStatus;
+                    // Listen for media status updates, such as pausing, playing, seeking, playback etc.
+                    castSender.castMediaStatusController.stream
+                        .listen((CastMediaStatus? mediaStatus) {
+                      // show progress for example
+                      if (mediaStatus == null) {
+                        return;
+                      }
+                      if (null != prevMediaStatus &&
+                          mediaStatus.volume != prevMediaStatus!.volume) {
+                        print('Volume just updated to ${mediaStatus.volume}');
+                      }
+                      if (null == prevMediaStatus ||
+                          mediaStatus.position != prevMediaStatus?.position) {
+                        print('Media Position is ${mediaStatus.position}');
+                      }
+                      prevMediaStatus = mediaStatus;
+                    });
+
+                    bool connected = false;
+                    bool didReconnect = false;
+
+                    /*    if (null != savedState) {
+                      connected = await castSender.reconnect(
+                        sourceId: savedState['sourceId'],
+                        destinationId: savedState['destinationId'],
+                      );
+                      if (connected) {
+                        didReconnect = true;
+                      }
+                    } */
+                    if (!connected) {
+                      connected = await castSender.connect();
+                    }
+
+                    if (!connected) {
+                      print('COULD NOT CONNECT!');
+                      return;
+                    }
+                    print("Connected with device");
+
+                    if (!didReconnect) {
+                      castSender.launch();
+                    }
+
+                    castSender.loadPlaylist([
+                      CastMedia(
+                        contentId: streamUrl,
+                        contentType:
+                            file.mimeType ?? 'application/octet-stream',
+                        autoPlay: true,
+                        title: file.name,
+                      ),
+                    ], append: false);
+
+                    // Initiate key press handler
+                    // space = toggle pause
+                    // s = stop playing
+                    // left arrow = seek current playback - 10s
+                    // right arrow = seek current playback + 10s
+                    // up arrow = volume up 5%
+                    // down arrow = volume down 5%
+                    /* stdin.echoMode = false;
+                    stdin.lineMode = false; */
+
+                    /* stdin.asBroadcastStream().listen((List<int> data) {
+                      _handleUserInput(castSender, data);
+                    }); */
+                  }
+
+                  /*   void _handleUserInput(CastSender castSender, List<int> data) {
+                    if (data.length == 0) return;
+
+                    int keyCode = data.last;
+
+                    log.info("pressed key with key code: ${keyCode}");
+
+                    if (32 == keyCode) {
+                      // space = toggle pause
+                      castSender.togglePause();
+                    } else if (115 == keyCode) {
+                      // s == stop
+                      castSender.stop();
+                    } else if (27 == keyCode) {
+                      // escape = disconnect
+                      castSender.disconnect();
+                    } else if (65 == keyCode) {
+                      // up
+                      double? volume =
+                          castSender.castSession?.castMediaStatus?.volume;
+                      if (volume != null) {
+                        castSender.setVolume(min(1, volume + 0.1));
+                      }
+                    } else if (66 == keyCode) {
+                      // down
+                      double? volume =
+                          castSender.castSession?.castMediaStatus?.volume;
+                      if (volume != null) {
+                        castSender.setVolume(max(0, volume - 0.1));
+                      }
+                    } else if (67 == keyCode || 68 == keyCode) {
+                      // left or right = seek 10s back or forth
+                      double seekBy = 67 == keyCode ? 10.0 : -10.0;
+                      if (null != castSender.castSession &&
+                          null != castSender.castSession!.castMediaStatus) {
+                        castSender.seek(
+                          max(
+                              0.0,
+                              castSender
+                                      .castSession!.castMediaStatus!.position! +
+                                  seekBy),
+                        );
+                      }
+                    } */
+
+                  /*    final results = await CastDiscoveryService().search();
                   print('results $results');
+                  
                   final session =
                       await CastSessionManager().startSession(results[0]);
 
@@ -462,7 +642,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                         'autoplay': true,
                         'currentTime': 0,
                         'media': {
-                          "contentId": uri.toString(),
+                          "contentId": streamUrl,
                           // "streamType": 'BUFFERED',
                           "contentType": 'video/mp4',
                         }
@@ -478,9 +658,9 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                   session.sendMessage(CastSession.kNamespaceReceiver, {
                     'type': 'LAUNCH',
                     'appId': 'CC1AD845', // set the appId of your app here
-                  });
+                  }); */
                 },
-              ), */
+              ),
             if (!(UniversalPlatform.isLinux || UniversalPlatform.isWindows))
               ContextMenuButtonConfig(
                 "Share file with other app",
@@ -537,7 +717,8 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                         outFile: null,
                       ),
                     );
-                    final fileData = await storageService.uploadOneFile(
+                    final fileData =
+                        await storageService.startFileUploadingTask(
                       'vup.hns',
                       File(link),
                       metadataOnly: true,
@@ -916,13 +1097,11 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                           if (localFile.lastModifiedSync() != lastModified) {
                             lastModified = localFile.lastModifiedSync();
 
-                            uploadPool.withResource(
-                              () => storageService.uploadOneFile(
-                                widget.pathNotifier.value.join('/'),
-                                localFile,
-                                create: false,
-                                modified: lastModified.millisecondsSinceEpoch,
-                              ),
+                            storageService.startFileUploadingTask(
+                              widget.pathNotifier.value.join('/'),
+                              localFile,
+                              create: false,
+                              modified: lastModified.millisecondsSinceEpoch,
                             );
                           }
                         });
@@ -1014,6 +1193,13 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
           file: file,
         );
     }
+
+    final stateNotifier = storageService.dac.getFileStateChangeNotifier(
+      isDirectory
+          ? [...widget.pathNotifier.value, dir.name].join('/')
+          : file.file.hash,
+    );
+
     if (widget.zoomLevel.type != ZoomLevelType.list) {
       return Stack(
         alignment: Alignment.center,
@@ -1047,11 +1233,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
             ],
           ),
           StateNotifierBuilder<FileState>(
-              stateNotifier: storageService.dac.getFileStateChangeNotifier(
-                isDirectory
-                    ? [...widget.pathNotifier.value, dir.name].join('/')
-                    : file.file.hash,
-              ),
+              stateNotifier: stateNotifier,
               builder: (context, state, _) {
                 return Padding(
                   padding: EdgeInsets.only(
@@ -1077,9 +1259,23 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                             value: state.progress,
                           ),
                         ),
+                        /* 
                         SizedBox(
                           width: 8,
-                        ),
+                        ), */
+                        if (false)
+                          InkWell(
+                            onTap: () {
+                              // TODO stateNotifier.cancel();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Icon(
+                                UniconsLine.times,
+                                size: 16,
+                              ),
+                            ),
+                          )
                       ],
                       if (!isDirectory &&
                           localFiles.containsKey(file.file.hash)) ...[
@@ -1144,7 +1340,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                       Text.rich(
                         TextSpan(
                           children: file.ext!.containsKey('image')
-                              ? renderImageMetadata(file.ext?['image'], context)
+                              ? renderImageMetadata(file.ext, context)
                               : file.ext!.containsKey('publication')
                                   ? renderPublicationMetadata(
                                       file.ext?['publication'], context)
@@ -1167,12 +1363,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                             'Duration: ${renderDuration(file.ext!['audio']['duration'])}'), */
                     ],
                     StateNotifierBuilder<FileState>(
-                      stateNotifier:
-                          storageService.dac.getFileStateChangeNotifier(
-                        isDirectory
-                            ? [...widget.pathNotifier.value, dir.name].join('/')
-                            : file.file.hash,
-                      ),
+                      stateNotifier: stateNotifier,
                       builder: (context, state, _) {
                         if (state.type == FileStateType.idle) {
                           return SizedBox();
@@ -1212,6 +1403,22 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                                 ),
                               ),
                             ),
+                            SizedBox(
+                              width: 2,
+                            ),
+                            if (false)
+                              InkWell(
+                                onTap: () {
+                                  // TODO stateNotifier.cancel();
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2.0),
+                                  child: Icon(
+                                    UniconsLine.times,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
                             /*  Expanded(
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(maxWidth: 10),
@@ -1220,9 +1427,6 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                                 ),
                               ),
                             ), */
-                            SizedBox(
-                              width: 8,
-                            ),
                           ],
                         );
                       },
@@ -1428,19 +1632,21 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
           // return timeAgoWidget;
         });
 
-    final filesizeWidget = StateNotifierBuilder<FileState>(
+    final filesizeWidget = /* StateNotifierBuilder<FileState>(
         stateNotifier: storageService.dac.getFileStateChangeNotifier(
           file.file.hash,
         ),
         builder: (context, state, _) {
-          return Text(
-            filesize(file.file.size),
-            style: TextStyle(
-              color: textColor,
-            ),
-            textAlign: TextAlign.end,
-          );
-        });
+          return */
+        Text(
+      filesize(file.file.size),
+      style: TextStyle(
+        color: textColor,
+      ),
+      textAlign: TextAlign.end,
+      /* ); */
+      /* } */
+    );
 
     final isAvailableOfflineWidget = StateNotifierBuilder<FileState>(
         stateNotifier: storageService.dac.getFileStateChangeNotifier(
@@ -1523,7 +1729,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
     ];
   }
 
-  List<TextSpan> renderImageMetadata(Map map, BuildContext context) {
+  List<TextSpan> renderImageMetadata(Map? map, BuildContext context) {
     final spans = <TextSpan>[];
 
     final highlightTextStyle = TextStyle(
@@ -1531,7 +1737,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
       color: Theme.of(context).primaryColor,
     );
 
-    if (map['width'] != null) {
+    if (map?['image']['width'] != null) {
       spans.add(
         TextSpan(
           text: 'Res: ',
@@ -1539,7 +1745,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
       );
       spans.add(
         TextSpan(
-          text: '${map['width']}',
+          text: '${map?['image']['width']}',
           style: highlightTextStyle,
         ),
       );
@@ -1550,7 +1756,21 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
       );
       spans.add(
         TextSpan(
-          text: '${map['height']}',
+          text: '${map?['image']['height']}',
+          style: highlightTextStyle,
+        ),
+      );
+    }
+
+    if (map?['exif']?['GPSLongitude'] != null) {
+      spans.add(
+        TextSpan(
+          text: ', has ',
+        ),
+      );
+      spans.add(
+        TextSpan(
+          text: 'GPS',
           style: highlightTextStyle,
         ),
       );

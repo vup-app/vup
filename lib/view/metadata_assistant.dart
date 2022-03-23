@@ -97,11 +97,9 @@ class _MetadataAssistantState extends State<MetadataAssistant> {
 
       tempImageFile.writeAsBytesSync(res.bodyBytes);
 
-      await uploadPool.withResource(
-        () => storageService.uploadOneFile(
-          widget.uri,
-          tempImageFile,
-        ),
+      await storageService.startFileUploadingTask(
+        widget.uri,
+        tempImageFile,
       );
     }
 
@@ -117,12 +115,10 @@ class _MetadataAssistantState extends State<MetadataAssistant> {
     tempJsonMetaFile.parent.createSync(recursive: true);
     tempJsonMetaFile.writeAsStringSync(json.encode(data));
 
-    await uploadPool.withResource(
-      () => storageService.uploadOneFile(
-        widget.uri,
-        tempJsonMetaFile,
-        create: !index.files.containsKey(metaFileName),
-      ),
+    await storageService.startFileUploadingTask(
+      widget.uri,
+      tempJsonMetaFile,
+      create: !index.files.containsKey(metaFileName),
     );
     final mediaMap = provider.generateJellyMetadata(type, id, data);
 

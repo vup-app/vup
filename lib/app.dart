@@ -590,10 +590,7 @@ Future<void> uploadMultipleFiles(
   List<File> files,
 ) async {
   await Future.wait([
-    for (final file in files)
-      uploadPool.withResource(
-        () => storageService.uploadOneFile(path, file),
-      ),
+    for (final file in files) storageService.startFileUploadingTask(path, file),
   ]);
 }
 

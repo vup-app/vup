@@ -310,8 +310,11 @@ class WebDavServerService extends VupService {
         final parsed = storageService.dac.parseFilePath(pathSegments.join('/'));
 
         final dirIndex = storageService.dac.getDirectoryIndexCached(
-          parsed.directoryPath,
-        )!;
+              parsed.directoryPath,
+            ) ??
+            await storageService.dac.getDirectoryIndex(
+              parsed.directoryPath,
+            );
 
         final file = dirIndex.files[parsed.fileName];
 
@@ -394,13 +397,13 @@ class WebDavServerService extends VupService {
               parsed.directoryPath,
             ));
 
-        final fileData = await uploadPool.withResource(
-          () => storageService.uploadOneFile(parsed.directoryPath, cacheFile,
-              create: !dirIndex.files.containsKey(parsed.fileName),
-              modified: modTime == null ? null : (int.parse(modTime) * 1000)
-              // TODO encrypted: false,
-              ),
-        );
+        final fileData = await storageService.startFileUploadingTask(
+            parsed.directoryPath, cacheFile,
+            create: !dirIndex.files.containsKey(parsed.fileName),
+            modified: modTime == null ? null : (int.parse(modTime) * 1000)
+            // TODO encrypted: false,
+
+            );
         verbose('[webdav] upload res $fileData');
 
         cacheFile.deleteSync();

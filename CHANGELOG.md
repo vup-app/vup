@@ -2,8 +2,19 @@
 
 ## main
 
-- Updated macOS icon
+- BREAKING: Changed Jellyfin server id format to support additional clients. Clear the data or logout in all of your Jellyfin clients after upgrading to the new Vup version
 - Added iOS permissions to pick and upload all file types
+- Added `DirectoryCacheSyncService` (makes multi-device usage a lot more efficient)
+- Added `TemporaryStreamingServerService`
+- Added button to upload and share logs in settings (Useful for Android and iOS)
+- Added support for "mixed" Jellyfin collections
+- Added experimental Cast support
+- Improved task progress system (for example dropped files now show up instantly)
+- Added new "Devices" settings page which shows a list of devices you use Vup on
+- Improved EXIF metadata extraction for images (datetime and gps)
+- Added backspace key for navigation
+- Updated macOS icon
+- Fixed some bugs
 
 ## Beta 0.8.7
 

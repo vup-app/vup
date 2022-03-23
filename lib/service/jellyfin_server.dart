@@ -31,7 +31,10 @@ class JellyfinServerService extends VupService {
 
   bool useThumbnailInsteadOfCover = true;
 
-  final serverId = 'vup_jellyfin_server';
+  final folderCollectionIds = <String>{};
+
+  final serverId = '7eafbf7addea4286930b0d3857a12733';
+
   void stop() {
     info('stopping server...');
     app.close(force: true);
@@ -1051,65 +1054,73 @@ class JellyfinServerService extends VupService {
         // parentToChildMap[albumId]!.add(songId);
         recursiveParentToChildMap[collectionId]!.add(id);
       }
-    } else if (type == 'books') {
+    } else if (type == 'books' || type == 'mixed') {
       // final booksCoverMap = {};
+      folderCollectionIds.add(collectionId);
 
       for (final key in index.files.keys) {
         final file = index.files[key]!;
 
-        final directoryPath = getDirectoryPath(rootPath, file.uri!);
+        // final directoryPath = getDirectoryPath(rootPath, file.uri!);
 
         /*  */
-        final directoryId = createDirectory(
+        /*     final directoryId = createDirectory(
           collectionId: collectionId,
           directoryPath: directoryPath,
-        );
+        ); */
 
         final fileId = file.file.hash;
 
-        if (file.ext?['audio'] == null) {
-          /* if (file.ext?['thumbnail'] != null) {
-            imageFiles[key] = directoryPath;
-          } */
-          continue;
+        if (file.ext?['audio'] != null) {
+          final coverKey = useThumbnailInsteadOfCover
+              ? file.ext?['thumbnail']?['key']
+              : file.ext?['audio']?['coverKey'];
+          if (coverKey != null) allCoverKeysMap[fileId] = coverKey;
+
+          final item = _buildAudioItemForFile(
+            file,
+            isAudiobook: true,
+            rootPath: rootPath,
+            collectionId: collectionId,
+          );
+
+          final parts = file.name.split('-');
+
+          try {
+            item['IndexNumber'] = int.parse(parts[0]);
+
+            int year = int.parse(parts[1]);
+            int month = int.parse(parts[2]);
+            int day = int.parse(parts[3]);
+
+            // item.remove('ProductionYear');
+
+            item['PremiereDate'] =
+                DateTime(year, month, day).toUtc().toIso8601String();
+
+            item['Name'] = parts.sublist(4).join(' ');
+          } catch (e) {}
+
+          allItems[fileId] = item;
+          addLatestItem(fileId);
+
+          // TODO "PremiereDate": "2020-10-20T20:00:00.0000000Z",
+
+        } else if (file.ext?['video'] != null) {
+          final coverKey = file.ext?['thumbnail']?['key'];
+
+          if (coverKey != null) allCoverKeysMap[fileId] = coverKey;
+
+          final item = _buildVideoItemForFile(
+            file,
+            isMovie: true,
+            rootPath: rootPath,
+            collectionId: collectionId,
+          );
+
+          allItems[fileId] = item;
+          addLatestItem(fileId);
         }
-        /*  parentToChildMap[directoryId] ??= [];
-        parentToChildMap[directoryId]!.add(fileId); */
-
-        final coverKey = useThumbnailInsteadOfCover
-            ? file.ext?['thumbnail']?['key']
-            : file.ext?['audio']?['coverKey'];
-        if (coverKey != null) allCoverKeysMap[fileId] = coverKey;
-
-        final item = _buildAudioItemForFile(
-          file,
-          isAudiobook: true,
-          rootPath: rootPath,
-          collectionId: collectionId,
-        );
-
-        final parts = file.name.split('-');
-
-        try {
-          item['IndexNumber'] = int.parse(parts[0]);
-
-          int year = int.parse(parts[1]);
-          int month = int.parse(parts[2]);
-          int day = int.parse(parts[3]);
-
-          // item.remove('ProductionYear');
-
-          item['PremiereDate'] =
-              DateTime(year, month, day).toUtc().toIso8601String();
-
-          item['Name'] = parts.sublist(4).join(' ');
-        } catch (e) {}
-
-        allItems[fileId] = item;
-        addLatestItem(fileId);
-
-        // TODO "PremiereDate": "2020-10-20T20:00:00.0000000Z",
-
       }
 
       for (final imageKey in allImageFiles.keys) {
@@ -1141,7 +1152,7 @@ class JellyfinServerService extends VupService {
 
           allCoverKeysMap[directoryId] = coverKey;
 
-          allItems[directoryId]!.addAll(<String, dynamic>{
+          allItems[directoryId]?.addAll(<String, dynamic>{
             "ImageTags": {"Primary": directoryId},
             "ImageBlurHashes": {
               "Primary": {
@@ -1222,6 +1233,10 @@ class JellyfinServerService extends VupService {
     final startDirectoryId = createIdHash(utf8.encode(
       'directory_' + collectionId + '_' + directoryPath.join('/'),
     )).toString();
+
+    if (directoryPath.isEmpty) {
+      return collectionId;
+    }
 
     while (true) {
       final directoryId = createIdHash(utf8.encode(
@@ -1784,7 +1799,7 @@ class JellyfinServerService extends VupService {
 
       final ticks = item['RunTimeTicks'];
 
-      if (ticks == null) {
+      if (ticks == null || ticks == 0) {
         return item;
       }
 
@@ -1992,7 +2007,7 @@ class JellyfinServerService extends VupService {
 
     if (authEnabled) {
       app.all(
-        '/*',
+        '*',
         (HttpRequest req, HttpResponse res) async {
           final path = req.requestedUri.path.toLowerCase();
           /* (req.requestedUri.path == '/api/me' && req.method == 'POST') || */
@@ -2227,10 +2242,13 @@ class JellyfinServerService extends VupService {
           queryParameters['contributingartistids'];
 
       bool isFavorite = queryParameters['isfavorite'] == 'true';
+      var recursive = queryParameters['recursive'] == 'true';
       if (isFavorite) {
         parentId = 'favorites';
+        recursive = false;
       } else if (filters == 'IsFavorite') {
         parentId = 'favorites';
+        recursive = false;
       }
 
       final genreIds = queryParameters['genreids'];
@@ -2239,12 +2257,15 @@ class JellyfinServerService extends VupService {
       int limit = int.parse(queryParameters['limit'] ?? '999999999');
       int startIndex = int.parse(queryParameters['startindex'] ?? '0');
 
-      final recursive = queryParameters['recursive'] == 'true';
-
       final items = <Map>[];
 
       if (parentId != null) {
         //print('recursive1 $recursive');
+        if (recursive) {
+          if (folderCollectionIds.contains(parentId)) {
+            recursive = false;
+          }
+        }
         if (recursive) {
           if (recursiveParentToChildMap.containsKey(parentId)) {
             for (final itemId in recursiveParentToChildMap[parentId]!) {
@@ -3238,7 +3259,7 @@ class JellyfinServerService extends VupService {
       },
     );
     if (jellyfinWebDir != null) {
-      app.get('/*', (req, res) {
+      app.get('*', (req, res) {
         return jellyfinWebDir;
       });
     }
@@ -3262,7 +3283,7 @@ class JellyfinServerService extends VupService {
     info('Jellyfin server is running at $bindIp:$port');
 
     vueWebApp = Alfred();
-    vueWebApp!.get('/*', (req, res) => jellyfinVueDir);
+    vueWebApp!.get('*', (req, res) => jellyfinVueDir);
 
     vueWebApp!.listen(vuePort, '0.0.0.0');
 
