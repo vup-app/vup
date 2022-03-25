@@ -14,6 +14,7 @@
 - Improved EXIF metadata extraction for images (datetime and gps)
 - Added backspace key for navigation
 - Updated macOS icon
+- Added some new experimental yt-dlp features
 - Fixed some bugs
 
 ## Beta 0.8.7

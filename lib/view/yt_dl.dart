@@ -6,7 +6,9 @@ import 'package:filesystem_dac/dac.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/dracula.dart';
 import 'package:flutter_state_notifier/flutter_state_notifier.dart';
+import 'package:path/path.dart';
 import 'package:pool/pool.dart';
+import 'package:uuid/uuid.dart';
 import 'package:vup/app.dart';
 import 'package:vup/utils/yt_dl.dart';
 import 'package:vup/widget/file_system_entity.dart';
@@ -39,7 +41,9 @@ class _YTDLDialogState extends State<YTDLDialog> {
 
   final _userAgentCtrl = TextEditingController();
   final _browserProfileCtrl = TextEditingController();
-  final _maxDownloadThreadsCtrl = TextEditingController();
+  final _maxDownloadThreadsCtrl = TextEditingController(text: '4');
+  bool splitByChapters = false;
+  bool useParentInfoJsonData = false;
   // final _maxDLCountCtrl = TextEditingController(text: '8');
 
   final downloadProgress = <String, double?>{};
@@ -184,22 +188,61 @@ mp3: better compatibility''', // mkv: more features
               SizedBox(
                 height: 16,
               ),
-              TextField(
-                controller: _browserProfileCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Extract cookies from browser profile',
-                ),
-                enabled: !_isRunning,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _maxDownloadThreadsCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Max download threads',
+                      ),
+                      enabled: !_isRunning,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 16,
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _browserProfileCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Extract cookies from browser profile',
+                      ),
+                      enabled: !_isRunning,
+                    ),
+                  )
+                ],
               ),
               SizedBox(
                 height: 16,
               ),
-              TextField(
-                controller: _maxDownloadThreadsCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Max download threads',
-                ),
-                enabled: !_isRunning,
+              Row(
+                children: [
+                  Expanded(
+                    child: SwitchListTile(
+                        title: Text('Split by chapters'),
+                        subtitle: Text(
+                          'Split videos in multiple files according to the chapter timestamps',
+                        ),
+                        value: splitByChapters,
+                        onChanged: (val) {
+                          setState(() {
+                            splitByChapters = val;
+                          });
+                        }),
+                  ),
+                  Expanded(
+                    child: SwitchListTile(
+                        title: Text('Use playlist metadata'),
+                        subtitle: Text('Very experimental!'),
+                        value: useParentInfoJsonData,
+                        onChanged: (val) {
+                          setState(() {
+                            useParentInfoJsonData = val;
+                          });
+                        }),
+                  )
+                ],
               ),
             ],
             /*   SizedBox(
@@ -600,6 +643,28 @@ mp3: better compatibility''', // mkv: more features
             cookieExtractBrowserProfile,
           ]);
         }
+
+        if (splitByChapters) {
+          additionalArgs.addAll([
+            '--split-chapters',
+          ]);
+        }
+        if (useParentInfoJsonData) {
+          final video = videos.firstWhere(
+            (video) => (video['webpage_url'] ?? video['original_url']) == url,
+          );
+          final tempJsonFile = File(join(
+            storageService.temporaryDirectory,
+            'yt_dl_info_json_files',
+            Uuid().v4() + '.json',
+          ));
+          tempJsonFile.createSync(recursive: true);
+          tempJsonFile.writeAsStringSync(json.encode(video));
+          additionalArgs.addAll([
+            '--load-info-json',
+            tempJsonFile.path,
+          ]);
+        }
       }
       await YTDLUtils.downloadAndUploadVideo(
         url,
@@ -619,6 +684,64 @@ mp3: better compatibility''', // mkv: more features
         cancelStream: cancelStream.stream,
         additionalArgs: additionalArgs,
       );
+      if (advancedYtDlModeEnabled) {
+        if (splitByChapters) {
+          final dirIndex = await storageService.dac.getDirectoryIndexCached(
+            widget.path,
+          )!;
+          final files = <DirectoryFile>[];
+          for (final file in dirIndex.files.values) {
+            if ((file.ext?['audio']?['comment'] ??
+                    file.ext?['video']?['comment']) ==
+                url) {
+              files.add(file);
+            }
+          }
+          final firstFile = files.first;
+          final String albumTitle = firstFile.ext?['audio']?['title'] ??
+              firstFile.ext?['video']?['title'];
+
+          files.sort((a, b) => -a.name.compareTo(b.name));
+
+          double lastDuration = 0;
+
+          for (final file in files) {
+            final mediaExt = file.ext?['audio'] ?? file.ext?['video'];
+
+            final afterTitle =
+                file.name.substring(albumTitle.length + 2).trimLeft();
+            final track = int.tryParse(afterTitle.split(' ').first);
+
+            final index = afterTitle.indexOf(' ');
+            if (index == -1) continue;
+            final title = afterTitle
+                .substring(index)
+                .trimLeft()
+                .split('[')
+                .first
+                .trimRight();
+            mediaExt['title'] = title;
+
+            mediaExt['album'] = albumTitle;
+            mediaExt.remove('description');
+            if (track != null) {
+              mediaExt['track'] = '$track';
+            }
+
+            final duration = mediaExt['duration'];
+
+            mediaExt['duration'] = duration - lastDuration;
+
+            lastDuration = duration;
+            if (file.ext?['audio'] != null) {
+              file.ext?['audio'] = mediaExt;
+            } else {
+              file.ext?['video'] = mediaExt;
+            }
+            storageService.dac.updateFileExtensionData(file.uri!, file.ext);
+          }
+        }
+      }
       setState(() {
         downloadProgress[url] = -2;
         selectedVideos.remove(url);

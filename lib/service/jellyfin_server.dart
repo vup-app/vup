@@ -1844,11 +1844,13 @@ class JellyfinServerService extends VupService {
         final webAppUrl = Uri.parse(
             mySky.skynetClient.resolveSkylink('sia://$resolverSkylink')!);
 
-        final res = await mySky.skynetClient.httpClient.get(
-          Uri.parse(
-              'https://${mySky.skynetClient.portalHost}/skynet/resolve/$resolverSkylink'),
-          headers: mySky.skynetClient.headers,
-        );
+        final res = await mySky.skynetClient.httpClient
+            .get(
+              Uri.parse(
+                  'https://${mySky.skynetClient.portalHost}/skynet/resolve/$resolverSkylink'),
+              headers: mySky.skynetClient.headers,
+            )
+            .timeout(Duration(seconds: 10));
         final skylink = json.decode(res.body)['skylink'];
 
         verbose('skylink $skylink');

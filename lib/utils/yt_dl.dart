@@ -136,15 +136,24 @@ class YTDLUtils {
       }
     }
 
+    if (files.length > 1 &&
+        (additionalArgs?.contains('--split-chapters') ?? false)) {
+      files.removeLast();
+    }
+
     /* uploadPool.withResource(
       () async { */
+    final futures = <Future>[];
     if (!isCancelled) {
-      await storageService.startFileUploadingTask(
-        path,
-        files.first,
-        onUploadIdAvailable: onUploadIdAvailable,
-      );
+      for (final file in files) {
+        futures.add(storageService.startFileUploadingTask(
+          path,
+          file,
+          onUploadIdAvailable: onUploadIdAvailable,
+        ));
+      }
     }
+    await Future.wait(futures);
 
     for (final file in files) {
       print('[yt-dlp] delete $file from cache');
