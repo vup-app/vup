@@ -33,7 +33,11 @@ class TemporaryStreamingServerService extends VupService {
     availableFiles[streamingKey] = file;
 
     final info = NetworkInfo();
-    final ipAddress = await info.getWifiIP();
+    String? ipAddress;
+    try {
+      ipAddress = await info.getWifiIP();
+    } catch (_) {}
+    ipAddress ??= '127.0.0.1';
 
     return 'http://$ipAddress:43913/stream/$streamingKey/${file.name}';
   }

@@ -65,6 +65,12 @@ class DeleteFromDeviceVupAction extends VupFSAction {
         await decryptedFile.delete();
       } catch (_) {}
       localFiles.delete(hash);
+      storageService.dac.getFileStateChangeNotifier(hash).updateFileState(
+            FileState(
+              type: FileStateType.idle,
+              progress: null,
+            ),
+          );
     }
   }
 }
