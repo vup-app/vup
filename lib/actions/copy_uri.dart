@@ -1,12 +1,10 @@
+import 'package:clipboard/clipboard.dart';
 import 'package:filesystem_dac/dac.dart';
 import 'package:vup/app.dart';
 
-import 'package:flutter/src/widgets/framework.dart';
-import 'package:vup/view/yt_dl.dart';
-
 import 'base.dart';
 
-class YTDLVupAction extends VupFSAction {
+class CopyURIVupAction extends VupFSAction {
   @override
   VupFSActionInstance? check(
       bool isFile,
@@ -17,13 +15,13 @@ class YTDLVupAction extends VupFSAction {
       bool hasWriteAccess,
       FileState fileState,
       bool isSelected) {
-    if (!isDirectoryView) return null;
-    if (!hasWriteAccess) return null;
+    if (isDirectoryView) return null;
+    if (entity == null) return null;
 
-    if (isYTDlIntegrationEnabled) {
+    if (devModeEnabled) {
       return VupFSActionInstance(
-        label: 'YT-DL',
-        icon: UniconsLine.image_download,
+        label: 'Copy URI (Debug)',
+        icon: UniconsLine.clipboard,
       );
     }
     return null;
@@ -33,11 +31,7 @@ class YTDLVupAction extends VupFSAction {
   Future execute(
     BuildContext context,
     VupFSActionInstance instance,
-  ) {
-    return showDialog(
-      context: context,
-      builder: (context) => YTDLDialog(instance.pathNotifier.value.join('/')),
-      barrierDismissible: false,
-    );
+  ) async {
+    FlutterClipboard.copy(instance.entity.uri);
   }
 }

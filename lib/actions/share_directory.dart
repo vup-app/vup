@@ -1,12 +1,10 @@
 import 'package:filesystem_dac/dac.dart';
 import 'package:vup/app.dart';
-
-import 'package:flutter/src/widgets/framework.dart';
-import 'package:vup/view/yt_dl.dart';
+import 'package:vup/view/share_dialog.dart';
 
 import 'base.dart';
 
-class YTDLVupAction extends VupFSAction {
+class ShareDirectoryVupAction extends VupFSAction {
   @override
   VupFSActionInstance? check(
       bool isFile,
@@ -18,12 +16,11 @@ class YTDLVupAction extends VupFSAction {
       FileState fileState,
       bool isSelected) {
     if (!isDirectoryView) return null;
-    if (!hasWriteAccess) return null;
 
-    if (isYTDlIntegrationEnabled) {
+    if (pathNotifier.value.length > 1) {
       return VupFSActionInstance(
-        label: 'YT-DL',
-        icon: UniconsLine.image_download,
+        label: 'Share directory',
+        icon: UniconsLine.share_alt,
       );
     }
     return null;
@@ -36,7 +33,11 @@ class YTDLVupAction extends VupFSAction {
   ) {
     return showDialog(
       context: context,
-      builder: (context) => YTDLDialog(instance.pathNotifier.value.join('/')),
+      builder: (context) => ShareDialog(
+        directoryUris: [
+          instance.pathNotifier.value.join('/'),
+        ],
+      ),
       barrierDismissible: false,
     );
   }

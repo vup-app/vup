@@ -47,6 +47,24 @@ final bookParsers = {
   // '.pdf': PdfParser(pdfFactory),
 };
 
+Future<String> hashFileSha256(File file) async {
+  var output = new AccumulatorSink<Digest>();
+  var input = sha256.startChunkedConversion(output);
+  await file.openRead().forEach(input.add);
+  input.close();
+  final hash = output.events.single;
+  return hash.toString();
+}
+
+Future<String> hashFileSha1(File file) async {
+  var output = new AccumulatorSink<Digest>();
+  var input = sha1.startChunkedConversion(output);
+  await file.openRead().forEach(input.add);
+  input.close();
+  final hash = output.events.single;
+  return hash.toString();
+}
+
 class StorageService extends VupService {
   final MySkyService mySky;
   late final FileSystemDAC dac;
@@ -928,11 +946,7 @@ class StorageService extends VupService {
       }
       return '1220$hash';
     }
-    var output = new AccumulatorSink<Digest>();
-    var input = sha256.startChunkedConversion(output);
-    await file.openRead().forEach(input.add);
-    input.close();
-    final hash = output.events.single;
+    final hash = await compute(hashFileSha256, file);
     return '1220$hash';
   }
 
@@ -945,11 +959,7 @@ class StorageService extends VupService {
       }
       return '1114$hash';
     }
-    var output = new AccumulatorSink<Digest>();
-    var input = sha1.startChunkedConversion(output);
-    await file.openRead().forEach(input.add);
-    input.close();
-    final hash = output.events.single;
+    final hash = await compute(hashFileSha1, file);
     return '1114$hash';
   }
 
@@ -1364,10 +1374,11 @@ class StorageService extends VupService {
     final TUS_CHUNK_SIZE = (1 << 22) * 10; // ~ 41 MB
 
     if (false && (outFile.lengthSync() > TUS_CHUNK_SIZE)) {
+      final remote = customRemotes['unraid']!;
       var client = webdav.newClient(
-        'http://192.168.1.1:9090/',
-        user: 'user',
-        password: 'password',
+        remote['url'] as String,
+        user: remote['username'] as String,
+        password: remote['password'] as String,
         debug: true,
       );
 

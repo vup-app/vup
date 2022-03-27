@@ -15,6 +15,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.4.0"
+  after_layout:
+    dependency: transitive
+    description:
+      name: after_layout
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.1.0"
   alfred:
     dependency: "direct main"
     description:
@@ -341,13 +348,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.2.0"
-  context_menus:
+  contextmenu:
     dependency: "direct main"
     description:
-      name: context_menus
+      name: contextmenu
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.1.0+6"
+    version: "3.0.0"
   convert:
     dependency: "direct main"
     description:
@@ -440,7 +447,7 @@ packages:
       name: dbus
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.7.1"
+    version: "0.7.2"
   desktop_drop:
     dependency: "direct main"
     description:
@@ -823,7 +830,7 @@ packages:
       name: hive
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.6"
+    version: "2.1.0"
   hive_crdt:
     dependency: "direct main"
     description:
@@ -949,7 +956,7 @@ packages:
       name: launch_at_startup
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.1.6"
+    version: "0.1.7"
   logging:
     dependency: transitive
     description:
@@ -1429,14 +1436,14 @@ packages:
       name: share_plus_macos
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.2"
+    version: "2.1.0"
   share_plus_platform_interface:
     dependency: transitive
     description:
       name: share_plus_platform_interface
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.1"
+    version: "2.1.0"
   share_plus_web:
     dependency: transitive
     description:
@@ -1489,7 +1496,7 @@ packages:
     description:
       path: "."
       ref: experimental
-      resolved-ref: "51a9bad3320d6b2ce3f34603a997e93c4ae6e2ad"
+      resolved-ref: "70866562f4302611aed887c6ebda334e91d748a3"
       url: "https://github.com/redsolver/skynet.git"
     source: git
     version: "5.0.0"
@@ -1611,7 +1618,7 @@ packages:
       name: synchronized
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.0.0"
+    version: "3.0.0+2"
   term_glyph:
     dependency: transitive
     description:
@@ -1823,7 +1830,14 @@ packages:
       name: win32
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.4.1"
+    version: "2.4.4"
+  win32_registry:
+    dependency: transitive
+    description:
+      name: win32_registry
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.1.2"
   xdg_directories:
     dependency: "direct main"
     description:

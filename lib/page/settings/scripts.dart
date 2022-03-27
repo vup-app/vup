@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
-import 'package:vup/actions/yt_dl.dart';
+import 'package:vup/scripts/actions/yt_dl.dart';
 import 'package:vup/app.dart';
 
 class ScriptsSettingsPage extends StatefulWidget {

@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:contextmenu/contextmenu.dart';
 import 'package:draggable_scrollbar/draggable_scrollbar.dart';
-import 'package:path/path.dart';
+
+import 'package:vup/actions/base.dart';
 import 'package:vup/app.dart';
 import 'package:vup/utils/strings.dart';
 import 'package:vup/view/browse.dart';
-import 'package:vup/view/share_dialog.dart';
 import 'package:vup/widget/file_system_entity.dart';
 import 'package:vup/widget/flat_action_button.dart';
 
@@ -243,7 +244,10 @@ class _DirectoryViewState extends State<DirectoryView> {
                                 width: 8,
                               ),
                               Text(
-                                'Copied ' + entityStr,
+                                (globalClipboardState.isCopy
+                                        ? 'Copied '
+                                        : 'Cut ') +
+                                    entityStr,
                                 style: TextStyle(
                                   fontSize: 16,
                                 ),
@@ -252,96 +256,111 @@ class _DirectoryViewState extends State<DirectoryView> {
                             ],
                           ),
                         ),
-                        FlatActionButton(
-                          icon: UniconsLine.copy,
-                          label: 'Paste here',
-                          onTap: () async {
-                            try {
-                              showLoadingDialog(
-                                  context, 'Copying $entityStr...');
-                              final futures = <Future>[];
+                        globalClipboardState.isCopy
+                            ? FlatActionButton(
+                                icon: UniconsLine.copy,
+                                label: 'Paste here',
+                                onTap: () async {
+                                  try {
+                                    showLoadingDialog(
+                                        context, 'Copying $entityStr...');
+                                    final futures = <Future>[];
 
-                              for (final uri in globalClipboardState.fileUris) {
-                                futures.add(
-                                  storageService.dac.copyFile(
-                                    uri,
-                                    widget.pathNotifier.toCleanUri().toString(),
-                                  ),
-                                );
-                              }
-                              for (final uri
-                                  in globalClipboardState.directoryUris) {
-                                final name = Uri.parse(uri).pathSegments.last;
-                                futures.add(
-                                  storageService.dac.createDirectory(
-                                    widget.pathNotifier.toCleanUri().toString(),
-                                    name,
-                                  ),
-                                );
-                                futures.add(
-                                  storageService.dac.cloneDirectory(
-                                    uri,
-                                    storageService.dac
-                                        .getChildUri(
-                                          widget.pathNotifier.toCleanUri(),
+                                    for (final uri
+                                        in globalClipboardState.fileUris) {
+                                      futures.add(
+                                        storageService.dac.copyFile(
+                                          uri,
+                                          widget.pathNotifier
+                                              .toCleanUri()
+                                              .toString(),
+                                        ),
+                                      );
+                                    }
+                                    for (final uri
+                                        in globalClipboardState.directoryUris) {
+                                      final name =
+                                          Uri.parse(uri).pathSegments.last;
+                                      futures.add(
+                                        storageService.dac.createDirectory(
+                                          widget.pathNotifier
+                                              .toCleanUri()
+                                              .toString(),
                                           name,
-                                        )
-                                        .toString(),
-                                  ),
-                                );
-                              }
-                              await Future.wait(futures);
-                              globalClipboardState.clearSelection();
-                              context.pop();
-                            } catch (e, st) {
-                              context.pop();
-                              showErrorDialog(context, e, st);
-                            }
-                          },
-                        ),
-                        FlatActionButton(
-                          icon: UniconsLine.file_export,
-                          label: 'Move here',
-                          onTap: () async {
-                            try {
-                              showLoadingDialog(
-                                  context, 'Moving $entityStr...');
-                              final futures = <Future>[];
+                                        ),
+                                      );
+                                      futures.add(
+                                        storageService.dac.cloneDirectory(
+                                          uri,
+                                          storageService.dac
+                                              .getChildUri(
+                                                widget.pathNotifier
+                                                    .toCleanUri(),
+                                                name,
+                                              )
+                                              .toString(),
+                                        ),
+                                      );
+                                    }
+                                    await Future.wait(futures);
+                                    globalClipboardState.clearSelection();
+                                    context.pop();
+                                  } catch (e, st) {
+                                    context.pop();
+                                    showErrorDialog(context, e, st);
+                                  }
+                                },
+                              )
+                            : FlatActionButton(
+                                icon: UniconsLine.file_export,
+                                label: 'Move here',
+                                onTap: () async {
+                                  try {
+                                    showLoadingDialog(
+                                        context, 'Moving $entityStr...');
+                                    final futures = <Future>[];
 
-                              for (final uri in globalClipboardState.fileUris) {
-                                futures.add(
-                                  storageService.dac.moveFile(
-                                    uri,
-                                    storageService.dac
-                                        .getChildUri(
-                                            widget.pathNotifier.toCleanUri(),
-                                            Uri.parse(uri).pathSegments.last)
-                                        .toString(),
-                                  ),
-                                );
-                              }
-                              for (final uri
-                                  in globalClipboardState.directoryUris) {
-                                futures.add(
-                                  storageService.dac.moveDirectory(
-                                    uri,
-                                    storageService.dac
-                                        .getChildUri(
-                                            widget.pathNotifier.toCleanUri(),
-                                            Uri.parse(uri).pathSegments.last)
-                                        .toString(),
-                                  ),
-                                );
-                              }
-                              await Future.wait(futures);
-                              globalClipboardState.clearSelection();
-                              context.pop();
-                            } catch (e, st) {
-                              context.pop();
-                              showErrorDialog(context, e, st);
-                            }
-                          },
-                        ),
+                                    for (final uri
+                                        in globalClipboardState.fileUris) {
+                                      futures.add(
+                                        storageService.dac.moveFile(
+                                          uri,
+                                          storageService.dac
+                                              .getChildUri(
+                                                  widget.pathNotifier
+                                                      .toCleanUri(),
+                                                  Uri.parse(uri)
+                                                      .pathSegments
+                                                      .last)
+                                              .toString(),
+                                        ),
+                                      );
+                                    }
+                                    for (final uri
+                                        in globalClipboardState.directoryUris) {
+                                      futures.add(
+                                        storageService.dac.moveDirectory(
+                                          uri,
+                                          storageService.dac
+                                              .getChildUri(
+                                                  widget.pathNotifier
+                                                      .toCleanUri(),
+                                                  Uri.parse(uri)
+                                                      .pathSegments
+                                                      .last)
+                                              .toString(),
+                                        ),
+                                      );
+                                    }
+                                    await Future.wait(futures);
+                                    globalClipboardState.clearSelection();
+                                    context.pop();
+                                  } catch (e, st) {
+                                    context.pop();
+                                    showErrorDialog(context, e, st);
+                                  }
+                                },
+                              ),
                         FlatActionButton(
                           icon: UniconsLine.times,
                           label: 'Cancel',
@@ -358,6 +377,10 @@ class _DirectoryViewState extends State<DirectoryView> {
           ],
         );
       },
+    );
+
+    final stateNotifier = storageService.dac.getFileStateChangeNotifier(
+      widget.pathNotifier.value.join('/'),
     );
 
     // late Widget child;
@@ -663,31 +686,35 @@ class _DirectoryViewState extends State<DirectoryView> {
                       ),
                       Wrap(
                         children: [
-                          FlatActionButton(
-                            icon: UniconsLine.share_alt,
-                            label: 'Share all',
-                            onTap: () {
-                              print(widget.pathNotifier.selectedDirectories);
-                              print(widget.pathNotifier.selectedFiles);
-                              showDialog(
-                                context: context,
-                                builder: (context) => ShareDialog(
-                                  directoryUris:
-                                      widget.pathNotifier.selectedDirectories,
-                                  fileUris: widget.pathNotifier.selectedFiles,
-                                ),
-                                barrierDismissible: false,
-                              );
-                            },
-                          ),
-                          FlatActionButton(
+                          for (final ai in generateActions(
+                            true,
+                            null,
+                            widget.pathNotifier,
+                            context,
+                            false,
+                            widget.pathNotifier.hasWriteAccess(),
+                            stateNotifier.state,
+                          ))
+                            FlatActionButton(
+                              icon: ai.icon ?? UniconsLine.question,
+                              label: ai.label,
+                              onTap: () async {
+                                try {
+                                  await ai.action.execute(context, ai);
+                                } catch (e, st) {
+                                  showErrorDialog(context, e, st);
+                                }
+                              },
+                            ),
+                          /*    */
+                          /*  FlatActionButton(
                             icon: UniconsLine.copy,
                             label: 'Copy all',
                             onTap: () {
-                              globalClipboardState.directoryUris = List.from(
+                              globalClipboardState.directoryUris = Set.from(
                                   widget.pathNotifier.selectedDirectories);
                               globalClipboardState.fileUris =
-                                  List.from(widget.pathNotifier.selectedFiles);
+                                  Set.from(widget.pathNotifier.selectedFiles);
                               globalClipboardState.isCopy = true;
                               globalClipboardState.$();
 
@@ -698,76 +725,16 @@ class _DirectoryViewState extends State<DirectoryView> {
                             icon: UniconsLine.file_export,
                             label: 'Move all',
                             onTap: () {
-                              globalClipboardState.directoryUris = List.from(
+                              globalClipboardState.directoryUris = Set.from(
                                   widget.pathNotifier.selectedDirectories);
                               globalClipboardState.fileUris =
-                                  List.from(widget.pathNotifier.selectedFiles);
+                                  Set.from(widget.pathNotifier.selectedFiles);
                               globalClipboardState.isCopy = false;
                               globalClipboardState.$();
 
                               widget.pathNotifier.clearSelection();
                             },
-                          ),
-                          FlatActionButton(
-                            icon: UniconsLine.trash,
-                            label: 'Move to trash',
-                            onTap: () async {
-                              try {
-                                showLoadingDialog(
-                                    context, 'Moving to trash...');
-                                final futures = <Future>[];
-
-                                for (final uri
-                                    in widget.pathNotifier.selectedFiles) {
-                                  /* final file =
-                                      widget.pathNotifier.selectedFiles; */
-                                  futures.add(
-                                    storageService.dac.moveFile(
-                                      uri,
-                                      storageService.trashPath +
-                                          '/' +
-                                          Uri.decodeFull(basename(uri)),
-                                      generateRandomKey: true,
-                                    ),
-                                  );
-                                }
-                                for (final uri in widget
-                                    .pathNotifier.selectedDirectories) {
-                                  /* final dir =
-                                      widget.pathNotifier.selectedDirectories; */
-                                  // TODO Generate random key
-                                  futures.add(
-                                    storageService.dac.moveDirectory(
-                                      uri,
-                                      storageService.trashPath +
-                                          '/' +
-                                          Uri.decodeFull(
-                                            basename(
-                                              uri,
-                                            ),
-                                          ),
-                                      // generateRandomKey: true,
-                                    ),
-                                  );
-                                }
-                                await Future.wait(futures);
-                                widget.pathNotifier.clearSelection();
-                                context.pop();
-                              } catch (e, st) {
-                                context.pop();
-                                showErrorDialog(context, e, st);
-                              }
-                            },
-                          ),
-                          /*   FlatActionButton(
-                              icon: UniconsLine.layer_group_slash,
-                              label: 'Move all here',
-                              onTap: () {
-                                pathNotifier.selectedDirectories.clear();
-                                pathNotifier.selectedFiles.clear();
-                                pathNotifier.$();
-                              },
-                            ), */
+                          ), */
                         ],
                       )
                     ],
@@ -780,96 +747,124 @@ class _DirectoryViewState extends State<DirectoryView> {
               height: 1,
               thickness: 1,
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: LayoutBuilder(builder: (context, cons) {
-                final isFullSize = cons.maxWidth >= 600;
-                final hasRoundedCorners =
-                    MediaQuery.of(context).size.width < 600;
-                return Row(
-                  children: [
-                    if (hasRoundedCorners)
-                      SizedBox(
-                        width: 8,
-                      ),
-                    Expanded(
-                      child: Text(
-                        footerStr,
-                        style: TextStyle(
-                          fontSize: 15,
+            ContextMenuArea(
+              builder: (ctx) {
+                final actions = <Widget>[];
+                for (final ai in generateActions(
+                  false,
+                  null,
+                  widget.pathNotifier,
+                  ctx,
+                  true,
+                  widget.pathNotifier.hasWriteAccess(),
+                  stateNotifier.state,
+                )) {
+                  actions.add(ListTile(
+                    leading: ai.icon == null ? null : Icon(ai.icon),
+                    title: Text(ai.label),
+                    onTap: () async {
+                      ctx.pop();
+                      try {
+                        await ai.action.execute(context, ai);
+                      } catch (e, st) {
+                        showErrorDialog(context, e, st);
+                      }
+                    },
+                  ));
+                }
+                return actions;
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: LayoutBuilder(builder: (context, cons) {
+                  final isFullSize = cons.maxWidth >= 600;
+                  final hasRoundedCorners =
+                      MediaQuery.of(context).size.width < 600;
+                  return Row(
+                    children: [
+                      if (hasRoundedCorners)
+                        SizedBox(
+                          width: 8,
+                        ),
+                      Expanded(
+                        child: Text(
+                          footerStr,
+                          style: TextStyle(
+                            fontSize: 15,
+                          ),
                         ),
                       ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          zoomLevel.sizeValue = 0.2;
-                          zoomLevel.type = ZoomLevelType.list;
-                        });
-                        widget.viewState.save();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(
-                          UniconsLine.list_ul,
-                          color: zoomLevel.type == ZoomLevelType.list
-                              ? Theme.of(context).primaryColor
-                              : null,
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          zoomLevel.sizeValue = 0.3;
-                          zoomLevel.type = ZoomLevelType.grid;
-                        });
-                        widget.viewState.save();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(
-                          UniconsLine.table,
-                          color: zoomLevel.type == ZoomLevelType.grid
-                              ? Theme.of(context).primaryColor
-                              : null,
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          zoomLevel.sizeValue = 0.3;
-                          zoomLevel.type = ZoomLevelType.gridCover;
-                        });
-                        widget.viewState.save();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(
-                          UniconsSolid.apps,
-                          color: zoomLevel.type == ZoomLevelType.gridCover
-                              ? Theme.of(context).primaryColor
-                              : null,
-                        ),
-                      ),
-                    ),
-                    if (hasRoundedCorners)
-                      SizedBox(
-                        width: 16,
-                      ),
-                    if (isFullSize)
-                      Slider(
-                        value: zoomLevel.sizeValue,
-                        onChanged: (value) {
+                      InkWell(
+                        onTap: () {
                           setState(() {
-                            zoomLevel.sizeValue = value;
+                            zoomLevel.sizeValue = 0.2;
+                            zoomLevel.type = ZoomLevelType.list;
                           });
+                          widget.viewState.save();
                         },
-                      )
-                  ],
-                );
-              }),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(
+                            UniconsLine.list_ul,
+                            color: zoomLevel.type == ZoomLevelType.list
+                                ? Theme.of(context).primaryColor
+                                : null,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            zoomLevel.sizeValue = 0.3;
+                            zoomLevel.type = ZoomLevelType.grid;
+                          });
+                          widget.viewState.save();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(
+                            UniconsLine.table,
+                            color: zoomLevel.type == ZoomLevelType.grid
+                                ? Theme.of(context).primaryColor
+                                : null,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            zoomLevel.sizeValue = 0.3;
+                            zoomLevel.type = ZoomLevelType.gridCover;
+                          });
+                          widget.viewState.save();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(
+                            UniconsSolid.apps,
+                            color: zoomLevel.type == ZoomLevelType.gridCover
+                                ? Theme.of(context).primaryColor
+                                : null,
+                          ),
+                        ),
+                      ),
+                      if (hasRoundedCorners)
+                        SizedBox(
+                          width: 16,
+                        ),
+                      if (isFullSize)
+                        Slider(
+                          value: zoomLevel.sizeValue,
+                          onChanged: (value) {
+                            setState(() {
+                              zoomLevel.sizeValue = value;
+                            });
+                          },
+                        )
+                    ],
+                  );
+                }),
+              ),
             ),
           ],
         ),

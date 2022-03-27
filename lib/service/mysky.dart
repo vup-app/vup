@@ -10,6 +10,8 @@ import 'package:vup/service/base.dart';
 class MySkyService extends VupService {
   late SkynetClient skynetClient;
 
+  final portalAccountsPath = 'skynet-mysky.hns/portal-accounts.json';
+
   void setup(String cookie) {
     skynetClient = SkynetClient(
       cookie: cookie,

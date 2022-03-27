@@ -26,13 +26,22 @@ class _ShareDialogState extends State<ShareDialog> {
 
   bool _doReEncryptFiles = false;
 
+  String renderUri(String uri) {
+    final segments = List.from(Uri.parse(uri).pathSegments);
+
+    if (segments.length > 0 && segments.first == 'fs-dac.hns') {
+      segments.removeAt(0);
+    }
+    return segments.join('/');
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Share'),
+          Text('Share online'),
           if (!_isRunning)
             IconButton(
               onPressed: () {
@@ -57,8 +66,7 @@ class _ShareDialogState extends State<ShareDialog> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              for (final dir in directoryUris)
-                Text(Uri.parse(dir).pathSegments.join('/')),
+              for (final dir in directoryUris) Text(renderUri(dir)),
             ],
             if (fileUris.isNotEmpty) ...[
               Text(
@@ -67,8 +75,7 @@ class _ShareDialogState extends State<ShareDialog> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              for (final file in fileUris)
-                Text(Uri.parse(file).pathSegments.join('/')),
+              for (final file in fileUris) Text(renderUri(file)),
             ],
             SizedBox(
               height: 16,

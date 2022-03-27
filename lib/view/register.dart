@@ -1,7 +1,13 @@
+import 'dart:math';
+
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:random_string/random_string.dart';
+import 'package:skynet/skynet.dart';
 
 import 'package:skynet/src/mysky_seed/generation.dart';
+import 'package:string_validator/string_validator.dart';
+import 'package:skynet/src/portal_accounts/index.dart';
 
 import 'package:vup/app.dart';
 import 'package:vup/widget/hint_card.dart';
@@ -16,7 +22,7 @@ class RegisterView extends StatefulWidget {
 }
 
 class _RegisterViewState extends State<RegisterView> {
-  final usernameCtrl = TextEditingController();
+  final emailCtrl = TextEditingController();
 
   var _loading = false;
   String? _error;
@@ -43,31 +49,18 @@ class _RegisterViewState extends State<RegisterView> {
           ),
           Text(
               'Vup is secure decentralized cloud storage. You can start here by creating a MySky account.'), //  An email address is required to register your siasky.net portal account.
-          /*    SizedBox(
+          SizedBox(
             height: 24,
-          ), */
+          ),
         ],
-        /*     Padding(
+        Padding(
           padding: const EdgeInsets.symmetric(vertical: 6.0),
           child: Text(
             'What\'s your email?',
             style: subTitleTextStyle,
           ),
-        ), */
-        /* Padding(
-          padding: const EdgeInsets.only(
-            top: 2.0,
-            bottom: 8,
-          ),
-          child: Text(
-            'Don\'t worry, you can change it later',
-            style: TextStyle(
-              fontStyle: FontStyle.italic,
-              color: Theme.of(context).hintColor,
-            ),
-          ),
-        ), */
-        /*     Theme(
+        ),
+        Theme(
           data: Theme.of(context).copyWith(
             primaryColor: _error == null
                 ? Theme.of(context).accentColor
@@ -77,7 +70,7 @@ class _RegisterViewState extends State<RegisterView> {
                 : SkyColors.error,
           ),
           child: TextFormField(
-            controller: usernameCtrl, // TODO Validate email address
+            controller: emailCtrl,
             decoration: InputDecoration(
               // TODO Add additional username for social features
               border: OutlineInputBorder(),
@@ -89,7 +82,7 @@ class _RegisterViewState extends State<RegisterView> {
             enabled: mnemonic == null,
             keyboardType: TextInputType.text,
           ),
-        ), */
+        ),
         if (mnemonic == null) ...[
           if (_error != null) ...[
             SizedBox(
@@ -122,9 +115,14 @@ class _RegisterViewState extends State<RegisterView> {
           ],
         ],
         SizedBox(
-          height: 24,
+          height: 4,
         ),
         if (mnemonic == null) ...[
+          Text(
+              'Your email address is only used for automatically creating an account on skynetfree.net which includes 100 GB of free storage.'),
+          SizedBox(
+            height: 24,
+          ),
           Row(
             children: [
               Text(
@@ -155,12 +153,12 @@ class _RegisterViewState extends State<RegisterView> {
             filled: true,
             color: Theme.of(context).colorScheme.secondary,
             onPressed: () {
-              /* if (usernameCtrl.text.isEmpty) {
+              if (!isEmail(emailCtrl.text)) {
                 setState(() {
-                  _error = 'Please enter an email';
+                  _error = 'Please enter a valid email address';
                 });
                 return;
-              } */
+              }
               setState(() {
                 _error = null;
                 mnemonic = generatePhrase();
@@ -185,6 +183,9 @@ class _RegisterViewState extends State<RegisterView> {
           ),
         ],
         if (mnemonic != null) ...[
+          SizedBox(
+            height: 24,
+          ),
           Text(
             'Your word seed passphrase',
             style: subTitleTextStyle,
@@ -254,7 +255,7 @@ class _RegisterViewState extends State<RegisterView> {
             icon: UniconsLine.exclamation_octagon,
             color: SkyColors.warning,
             content: Text(
-              'Please write down your seed or store it to a secure location. You need it to recover your account in case your phone gets lost.',
+              'Please write down your seed or store it in a secure location. You need it to recover your account in case your device gets destroyed or lost.',
               style: TextStyle(
                 color: SkyColors.warning,
               ),
@@ -381,9 +382,61 @@ class _RegisterViewState extends State<RegisterView> {
 
                       // TODO Create profile
 
+                      // NOTE: Use a large amount of bytes just to prevent any collisions. It's
+                      // fine if the tweak is a little long.
+                      final portalAccountTweak = randomAlphaNumeric(
+                        64,
+                        provider: CoreRandomProvider.from(
+                          Random.secure(),
+                        ),
+                      );
+
+                      mySky.skynetClient.portalHost = 'skynetfree.net';
+
+                      final portalAccounts = {
+                        mySky.skynetClient.portalHost: {
+                          'activeAccountNickname': 'vup',
+                          'accountNicknames': {
+                            'vup': portalAccountTweak,
+                          },
+                        }
+                      };
+
+                      mySky.user =
+                          await SkynetUser.fromMySkySeedPhrase(mnemonic!);
+
+                      storageService.mySkyProvider.skynetUser = mySky.user;
+
+                      final email = emailCtrl.text;
+
+                      final jwt = await register(
+                        mySky.skynetClient,
+                        mySky.user.rawSeed,
+                        email,
+                        portalAccountTweak,
+                      );
+                      mySky.skynetClient.headers = {'cookie': jwt};
+                      // print(jwt);
+
+                      await storageService.mySkyProvider.setJSONEncrypted(
+                        mySky.portalAccountsPath,
+                        portalAccounts,
+                        0,
+                      );
+                      dataBox.put('cookie', jwt);
+                      dataBox.put('portal_host', mySky.skynetClient.portalHost);
+
+                      dataBox.put('mysky_portal_auth_accounts', portalAccounts);
+                      dataBox.put(
+                        'mysky_portal_auth_ts',
+                        DateTime.now().millisecondsSinceEpoch,
+                      );
+
                       await mySky.storeSeedPhrase(mnemonic!);
 
                       await mySky.autoLogin();
+
+                      // dataBox.put('seed', seed);
 
                       context.beamToNamed(
                         '/browse',
@@ -406,6 +459,7 @@ class _RegisterViewState extends State<RegisterView> {
                         ),
                       ); */
                     } catch (e) {
+                      dataBox.delete('seed');
                       _error = e.toString();
                     }
 

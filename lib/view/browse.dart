@@ -1,16 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:clipboard/clipboard.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:context_menus/context_menus.dart';
+
 import 'package:desktop_drop/desktop_drop.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_state_notifier/flutter_state_notifier.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
+import 'package:vup/actions/base.dart';
+import 'package:vup/actions/create_directory.dart';
 
 import 'package:vup/app.dart';
 import 'package:vup/main.dart';
@@ -18,9 +17,6 @@ import 'package:vup/model/sync_task.dart';
 import 'package:vup/utils/strings.dart';
 import 'package:vup/view/directory.dart';
 import 'package:vup/view/metadata_assistant.dart';
-import 'package:vup/view/setup_sync_dialog.dart';
-import 'package:vup/view/share_dialog.dart';
-import 'package:vup/view/yt_dl.dart';
 import 'package:vup/widget/audio_player.dart';
 
 class BrowseView extends StatefulWidget {
@@ -36,6 +32,8 @@ class NavigateUpIntent extends Intent {}
 
 class SelectAllIntent extends Intent {}
 
+class CreateDirectoryIntent extends Intent {}
+
 class _BrowseViewState extends State<BrowseView> {
   List<String> get path => widget.pathNotifier.value;
 
@@ -43,15 +41,15 @@ class _BrowseViewState extends State<BrowseView> {
 
   late DirectoryViewState directoryViewState;
 
+  final focusNode = FocusNode(debugLabel: 'BrowseView');
+
   SyncTask? get activeSyncTask {
     for (final st in syncTasks.values) {
-      if (st.remotePath == path.join('/')) {
+      if (st.remotePath == pathNotifier.path.join('/')) {
         return st;
       }
     }
   }
-
-  final focusNode = FocusNode(debugLabel: 'BrowseView');
 
   // StreamSubscription? sub;
 
@@ -108,12 +106,17 @@ class _BrowseViewState extends State<BrowseView> {
         LogicalKeySet(LogicalKeyboardKey.backspace): NavigateUpIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA):
             SelectAllIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyN):
+            CreateDirectoryIntent(),
       },
       child: Actions(
         // dispatcher: LoggingActionDispatcher(),
         actions: <Type, Action<Intent>>{
           NavigateUpIntent: CallbackAction(onInvoke: (Intent intent) {
             navigateUp();
+          }),
+          CreateDirectoryIntent: CallbackAction(onInvoke: (Intent intent) {
+            logger.verbose('CreateDirectoryIntent');
           }),
         },
         child: FocusScope(
@@ -271,26 +274,43 @@ class _BrowseViewState extends State<BrowseView> {
                             if (!context.isMobile ||
                                 !widget.pathNotifier.isSearching)
                               LayoutBuilder(builder: (context, cons) {
-                                final actions = [
-                                  Tooltip(
-                                    message: 'Search',
+                                final actions = <Widget>[];
+
+                                for (final ai in generateActions(
+                                  false,
+                                  null,
+                                  pathNotifier,
+                                  context,
+                                  true,
+                                  widget.pathNotifier.hasWriteAccess(),
+                                  storageService.dac
+                                      .getFileStateChangeNotifier(
+                                        widget.pathNotifier.value.join('/'),
+                                      )
+                                      .state,
+                                )) {
+                                  actions.add(Tooltip(
+                                    message: ai.label,
                                     child: InkWell(
                                       onTap: () async {
-                                        if (pathNotifier.isSearching) {
-                                          pathNotifier.disableSearchMode();
-                                        } else {
-                                          pathNotifier.enableSearchMode();
+                                        try {
+                                          await ai.action.execute(context, ai);
+                                        } catch (e, st) {
+                                          showErrorDialog(context, e, st);
                                         }
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.all(8.0),
                                         child: Icon(
-                                          UniconsLine.search,
+                                          ai.icon,
                                           size: iconSize,
                                         ),
                                       ),
                                     ),
-                                  ),
+                                  ));
+                                }
+
+                                /* 
                                   if (storageService.dac.checkAccess(
                                       widget.pathNotifier.value.join('/'))) ...[
                                     Tooltip(
@@ -307,82 +327,13 @@ class _BrowseViewState extends State<BrowseView> {
                                         ),
                                       ),
                                     ),
-                                    Tooltip(
-                                      message: 'Upload files',
-                                      child: InkWell(
-                                        onTap: () => _uploadFile(context),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Icon(
-                                            UniconsLine.file_upload,
-                                            size: iconSize,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    if (isYTDlIntegrationEnabled)
-                                      Tooltip(
-                                        message: 'YT-DL',
-                                        child: InkWell(
-                                          onTap: () async {
-                                            await _ytDownload(context);
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Icon(
-                                              UniconsLine.image_download,
-                                              size: iconSize,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                  
                                   ],
-                                  if (isSyncEnabled)
-                                    Tooltip(
-                                      message: 'Setup Sync',
-                                      child: InkWell(
-                                        onTap: () async {
-                                          await _actionSetupSync(context);
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Icon(
-                                            UniconsLine.cloud_redo,
-                                            size: iconSize,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  if (isSharePossible)
-                                    Tooltip(
-                                      message: 'Share directory',
-                                      child: InkWell(
-                                        onTap: () async {
-                                          await _shareDirectory(context);
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Icon(
-                                            UniconsLine.share_alt,
-                                            size: iconSize,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                               
+                                
 
-                                  /*    Tooltip(
-                                            message: 'Create new file',
-                                            child: InkWell(
-                                              onTap: () {},
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(8.0),
-                                                child: Icon(
-                                                  UniconsLine.file_plus,
-                                                ),
-                                              ),
-                                            ),
-                                          ), */
-                                ];
+                                
+                                ]; */
                                 final wrap = cons.maxWidth < 600;
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -877,70 +828,10 @@ class _BrowseViewState extends State<BrowseView> {
                               thickness: 1,
                             ),
                             Expanded(
-                              child: Stack(
-                                alignment: Alignment.bottomRight,
-                                children: [
-                                  ContextMenuRegion(
-                                    contextMenu: GenericContextMenu(
-                                      buttonStyle: ContextMenuButtonStyle(
-                                        hoverFgColor: Theme.of(context)
-                                            .colorScheme
-                                            .secondary,
-                                      ),
-                                      buttonConfigs: [
-                                        if (storageService.dac
-                                            .checkAccess(path.join('/'))) ...[
-                                          ContextMenuButtonConfig(
-                                            "Create directory",
-                                            onPressed: () =>
-                                                _createNewDirectory(context),
-                                          ),
-                                          ContextMenuButtonConfig(
-                                            "Upload files",
-                                            onPressed: () =>
-                                                _uploadFile(context),
-                                          ),
-                                          if (isYTDlIntegrationEnabled)
-                                            ContextMenuButtonConfig(
-                                              "YT-DL",
-                                              onPressed: () =>
-                                                  _ytDownload(context),
-                                            ),
-                                        ],
-                                        if (isSyncEnabled)
-                                          ContextMenuButtonConfig(
-                                            "Setup sync",
-                                            onPressed: () =>
-                                                _actionSetupSync(context),
-                                          ),
-                                        if (isSharePossible)
-                                          ContextMenuButtonConfig(
-                                            "Share directory",
-                                            onPressed: () =>
-                                                _shareDirectory(context),
-                                          ),
-                                        if (devModeEnabled)
-                                          ContextMenuButtonConfig(
-                                            "Copy URI (Debug)",
-                                            onPressed: () {
-                                              FlutterClipboard.copy(
-                                                  pathNotifier.value.join('/'));
-                                            },
-                                          ),
-                                        // TODO Enable when permanent mount is enabled (using rclone)
-                                        /* ContextMenuButtonConfig(
-                                          "Open terminal here",
-                                          onPressed: () => _openTerminal(context),
-                                        ), */
-                                      ],
-                                    ),
-                                    child: DirectoryView(
-                                      key: ValueKey(pathNotifier.toUriString()),
-                                      pathNotifier: pathNotifier,
-                                      viewState: directoryViewState,
-                                    ),
-                                  ),
-                                ],
+                              child: DirectoryView(
+                                key: ValueKey(pathNotifier.toUriString()),
+                                pathNotifier: pathNotifier,
+                                viewState: directoryViewState,
                               ),
                             ),
                             StateNotifierBuilder<Map<String, List<String>>>(
@@ -1129,117 +1020,13 @@ class _BrowseViewState extends State<BrowseView> {
     );
   }
 
-  bool get isSyncEnabled =>
-      (activeSyncTask == null) &&
-      !(/* Platform.isAndroid || */ Platform.isIOS) &&
-      !storageService.dac.isIndexPath(widget.pathNotifier.value.join('/'));
-
-  bool get isSharePossible => widget.pathNotifier.value.length > 1;
-
-  Future<void> _ytDownload(BuildContext context) async {
-    showDialog(
-      context: context,
-      builder: (context) => YTDLDialog(pathNotifier.value.join('/')),
-      barrierDismissible: false,
-    );
-  }
-
-  Future<void> _shareDirectory(BuildContext context) async {
-    showDialog(
-      context: context,
-      builder: (context) => ShareDialog(
-        directoryUris: [
-          pathNotifier.value.join('/'),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-    return;
-  }
-
-  Future<void> _openTerminal(BuildContext context) async {
+  /* Future<void> _openTerminal(BuildContext context) async {
     final process = await Process.start(
       'konsole',
       [],
     );
 
     return;
-  }
+  } */
 
-  Future<void> _actionSetupSync(BuildContext context) async {
-    if (Platform.isAndroid) {
-      await requestAndroidBackgroundPermissions();
-    }
-    showDialog(
-      context: context,
-      builder: (context) => SetupSyncDialog(path: path.join('/')),
-    );
-  }
-
-  void _uploadFile(BuildContext context) async {
-    try {
-      final files = <File>[];
-      if (Platform.isAndroid || Platform.isIOS) {
-        final pickRes = await FilePicker.platform.pickFiles(
-          allowMultiple: true,
-        );
-        if (pickRes != null) {
-          for (final platformFile in pickRes.files) {
-            files.add(File(platformFile.path!));
-          }
-        }
-      } else {
-        final res = await FileSelectorPlatform.instance.openFiles();
-
-        for (final xfile in res) {
-          files.add(File(xfile.path));
-        }
-      }
-
-      await uploadMultipleFiles(context, pathNotifier.value.join('/'), files);
-    } catch (e, st) {
-      if (context.canPop()) context.pop();
-      showErrorDialog(context, e, st);
-    }
-  }
-
-  void _createNewDirectory(BuildContext context) async {
-    final ctrl = TextEditingController();
-    final name = await showDialog<String?>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Name your new directory'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          onSubmitted: (value) => context.pop(value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => context.pop(ctrl.text),
-            child: Text('Create'),
-          ),
-        ],
-      ),
-    );
-
-    if (name != null) {
-      showLoadingDialog(context, 'Creating directory...');
-      try {
-        final res = await storageService.dac.createDirectory(
-          pathNotifier.value.join('/'),
-          name.trim(),
-        );
-        if (!res.success) throw res.error!;
-        context.pop();
-      } catch (e, st) {
-        context.pop();
-        showErrorDialog(context, e, st);
-      }
-    }
-  }
 }

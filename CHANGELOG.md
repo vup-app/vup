@@ -1,9 +1,10 @@
 # Vup Changelog
 
-## main
+## Beta 0.9.0
 
-- BREAKING: Changed Jellyfin server id format to support additional clients. Clear the data or logout in all of your Jellyfin clients after upgrading to the new Vup version
-- Added iOS permissions to pick and upload all file types
+- BREAKING: Changed Jellyfin server id format to support additional clients. Clear the data or log out in all of your Jellyfin clients after upgrading to the new Vup version.
+- Full support for portal-login-with-MySky! You can link your existing portal accounts to your MySky account and then one-click login on all of your devices. Vup automatically creates a skynetfree.net account for new users.
+- Completely revamped actions system: All right-click/long-press actions are now more powerful, consistent and safe. This also includes a lot of new features, like making multiple files available offline at once
 - Added `DirectoryCacheSyncService` (makes multi-device usage a lot more efficient)
 - Added `TemporaryStreamingServerService`
 - Added button to upload and share logs in settings (Useful for Android and iOS)
@@ -13,6 +14,7 @@
 - Added new "Devices" settings page which shows a list of devices you use Vup on
 - Improved EXIF metadata extraction for images (datetime and gps)
 - Added backspace key for navigation
+- Added iOS permissions to pick and upload all file types
 - Updated macOS icon
 - Added some new experimental yt-dlp features
 - Fixed some bugs

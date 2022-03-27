@@ -242,10 +242,15 @@ class DirectoryViewState with CustomState, VupService {
 
   final scrollCtrl = ScrollController();
 
+  String? lastUri;
+
   DirectoryViewState(this.pathNotifier) {
     load();
     pathNotifier.stream.listen((event) {
+      final uri = pathNotifier.toCleanUri().toString();
+      if (lastUri == uri) return;
       load();
+      lastUri = uri;
     });
   }
 
@@ -446,8 +451,8 @@ final globalClipboardState = GlobalClipboardState();
 
 class GlobalClipboardState with CustomState {
   bool isCopy = true;
-  List<String> fileUris = [];
-  List<String> directoryUris = [];
+  Set<String> fileUris = {};
+  Set<String> directoryUris = {};
   bool get isActive => fileUris.isNotEmpty || directoryUris.isNotEmpty;
 
   void clearSelection() {
@@ -463,10 +468,13 @@ class PathNotifierState with CustomState {
   bool noPathSelected = false;
 
   List<String> path = [];
-  List<String> selectedFiles = [];
-  List<String> selectedDirectories = [];
+  Set<String> selectedFiles = {};
+  Set<String> selectedDirectories = {};
+
   bool get isInSelectionMode =>
       selectedFiles.isNotEmpty || selectedDirectories.isNotEmpty;
+
+  int get selectionCount => selectedFiles.length + selectedDirectories.length;
 
   final searchTextCtrl = TextEditingController();
 
@@ -573,9 +581,16 @@ class PathNotifierState with CustomState {
   }
 
   void clearSelection() {
+    if (!isInSelectionMode) return;
     selectedDirectories.clear();
     selectedFiles.clear();
     $();
+  }
+
+  bool get isInTrash => (path.length >= 2) && path[1] == '.trash';
+
+  bool hasWriteAccess() {
+    return storageService.dac.checkAccess(path.join('/')) && !isInTrash;
   }
 }
 

@@ -1,29 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:dart_chromecast/casting/cast.dart';
-import 'package:dart_chromecast/utils/mdns_find_chromecast.dart'
-    as find_chromecast;
-import 'package:clipboard/clipboard.dart';
-import 'package:context_menus/context_menus.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:contextmenu/contextmenu.dart';
 import 'package:filesize/filesize.dart';
 import 'package:filesystem_dac/dac.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:flutter_state_notifier/flutter_state_notifier.dart';
 import 'package:path/path.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:universal_platform/universal_platform.dart';
+import 'package:vup/actions/base.dart';
 import 'package:vup/app.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:open_file/open_file.dart';
 import 'package:vup/main.dart';
 import 'package:vup/utils/date_format.dart';
-import 'package:vup/utils/pin.dart';
-import 'package:vup/view/file_details_dialog.dart';
-import 'package:vup/view/share_dialog.dart';
-import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 
 class FileSystemEntityWidget extends StatefulWidget {
   final dynamic _entity;
@@ -96,181 +85,41 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
         isTreeSelected = true;
       }
     }
-    final hasWriteAccess = storageService.dac
-            .checkAccess(widget.pathNotifier.toCleanUri().toString()) &&
-        !isInTrash;
+    final stateNotifier = storageService.dac.getFileStateChangeNotifier(
+      isDirectory
+          ? [...widget.pathNotifier.value, dir.name].join('/')
+          : file.file.hash,
+    );
 
-    return ContextMenuRegion(
-      contextMenu: GenericContextMenu(
-        buttonStyle: ContextMenuButtonStyle(
-          hoverFgColor: Theme.of(context).colorScheme.secondary,
-        ),
-        buttonConfigs: [
-          if (isDirectory) ...[
-            ContextMenuButtonConfig(
-              "Open in new tab",
-              onPressed: () {
-                final newPathNotifier = PathNotifierState([]);
-                if (dir.uri?.startsWith('skyfs://') ?? false) {
-                  final uri = Uri.parse(dir.uri!);
-
-                  newPathNotifier.queryParamaters = Map.from(
-                    uri.queryParameters,
-                  );
-
-                  if (uri.host == 'local') {
-                    newPathNotifier.path = uri.pathSegments.sublist(1);
-                  } else {
-                    newPathNotifier.path = [dir.uri!];
-                  }
-                } else {
-                  newPathNotifier.value = [
-                    ...widget.pathNotifier.value,
-                    dir.name
-                  ];
-                }
-                appLayoutState.createTab(
-                  initialState: AppLayoutViewState(newPathNotifier),
-                );
-              },
-            ),
-          ],
-          ContextMenuButtonConfig(
-            isSelected ? 'Unselect...' : 'Select...',
-            onPressed: () async {
-              setState(() {
-                if (isDirectory) {
-                  if (isSelected) {
-                    widget.pathNotifier.selectedDirectories.remove(uri);
-                    widget.pathNotifier.$();
-                  } else {
-                    widget.pathNotifier.selectedDirectories.add(uri);
-                    widget.pathNotifier.$();
-                  }
-                } else {
-                  if (isSelected) {
-                    widget.pathNotifier.selectedFiles.remove(uri);
-                    widget.pathNotifier.$();
-                  } else {
-                    widget.pathNotifier.selectedFiles.add(uri);
-                    widget.pathNotifier.$();
-                  }
-                }
-              });
+    return ContextMenuArea(
+      builder: (ctx) {
+        final actions = <Widget>[];
+        for (final ai in generateActions(
+          !isDirectory,
+          widget._entity,
+          widget.pathNotifier,
+          ctx,
+          false,
+          widget.pathNotifier.hasWriteAccess(),
+          stateNotifier.state,
+        )) {
+          actions.add(ListTile(
+            leading: ai.icon == null ? null : Icon(ai.icon),
+            title: Text(ai.label),
+            onTap: () async {
+              ctx.pop();
+              try {
+                await ai.action.execute(context, ai);
+              } catch (e, st) {
+                showErrorDialog(context, e, st);
+              }
             },
-          ),
-          /* ContextMenuButtonConfig(
-            "Select files...",
-            onPressed: () async {
-              showDialog(
-                context: context,
-                builder: (context) => ShareDialog(
-                  filePaths: [
-                    (widget.pathNotifier.value + [file.name]).join('/'),
-                  ],
-                ),
-                barrierDismissible: false,
-              );
-            },
-          ), */
-          if (isDirectory) ...[
-            if (hasWriteAccess) ...[
-              ContextMenuButtonConfig(
-                "Rename directory",
-                onPressed: () async {
-                  final ctrl = TextEditingController(text: dir.name);
-                  final name = await showDialog<String?>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text('Rename your directory'),
-                      content: TextField(
-                        controller: ctrl,
-                        autofocus: true,
-                        onSubmitted: (value) => context.pop(value),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => context.pop(),
-                          child: Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => context.pop(ctrl.text),
-                          child: Text('Rename'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (name != null) {
-                    showLoadingDialog(context, 'Renaming directory...');
-                    try {
-                      final res = await storageService.dac.moveDirectory(
-                        uri,
-                        storageService.dac
-                            .getChildUri(
-                              storageService.dac.parsePath(
-                                  widget.pathNotifier.path.join('/')),
-                              name.trim(),
-                            )
-                            .toString(),
-                      );
-                      if (!res.success) throw res.error!;
-                      context.pop();
-                    } catch (e, st) {
-                      context.pop();
-                      showErrorDialog(context, e, st);
-                    }
-                  }
-                },
-              ),
-            ],
-            if (!sidebarService
-                .isPinned([...widget.pathNotifier.path, dir.name].join('/')))
-              ContextMenuButtonConfig(
-                "Add to Quick Access",
-                onPressed: () async {
-                  showLoadingDialog(context, 'Adding to Quick Access...');
-                  try {
-                    await sidebarService.pinDirectory(
-                      [...widget.pathNotifier.path, dir.name].join('/'),
-                    );
-                    context.pop();
-                  } catch (e, st) {
-                    context.pop();
-                    showErrorDialog(context, e, st);
-                  }
-                },
-              ),
-            ContextMenuButtonConfig(
-              "Pin all",
-              onPressed: () async {
-                await pinAll(
-                  context,
-                  dir.uri!,
-                );
-              },
-            ),
-            if (widget.pathNotifier.value.length > 0)
-              ContextMenuButtonConfig(
-                "Share directory",
-                onPressed: () async {
-                  showDialog(
-                    context: context,
-                    builder: (context) => ShareDialog(
-                      directoryUris: [
-                        uri,
-                      ],
-                    ),
-                    barrierDismissible: false,
-                  );
-                },
-              ),
-            if (hasWriteAccess) ...[
-              ContextMenuButtonConfig(
-                isInTrash ? 'Delete permanently' : "Move to trash",
-                onPressed: () async {
-                  try {
-                    if (isInTrash) {
+          ));
+        }
+        return actions;
+      },
+      /*  
+         
                       showLoadingDialog(
                           context, 'Deleting directory permanently...');
                       await storageService.dac.deleteDirectoryRecursive(
@@ -281,614 +130,16 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                         path.directoryPath,
                         path.fileName,
                       );
-                    } else {
-                      showLoadingDialog(
-                          context, 'Moving directory to trash...');
-                      // TODO Generate random key
-                      await storageService.dac.moveDirectory(
-                        uri,
-                        storageService.trashPath + '/' + dir.name,
-                        // generateRandomKey: true,
-                      );
-                    }
-                    context.pop();
-                  } catch (e, st) {
-                    context.pop();
-                    showErrorDialog(context, e, st);
-                  }
-                },
-              ),
-              if (devModeEnabled)
-                ContextMenuButtonConfig(
-                  "Copy SkyFS URI (Debug)",
-                  onPressed: () async {
-                    FlutterClipboard.copy(dir.uri!);
-                  },
-                ),
-              /*   ContextMenuButtonConfig(
-                "Delete directory",
-                onPressed: () async {
-                  showLoadingDialog(context, 'Removing folder...');
-                  try {
-                    final res = await storageService.dac.deleteDirectory(
-                      widget.pathNotifier.value.join('/'),
-                      dir.name,
-                    );
-                    if (!res.success) throw res.error!;
-                    context.pop();
-                  } catch (e, st) {
-                    context.pop();
-                    showErrorDialog(context, e, st);
-                  }
-                },
-              ), */
-            ]
-          ],
-          if (!isDirectory) ...[
-            if (isWebServerEnabled)
-              ContextMenuButtonConfig(
-                "Copy Web Server URL",
-                onPressed: () async {
-                  FlutterClipboard.copy(
-                    Uri(
-                      scheme: 'http',
-                      host: '127.0.0.1',
-                      port: webServerPort,
-                      pathSegments:
-                          Uri.parse(file.uri!).pathSegments.sublist(1),
-                    ).toString(),
-                  );
-                },
-              ),
-            ContextMenuButtonConfig(
-              "Copy temporary streaming link",
-              onPressed: () async {
-                FlutterClipboard.copy(
-                  await temporaryStreamingServerService.makeFileAvailable(file),
-                );
-              },
-            ),
-            if (hasWriteAccess) ...[
-              ContextMenuButtonConfig(
-                "Rename file",
-                onPressed: () async {
-                  final ctrl = TextEditingController(text: file.name);
-                  final name = await showDialog<String?>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text('Rename your file'),
-                      content: TextField(
-                        controller: ctrl,
-                        autofocus: true,
-                        onSubmitted: (value) => context.pop(value),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => context.pop(),
-                          child: Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => context.pop(ctrl.text),
-                          child: Text('Rename'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (name != null) {
-                    showLoadingDialog(context, 'Renaming file...');
-                    try {
-                      final res = await storageService.dac.renameFile(
-                        uri,
-                        name,
-                      );
-                      if (!res.success) throw res.error!;
-                      context.pop();
-                    } catch (e, st) {
-                      context.pop();
-                      showErrorDialog(context, e, st);
-                    }
-                  }
-                },
-              ),
-            ],
-            ContextMenuButtonConfig(
-              "Share file (Online)",
-              onPressed: () async {
-                showDialog(
-                  context: context,
-                  builder: (context) => ShareDialog(
-                    fileUris: [
-                      uri,
-                    ],
-                  ),
-                  barrierDismissible: false,
-                );
-              },
-            ),
-            ContextMenuButtonConfig(
-              "Save file locally",
-              onPressed: () async {
-                if (!enabled) return;
-
-                String? path;
-                if (Platform.isAndroid || Platform.isIOS) {
-                  path = await FilePicker.platform.saveFile(
-                    fileName: file.name,
-                  );
-                } else {
-                  path = await FileSelectorPlatform.instance.getSavePath(
-                    suggestedName: file.name,
-                  );
-                }
-
-                if (path != null) {
-                  final localFile = File(path);
-                  /* showLoadingDialog(
-                        context, 'Downloading and saving file...'); */
-                  await downloadPool.withResource(
-                    () => storageService.downloadAndDecryptFile(
-                      fileData: file.file,
-                      name: file.name,
-                      outFile: localFile,
-                      created: file.created,
-                      modified: file.modified,
-                    ),
-                  );
-                  // context.pop();
-                  // showInfoDialog(context, 'File saved successfully', '');
-                }
-
-                // FilePicker.platform.saveFile()
-              },
-            ),
-            if (devModeEnabled)
-              ContextMenuButtonConfig(
-                'Stream to Cast device',
-                onPressed: () async {
-                  if (Platform.isAndroid) {
-                    await requestAndroidBackgroundPermissions();
-                  }
-                  showLoadingDialog(context,
-                      'Seaching for Cast devices in your local network...');
-
-                  final streamUrl = await temporaryStreamingServerService
-                      .makeFileAvailable(file);
-
-                  List<find_chromecast.CastDevice> devices =
-                      await find_chromecast.find_chromecasts();
-                  print(devices);
-                  context.pop();
-                  if (devices.length == 0) {
-                    showInfoDialog(
-                      context,
-                      'No Cast devices found',
-                      'No devices with Cast support were found on your local network.',
-                    );
-                    return;
-                  }
-                  final find_chromecast.CastDevice? selectedDevice =
-                      await showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                                title: Text('Choose a Cast device'),
-                                content: SizedBox(
-                                  height: dialogHeight,
-                                  width: dialogWidth,
-                                  child: ListView(
-                                    children: [
-                                      for (final d in devices)
-                                        ListTile(
-                                          title: Text('${d.ip}:${d.port}'),
-                                          subtitle: Text('${d.name}'),
-                                          onTap: () => context.pop(d),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => context.pop(),
-                                    child: Text(
-                                      'Cancel',
-                                    ),
-                                  ),
-                                ],
-                              ));
-
-                  if (selectedDevice != null) {
-                    final CastSender castSender = CastSender(
-                      CastDevice(
-                        name: selectedDevice.name,
-                        host: selectedDevice.ip,
-                        port: selectedDevice.port,
-                        type: '_googlecast._tcp',
-                      ),
-                    );
-
-                    castSender.castSessionController.stream
-                        .listen((CastSession? castSession) async {
-                      if (castSession!.isConnected) {
-                        print('cast state ${castSession.toMap()}');
-                      }
-                    });
-
-                    CastMediaStatus? prevMediaStatus;
-                    // Listen for media status updates, such as pausing, playing, seeking, playback etc.
-                    castSender.castMediaStatusController.stream
-                        .listen((CastMediaStatus? mediaStatus) {
-                      // show progress for example
-                      if (mediaStatus == null) {
-                        return;
-                      }
-                      if (null != prevMediaStatus &&
-                          mediaStatus.volume != prevMediaStatus!.volume) {
-                        print('Volume just updated to ${mediaStatus.volume}');
-                      }
-                      if (null == prevMediaStatus ||
-                          mediaStatus.position != prevMediaStatus?.position) {
-                        print('Media Position is ${mediaStatus.position}');
-                      }
-                      prevMediaStatus = mediaStatus;
-                    });
-
-                    bool connected = false;
-                    bool didReconnect = false;
-
-                    /*    if (null != savedState) {
-                      connected = await castSender.reconnect(
-                        sourceId: savedState['sourceId'],
-                        destinationId: savedState['destinationId'],
-                      );
-                      if (connected) {
-                        didReconnect = true;
-                      }
-                    } */
-                    if (!connected) {
-                      connected = await castSender.connect();
-                    }
-
-                    if (!connected) {
-                      print('COULD NOT CONNECT!');
-                      return;
-                    }
-                    print("Connected with device");
-
-                    if (!didReconnect) {
-                      castSender.launch();
-                    }
-
-                    castSender.loadPlaylist([
-                      CastMedia(
-                        contentId: streamUrl,
-                        contentType:
-                            file.mimeType ?? 'application/octet-stream',
-                        autoPlay: true,
-                        title: file.name,
-                      ),
-                    ], append: false);
-
-                    // Initiate key press handler
-                    // space = toggle pause
-                    // s = stop playing
-                    // left arrow = seek current playback - 10s
-                    // right arrow = seek current playback + 10s
-                    // up arrow = volume up 5%
-                    // down arrow = volume down 5%
-                    /* stdin.echoMode = false;
-                    stdin.lineMode = false; */
-
-                    /* stdin.asBroadcastStream().listen((List<int> data) {
-                      _handleUserInput(castSender, data);
-                    }); */
-                  }
-
-                  /*   void _handleUserInput(CastSender castSender, List<int> data) {
-                    if (data.length == 0) return;
-
-                    int keyCode = data.last;
-
-                    log.info("pressed key with key code: ${keyCode}");
-
-                    if (32 == keyCode) {
-                      // space = toggle pause
-                      castSender.togglePause();
-                    } else if (115 == keyCode) {
-                      // s == stop
-                      castSender.stop();
-                    } else if (27 == keyCode) {
-                      // escape = disconnect
-                      castSender.disconnect();
-                    } else if (65 == keyCode) {
-                      // up
-                      double? volume =
-                          castSender.castSession?.castMediaStatus?.volume;
-                      if (volume != null) {
-                        castSender.setVolume(min(1, volume + 0.1));
-                      }
-                    } else if (66 == keyCode) {
-                      // down
-                      double? volume =
-                          castSender.castSession?.castMediaStatus?.volume;
-                      if (volume != null) {
-                        castSender.setVolume(max(0, volume - 0.1));
-                      }
-                    } else if (67 == keyCode || 68 == keyCode) {
-                      // left or right = seek 10s back or forth
-                      double seekBy = 67 == keyCode ? 10.0 : -10.0;
-                      if (null != castSender.castSession &&
-                          null != castSender.castSession!.castMediaStatus) {
-                        castSender.seek(
-                          max(
-                              0.0,
-                              castSender
-                                      .castSession!.castMediaStatus!.position! +
-                                  seekBy),
-                        );
-                      }
-                    } */
-
-                  /*    final results = await CastDiscoveryService().search();
-                  print('results $results');
                   
-                  final session =
-                      await CastSessionManager().startSession(results[0]);
-
-                  session.stateStream.listen((state) {
-                    print('state $state');
-                    if (state == CastSessionState.connected) {
-                      session.sendMessage(CastSession.kNamespaceMedia, {
-                        'type': 'LOAD',
-                        'autoplay': true,
-                        'currentTime': 0,
-                        'media': {
-                          "contentId": streamUrl,
-                          // "streamType": 'BUFFERED',
-                          "contentType": 'video/mp4',
-                        }
-                        // 'appId': 'YT', // set the appId of your app here
-                      });
-                    }
-                  });
-
-                  session.messageStream.listen((message) {
-                    print('receive message: $message');
-                  });
-
-                  session.sendMessage(CastSession.kNamespaceReceiver, {
-                    'type': 'LAUNCH',
-                    'appId': 'CC1AD845', // set the appId of your app here
-                  }); */
-                },
-              ),
-            if (!(UniversalPlatform.isLinux || UniversalPlatform.isWindows))
-              ContextMenuButtonConfig(
-                "Share file with other app",
-                onPressed: () async {
-                  if (!enabled) return;
-                  final link = await downloadPool.withResource(
-                    () => storageService.downloadAndDecryptFile(
-                      fileData: file.file,
-                      name: file.name,
-                      outFile: null,
-                    ),
-                  );
-
-                  Share.shareFiles([link]);
-                },
-              ),
-            if (!localFiles.containsKey(file.file.hash))
-              ContextMenuButtonConfig(
-                "Make available offline",
-                onPressed: () async {
-                  if (!enabled) return;
-                  setState(() {
-                    enabled = false;
-                  });
-                  try {
-                    await downloadPool.withResource(
-                      () => storageService.downloadAndDecryptFile(
-                        fileData: file.file,
-                        name: file.name,
-                        outFile: null,
-                      ),
-                    );
-                  } catch (e, st) {
-                    print(e);
-                    print(st);
-                    showErrorDialog(context, e, st);
-                  }
-                  if (mounted) {
-                    setState(() {
-                      enabled = true;
-                    });
-                  }
-                },
-              ),
-            if (hasWriteAccess)
-              ContextMenuButtonConfig(
-                'Re-generate metadata',
-                onPressed: () async {
-                  try {
-                    final link = await downloadPool.withResource(
-                      () => storageService.downloadAndDecryptFile(
-                        fileData: file.file,
-                        name: file.name,
-                        outFile: null,
-                      ),
-                    );
-                    final fileData =
-                        await storageService.startFileUploadingTask(
-                      'vup.hns',
-                      File(link),
-                      metadataOnly: true,
-                    );
-                    logger.verbose(fileData);
-                    await storageService.dac.updateFileExtensionData(
-                      file.uri!,
-                      fileData!.ext,
-                    );
-
-                    storageService.dac
-                        .getFileStateChangeNotifier(fileData.hash)
-                        .updateFileState(
-                          FileState(
-                            type: FileStateType.idle,
-                            progress: 0,
-                          ),
-                        );
-                  } catch (e, st) {
-                    showErrorDialog(context, e, st);
-                  }
-                },
-              ),
-            if (localFiles.containsKey(file.file.hash))
-              ContextMenuButtonConfig(
-                'Delete from device',
-                onPressed: () async {
-                  final hash = file.file.hash;
-                  final decryptedFile = File(join(
-                    storageService.dataDirectory,
-                    'local_files',
-                    hash,
-                    file.name,
-                  ));
-                  await decryptedFile.delete();
-                  localFiles.delete(hash);
-                  setState(() {});
-                },
-              ),
-            if (hasWriteAccess) ...[
-              ContextMenuButtonConfig(
-                isInTrash ? 'Delete permanently' : "Move to trash",
-                onPressed: () async {
-                  try {
-                    if (isInTrash) {
+                    
                       showLoadingDialog(
                           context, 'Deleting file permanently...');
                       await storageService.dac.deleteFile(
                         uri,
                       );
-                    } else {
-                      showLoadingDialog(context, 'Moving file to trash...');
-                      await storageService.dac.moveFile(
-                        uri,
-                        storageService.trashPath + '/' + file.name,
-                        generateRandomKey: true,
-                      );
-                    }
-                    context.pop();
-                  } catch (e, st) {
-                    showErrorDialog(context, e, st);
-                  }
-                },
-              ),
-            ],
-            if (file.version > 0)
-              ContextMenuButtonConfig(
-                "Previous versions",
-                onPressed: () async {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: Text('Previous versions'),
-                      content: SizedBox(
-                        width: dialogWidth,
-                        height: dialogHeight,
-                        child: ListView(
-                          children: [
-                            for (final version
-                                in (file.history ?? {}).keys.toList().reversed)
-                              _buildPreviousVersion(
-                                context,
-                                version,
-                                hasWriteAccess,
-                              ),
-                          ],
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => ctx.pop(),
-                          child: Text(
-                            'Close',
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ContextMenuButtonConfig(
-              'Details',
-              onPressed: () async {
-                await showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text('File details'),
-                    content: SizedBox(
-                      width: dialogWidth,
-                      height: dialogHeight,
-                      child: FileDetailsDialog(
-                        file,
-                        hasWriteAccess: hasWriteAccess,
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => ctx.pop(),
-                        child: Text(
-                          'Close',
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-                setState(() {});
-              },
-            ),
-            if (devModeEnabled)
-              ContextMenuButtonConfig(
-                "Copy SkyFS URI (Debug)",
-                onPressed: () async {
-                  FlutterClipboard.copy(file.uri!);
-                },
-              ),
-            if (devModeEnabled)
-              //
-              ContextMenuButtonConfig(
-                "View JSON (Debug)",
-                onPressed: () async {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text('JSON Metadata'),
-                      content: SizedBox(
-                        width: dialogWidth,
-                        height: dialogHeight,
-                        child: SingleChildScrollView(
-                          reverse: true,
-                          child: SelectableText(
-                            JsonEncoder.withIndent('  ').convert(
-                              file,
-                            ),
-                            /* language: 'json',
-                            theme: draculaTheme,
-                            padding: EdgeInsets.all(12), */
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
           ],
         ],
-      ),
+   */
       child: InkWell(
         /*  onDoubleTap: () {
             print('onDoubleTap');
@@ -1049,6 +300,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                     ];
                   }
                 } else if (!isDirectory) {
+                  if (stateNotifier.state.type != FileStateType.idle) return;
                   setState(() {
                     enabled = false;
                   });
@@ -1137,52 +389,6 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
           child: _buildContent(textColor),
         ),
       ),
-    );
-  }
-
-  Widget _buildPreviousVersion(
-      BuildContext context, String version, bool hasWriteAccess) {
-    final fileData = file.history![version]!;
-
-    final dt = DateTime.fromMillisecondsSinceEpoch(fileData.ts);
-
-    return ListTile(
-      leading: SizedBox(
-        width: 40,
-        child: Center(
-          child: Text(
-            version,
-            style: TextStyle(
-              fontSize: 24,
-            ),
-          ),
-        ),
-      ),
-      title: Text('${timeago.format(dt)} (${filesize(fileData.size)})'),
-      subtitle: Text(formatDateTime(dt)),
-      trailing: !hasWriteAccess
-          ? null
-          : ElevatedButton(
-              onPressed: () async {
-                context.pop();
-                showLoadingDialog(context, 'Restoring version $version...');
-                try {
-                  await storageService.dac.updateFile(
-                    widget.pathNotifier.toUriString(),
-                    file.name,
-                    fileData,
-                  );
-
-                  context.pop();
-                } catch (e, st) {
-                  context.pop();
-                  showErrorDialog(context, e, st);
-                }
-              },
-              child: Text(
-                'Restore',
-              ),
-            ),
     );
   }
 
@@ -1611,24 +817,6 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
             ),
           ); */
 
-          /*  if (fullSize) {
-            final modified = DateTime.fromMillisecondsSinceEpoch(file.modified);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  DateFormat.yMEd().format(modified) +
-                      ', ' +
-                      DateFormat.Hm().format(modified),
-                  style: TextStyle(
-                    color: textColor,
-                  ),
-                  textAlign: TextAlign.end,
-                ),
-                timeAgoWidget,
-              ],
-            );
-          } */
           // return timeAgoWidget;
         });
 

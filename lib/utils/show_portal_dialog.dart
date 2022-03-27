@@ -3,8 +3,9 @@ import 'dart:convert';
 import 'package:selectable_autolink_text/selectable_autolink_text.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vup/app.dart';
+import 'package:skynet/src/portal_accounts/index.dart';
 
-void showPortalDialog(BuildContext context) {
+Future<void> showPortalDialog(BuildContext context) async {
   final portalList = [
     {"host": "siasky.net", "public": true, "open": true},
     {"host": "fileportal.org", "public": true, "open": true},
@@ -12,6 +13,21 @@ void showPortalDialog(BuildContext context) {
     {"host": "skynetpro.net", "open": true},
     {"host": "seveysky.net", "open": true},
   ];
+
+  showLoadingDialog(context, 'Loading saved portal accounts...');
+
+  Map portalAccounts = {};
+
+  try {
+    final portalAccountsRes =
+        await storageService.mySkyProvider.getJSONEncrypted(
+      mySky.portalAccountsPath,
+    );
+    if (portalAccountsRes.data != null) {
+      portalAccounts = portalAccountsRes.data;
+    }
+  } catch (_) {}
+  context.pop();
 
   void _loginToPortal({
     required String portalAccountHost,
@@ -60,16 +76,25 @@ void showPortalDialog(BuildContext context) {
       'portal_host',
       portalHost,
     );
+    dataBox.put(
+      'mysky_portal_auth_ts',
+      0,
+    );
 
     context.pop();
+    quotaService.clear();
     quotaService.update();
     showInfoDialog(context, 'Authentication successful',
         'You are now logged in to ${portalHost}');
   }
 
-  String selectedPortal = 'siasky.net';
+  String selectedPortal = 'other';
+  try {
+    selectedPortal = portalList.firstWhere(
+        (element) => element['host'] == currentPortalHost)['host'] as String;
+  } catch (_) {}
   final customPortalCtrl = TextEditingController();
-  showDialog(
+  await showDialog(
     context: context,
     builder: (context) => AlertDialog(
       title: Text('Choose a portal'),
@@ -91,7 +116,10 @@ void showPortalDialog(BuildContext context) {
                       selectedPortal = portal['host'] as String;
                     });
                   },
-                  title: Text(portal['host'] as String),
+                  title: Text(portal['host'].toString() +
+                      (portalAccounts.containsKey(portal['host'])
+                          ? ' [AUTO-LOGIN ENABLED]'
+                          : '')),
                   subtitle: Text(
                     portal['public'] == true
                         ? 'Public portal'
@@ -144,7 +172,40 @@ void showPortalDialog(BuildContext context) {
               context,
               'Connecting to portal...',
             );
+
             try {
+              if (portalAccounts.containsKey(portalHost)) {
+                final currentPortalAccounts = portalAccounts[portalHost];
+
+                final portalAccountTweak =
+                    currentPortalAccounts['accountNicknames']
+                        [currentPortalAccounts['activeAccountNickname']];
+                mySky.skynetClient.portalHost = portalHost;
+
+                final jwt = await login(
+                  mySky.skynetClient,
+                  mySky.user.rawSeed,
+                  portalAccountTweak,
+                );
+
+                mySky.skynetClient.headers = {'cookie': jwt};
+
+                dataBox.put('portal_host', portalHost);
+                dataBox.put('cookie', jwt);
+
+                dataBox.put('mysky_portal_auth_accounts', portalAccounts);
+                dataBox.put(
+                  'mysky_portal_auth_ts',
+                  DateTime.now().millisecondsSinceEpoch,
+                );
+
+                context.pop();
+                context.pop();
+                quotaService.clear();
+                quotaService.update();
+                return;
+              }
+
               final res = await mySky.skynetClient.httpClient
                   .get(Uri.https(portalAccountHost, '/health'));
               if (res.statusCode != 200)
@@ -159,7 +220,7 @@ void showPortalDialog(BuildContext context) {
             final emailCtrl = TextEditingController();
             final passwordCtrl = TextEditingController();
 
-            showDialog(
+            await showDialog(
               context: context,
               builder: (context) => AlertDialog(
                 title: Text(
@@ -243,8 +304,13 @@ void showPortalDialog(BuildContext context) {
                             'portal_host',
                             portalHost,
                           );
+                          dataBox.put(
+                            'mysky_portal_auth_ts',
+                            0,
+                          );
 
                           context.pop();
+                          quotaService.clear();
                           quotaService.update();
                           showInfoDialog(context, 'Selected portal',
                               'You are now using ${portalHost}');

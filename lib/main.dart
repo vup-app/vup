@@ -21,7 +21,6 @@ import 'package:vup/widget/vup_logo.dart';
 import 'package:vup/widget/window_buttons.dart';
 import 'package:uni_links/uni_links.dart';
 
-import 'package:context_menus/context_menus.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -577,28 +576,27 @@ class _HomePageState extends State<HomePage> with TrayListener {
     al = AppLocalizations.of(context)!;
     buildContext = context;
 
-    return ContextMenuOverlay(
-      child: WillPopScope(
-        onWillPop: () {
-          appLayoutState.currentTab.first.state.pop();
+    return WillPopScope(
+      onWillPop: () {
+        appLayoutState.currentTab.first.state.pop();
 
-          return Future.value(false);
-        },
-        child: Scaffold(
-          drawer: context.isMobile
-              ? Drawer(
-                  child: SafeArea(
-                    child: SidebarView(
-                      appLayoutState: appLayoutState,
-                    ),
+        return Future.value(false);
+      },
+      child: Scaffold(
+        drawer: context.isMobile
+            ? Drawer(
+                child: SafeArea(
+                  child: SidebarView(
+                    appLayoutState: appLayoutState,
                   ),
-                )
-              : null,
-          appBar: !context.isMobile
-              ? null
-              : AppBarWrapper(
-                  child: AppBar(
-                    /*     leading: IconButton(
+                ),
+              )
+            : null,
+        appBar: !context.isMobile
+            ? null
+            : AppBarWrapper(
+                child: AppBar(
+                  /*     leading: IconButton(
                       onPressed: () {
                         context.beamBack();
                       },
@@ -606,12 +604,12 @@ class _HomePageState extends State<HomePage> with TrayListener {
                         Icons.arrow_upward,
                       ),
                     ), */
-                    title: VupLogo(),
-                    /* 
+                  title: VupLogo(),
+                  /* 
                           :  */
-                    actions: [
-                      // TODO Notifications
-                      /*  IconButton(
+                  actions: [
+                    // TODO Notifications
+                    /*  IconButton(
                           onPressed: () {
                             if (!_isSearching) {}
                             setState(() {
@@ -622,107 +620,104 @@ class _HomePageState extends State<HomePage> with TrayListener {
                             _isSearching ? Icons.close : Icons.search,
                           ),
                         ), */
-                      /*  IconButton(
+                    /*  IconButton(
                       onPressed: () {},
                       icon: Icon(
                         UniconsLine.bell,
                       ),
                     ), */
-                    ],
-                  ),
+                  ],
                 ),
-          body: context.isMobile
-              ? BrowseView(pathNotifier: appLayoutState.currentTab[0].state)
-              : SafeArea(
-                  child: MultiSplitViewTheme(
-                    data: MultiSplitViewThemeData(
-                      dividerThickness: 6,
-                      dividerPainter: DividerPainters.background(
-                        color: Theme.of(context).dividerColor,
-                      ),
+              ),
+        body: context.isMobile
+            ? BrowseView(pathNotifier: appLayoutState.currentTab[0].state)
+            : SafeArea(
+                child: MultiSplitViewTheme(
+                  data: MultiSplitViewThemeData(
+                    dividerThickness: 6,
+                    dividerPainter: DividerPainters.background(
+                      color: Theme.of(context).dividerColor,
                     ),
-                    child: MultiSplitView(
-                      controller: splitCtrl,
-                      minimalSize: 200,
-                      children: [
-                        SidebarView(appLayoutState: appLayoutState),
-                        // for (final view in appLayoutState.views)
-                        Column(
-                          children: [
-                            SizedBox(
-                              height: (Platform.isWindows || Platform.isLinux)
-                                  ? appWindow.titleBarHeight
-                                  : 32,
-                              child: Container(
-                                color: Theme.of(context).dividerColor,
-                                margin: const EdgeInsets.only(left: 1),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                        child: MoveWindow(
-                                      child: StreamBuilder<Null>(
-                                          stream: appLayoutState.stream,
-                                          builder: (context, snapshot) {
-                                            return /* Padding(
+                  ),
+                  child: MultiSplitView(
+                    controller: splitCtrl,
+                    minimalSize: 200,
+                    children: [
+                      SidebarView(appLayoutState: appLayoutState),
+                      // for (final view in appLayoutState.views)
+                      Column(
+                        children: [
+                          SizedBox(
+                            height: (Platform.isWindows || Platform.isLinux)
+                                ? appWindow.titleBarHeight
+                                : 32,
+                            child: Container(
+                              color: Theme.of(context).dividerColor,
+                              margin: const EdgeInsets.only(left: 1),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                      child: MoveWindow(
+                                    child: StreamBuilder<Null>(
+                                        stream: appLayoutState.stream,
+                                        builder: (context, snapshot) {
+                                          return /* Padding(
                                               padding: const EdgeInsets.only(
                                                 top: 6.0,
                                               ),
                                               child: */
-                                                Row(
-                                              children: [
-                                                for (int i = 0;
-                                                    i <
-                                                        appLayoutState
-                                                            .tabs.length;
-                                                    i++)
-                                                  _buildTabIndicator(
-                                                      i, context),
-                                                InkWell(
-                                                  onTap: () {
-                                                    appLayoutState.createTab();
-                                                  },
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            4.0),
-                                                    child: Icon(
-                                                      UniconsLine.plus,
-                                                      size: 22,
-                                                    ),
+                                              Row(
+                                            children: [
+                                              for (int i = 0;
+                                                  i <
+                                                      appLayoutState
+                                                          .tabs.length;
+                                                  i++)
+                                                _buildTabIndicator(i, context),
+                                              InkWell(
+                                                onTap: () {
+                                                  appLayoutState.createTab();
+                                                },
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(4.0),
+                                                  child: Icon(
+                                                    UniconsLine.plus,
+                                                    size: 22,
                                                   ),
-                                                )
-                                              ],
-                                              /* ), */
-                                            );
-                                          }),
-                                    )),
-                                    WindowButtons(),
-                                  ],
-                                ),
+                                                ),
+                                              )
+                                            ],
+                                            /* ), */
+                                          );
+                                        }),
+                                  )),
+                                  WindowButtons(),
+                                ],
                               ),
                             ),
-                            /*    Container(
+                          ),
+                          /*    Container(
                               height: 6,
                               color: Theme.of(context).dividerColor,
                             ), */
-                            Expanded(
-                              child: StreamBuilder<Null>(
-                                  stream: appLayoutState.stream,
-                                  builder: (context, snapshot) {
-                                    return TabView(
-                                      tabIndex: appLayoutState.tabIndex,
-                                    );
-                                  }),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    /*   );
-                        }), */
+                          Expanded(
+                            child: StreamBuilder<Null>(
+                                stream: appLayoutState.stream,
+                                builder: (context, snapshot) {
+                                  return TabView(
+                                    tabIndex: appLayoutState.tabIndex,
+                                  );
+                                }),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
+                  /*   );
+                        }), */
                 ),
-        ),
+              ),
       ),
       /*   ), */
     );

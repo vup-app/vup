@@ -16,6 +16,12 @@ class QuotaService extends VupService with CustomState {
 
   int counter = 0;
 
+  void clear() {
+    totalBytes = -1;
+    tooltip = '';
+    $();
+  }
+
   void update() async {
     verbose('update');
     try {
