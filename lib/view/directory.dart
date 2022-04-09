@@ -303,8 +303,8 @@ class _DirectoryViewState extends State<DirectoryView> {
                                       );
                                     }
                                     await Future.wait(futures);
-                                    globalClipboardState.clearSelection();
                                     context.pop();
+                                    globalClipboardState.clearSelection();
                                   } catch (e, st) {
                                     context.pop();
                                     showErrorDialog(context, e, st);
@@ -353,8 +353,8 @@ class _DirectoryViewState extends State<DirectoryView> {
                                       );
                                     }
                                     await Future.wait(futures);
-                                    globalClipboardState.clearSelection();
                                     context.pop();
+                                    globalClipboardState.clearSelection();
                                   } catch (e, st) {
                                     context.pop();
                                     showErrorDialog(context, e, st);
