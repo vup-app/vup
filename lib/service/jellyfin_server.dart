@@ -1279,6 +1279,7 @@ class JellyfinServerService extends VupService {
           "ImageTags": {},
           "BackdropImageTags": [],
           "ImageBlurHashes": {},
+          "ParentId": parentId,
           "LocationType": "Remote"
         };
       }
@@ -1668,6 +1669,7 @@ class JellyfinServerService extends VupService {
                 songId: file.ext?['thumbnail']?['blurHash'],
               }
             },
+      "ParentId": directoryId,
       "LocationType": "Remote",
       "MediaType": "Audio"
     };
@@ -2262,6 +2264,15 @@ class JellyfinServerService extends VupService {
       final items = <Map>[];
 
       if (parentId != null) {
+        if (parentId == serverId) {
+          return {
+            "Items": [
+              ...collectionsMap.values,
+            ],
+            "TotalRecordCount": collectionsMap.length,
+            "StartIndex": 0,
+          };
+        }
         //print('recursive1 $recursive');
         if (recursive) {
           if (folderCollectionIds.contains(parentId)) {
@@ -2442,6 +2453,11 @@ class JellyfinServerService extends VupService {
         items.sort((a, b) => (sortModifier *
             (a['SortName'] ?? a['Name']).compareTo(
               b['SortName'] ?? b['Name'],
+            )) as int);
+      } else if (sortBy == 'CommunityRating') {
+        items.sort((a, b) => (sortModifier *
+            (a['CommunityRating'] ?? 0.0).compareTo(
+              b['CommunityRating'] ?? 0.0,
             )) as int);
       }
 

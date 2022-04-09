@@ -5,6 +5,7 @@
 - The ffmpeg installer now also works on Windows
 - Added tool to list used MySky paths
 - Improved video thumbnail extraction
+- Improved Jellyfin folder navigation
 - Fixed some bugs
 
 ## Beta 0.9.0
