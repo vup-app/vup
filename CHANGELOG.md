@@ -4,6 +4,7 @@
 
 - The ffmpeg installer now also works on Windows
 - Added tool to list used MySky paths
+- Improved video thumbnail extraction
 - Fixed some bugs
 
 ## Beta 0.9.0

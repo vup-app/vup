@@ -89,7 +89,7 @@ class StorageService extends VupService {
 
   get trashPath => 'home/.trash';
 
-  final customRemotes = {};
+  final customRemotes = <String,Map>{};
 
   Future<void> init(Sodium sodium) async {
     mySkyProvider = NativeMySkyProvider(mySky.skynetClient);
@@ -339,13 +339,16 @@ class StorageService extends VupService {
 
                 subOutFile.parent.createSync(recursive: true);
 
-                final res = await runFFMpeg([
-                  '-i',
-                  file.path,
-                  '-map',
-                  '0:$index',
-                  subOutFile.path,
-                ]);
+                try {
+                  await runFFMpeg([
+                    '-i',
+                    file.path,
+                    '-map',
+                    '0:$index',
+                    subOutFile.path,
+                  ]);
+                } catch (_) {}
+
                 /* print(res.exitCode);
                 print(res.stdout); */
                 if (subOutFile.existsSync()) {
@@ -373,8 +376,9 @@ class StorageService extends VupService {
 
           final outFile = File(join(
             temporaryDirectory,
-            '${multihash}-thumbnail-extract.jpg',
+            '${Uuid().v4()}-thumbnail-extract.jpg',
           ));
+          verbose('extracting thumbnail to ${outFile.path}');
           if (!outFile.existsSync()) {
             final extractThumbnailArgs = [
               '-i',
@@ -395,30 +399,41 @@ class StorageService extends VupService {
             videoThumbnailFile = outFile;
             generateMetadata = true;
           } else {
-            final extractThumbnailArgs = [
-              '-i',
-              file.path,
-              '-vf',
-              'thumbnail,scale=640:-1',
-              '-frames:v',
-              '1',
-              /*   '-map',
-              '0:v',
-              '-map',
-              '-0:V',
-              '-c',
-              'copy', */
-              outFile.path,
-            ];
+            try {
+              final extractThumbnailArgs = [
+                '-ss',
+                '00:03:00',
+                '-i',
+                file.path,
+                '-vf',
+                'thumbnail,scale=640:-1',
+                '-frames:v',
+                '1',
+                outFile.path,
+              ];
 
-            final res2 = await runFFMpeg(extractThumbnailArgs);
+              await runFFMpeg(extractThumbnailArgs);
+            } catch (_) {}
+            if (!outFile.existsSync()) {
+              final extractThumbnailArgs = [
+                '-i',
+                file.path,
+                '-vf',
+                'thumbnail,scale=640:-1',
+                '-frames:v',
+                '1',
+                outFile.path,
+              ];
+
+              await runFFMpeg(extractThumbnailArgs);
+            }
             if (outFile.existsSync()) {
               videoThumbnailFile = outFile;
               generateMetadata = true;
             }
           }
-        } catch (e) {
-          warning('video crash $e');
+        } catch (e, st) {
+          warning('video crash $e $st');
         }
       } else if (bookParsers.keys.contains(ext)) {
         var publicationExt = <String, dynamic>{};
@@ -1374,7 +1389,7 @@ class StorageService extends VupService {
     final TUS_CHUNK_SIZE = (1 << 22) * 10; // ~ 41 MB
 
     if (false && (outFile.lengthSync() > TUS_CHUNK_SIZE)) {
-      final remote = customRemotes['unraid']!;
+      final remote = customRemotes['unraid']!['config']! as Map;
       var client = webdav.newClient(
         remote['url'] as String,
         user: remote['username'] as String,
