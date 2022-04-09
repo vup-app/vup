@@ -41,7 +41,7 @@ class _DevicesSettingsPageState extends State<DevicesSettingsPage> {
   ListTile _buildDevice(String deviceId) {
     final device = deviceList!['devices'][deviceId]!;
     var title =
-        '${device['info']['prettyName'] ?? device['info']['device'] ?? device['info']['name']} (created ${timeago.format(DateTime.fromMillisecondsSinceEpoch(device['created']))}) [${deviceId}]';
+        '${device['info']['prettyName'] ?? device['info']['computerName'] ?? device['info']['device'] ?? device['info']['name']} (created ${timeago.format(DateTime.fromMillisecondsSinceEpoch(device['created']))}) [${deviceId}]';
 
     if (deviceId == dataBox.get('deviceId')) {
       title = '$title (this device)';
