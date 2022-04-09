@@ -272,7 +272,7 @@ class _SetupSyncDialogState extends State<SetupSyncDialog> {
                       throw 'No local directory selected';
                     }
 
-                    syncTasks.put(Uuid().v4(), task);
+                    syncTasks.put(task.key ?? Uuid().v4(), task);
                     storageService.setupWatchers();
                     context.pop();
                   } catch (e, st) {
