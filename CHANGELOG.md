@@ -1,5 +1,11 @@
 # Vup Changelog
 
+## main
+
+- The ffmpeg installer now also works on Windows
+- Added tool to list used MySky paths
+- Fixed some bugs
+
 ## Beta 0.9.0
 
 - BREAKING: Changed Jellyfin server id format to support additional clients. Clear the data or log out in all of your Jellyfin clients after upgrading to the new Vup version.

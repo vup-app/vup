@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:vup/app.dart';
 import 'package:vup/page/settings.dart';
 import 'package:vup/utils/ffmpeg.dart';
+import 'package:vup/utils/ffmpeg_installer.dart';
 import 'package:vup/utils/show_portal_dialog.dart';
 import 'package:vup/view/setup_sync_dialog.dart';
 import 'package:vup/widget/sidebar_shortcut.dart';
@@ -165,79 +166,7 @@ MimeType=x-scheme-handler/vup;
     });
   }
 
-  Future<void> downloadAndInstallFFmpeg() async {
-    final res = await mySky.skynetClient.httpClient.get(
-      Uri.parse(
-        'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest',
-      ),
-    );
-    /* final List releases = 
-    releases
-        .sort((a, b) => a['published_at'].compareTo(b['published_at']) as int); */
 
-    final latest = json.decode(res.body);
-    late Map dlAsset;
-    for (final asset in latest['assets']) {
-      final String name = asset['name'];
-      if (!name.contains('master')) continue;
-      if (name.contains('shared')) continue;
-      if (name.contains('lgpl')) continue;
-      if (Platform.isLinux) {
-        if (name.contains('linux64')) {
-          print(name);
-          dlAsset = asset;
-          break;
-        }
-      }
-      if (Platform.isWindows) {
-        if (name.contains('win64')) {
-          print(name);
-          dlAsset = asset;
-          break;
-        }
-      }
-    }
-    final dlRes = await mySky.skynetClient.httpClient.get(
-      Uri.parse(
-        dlAsset['browser_download_url'],
-      ),
-    );
-
-    final ffmpegDir = join(
-      storageService.dataDirectory,
-      'lib',
-      'ffmpeg',
-      dlAsset['id'].toString(),
-    );
-    Directory(ffmpegDir).createSync(recursive: true);
-    final tempArchiveFile = File(join(ffmpegDir, 'file.tar.xz'));
-    tempArchiveFile.writeAsBytesSync(
-      /* XZDecoder().decodeBytes( */ dlRes.bodyBytes /* ) */,
-    );
-
-    await Process.run(
-      'tar',
-      [
-        '--xz',
-        '-xvf',
-        'file.tar.xz',
-      ],
-      workingDirectory: ffmpegDir,
-    );
-    await tempArchiveFile.delete();
-
-    final binPath = join(Directory(ffmpegDir).listSync().first.path, 'bin');
-    print(binPath);
-
-    dataBox.put('ffmpeg_path', join(binPath, 'ffmpeg'));
-    dataBox.put('ffprobe_path', join(binPath, 'ffprobe'));
-
-    /* final archive = TarDecoder().decodeBytes(
-      
-    );
-
-    extractArchiveToDisk(archive, ffmpegDir); */
-  }
 
   late final Widget userWidget;
 

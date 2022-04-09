@@ -194,7 +194,10 @@ class _SettingsPageState extends State<SettingsPage> {
               'Generate share link for log file',
             ),
           ),
-        )
+        ),
+        SizedBox(
+          height: 24,
+        ),
       ],
     );
     return Scaffold(

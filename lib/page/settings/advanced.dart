@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:vup/app.dart';
 import 'package:vup/utils/ffmpeg.dart';
+import 'package:vup/utils/ffmpeg_installer.dart';
 
 class AdvancedSettingsPage extends StatefulWidget {
   const AdvancedSettingsPage({Key? key}) : super(key: key);
@@ -50,6 +53,49 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
           height: 16,
         ),
         ElevatedButton(
+          onPressed: () async {
+            try {
+              final res = await runFFMpeg(['-version']);
+              final res2 = await runFFProbe(['-version']);
+              showInfoDialog(
+                  context, 'ffmpeg version', res.stdout + '\n' + res2.stdout);
+            } catch (e, st) {
+              showErrorDialog(context, e, st);
+            }
+          },
+          child: Text(
+            'Check version',
+          ),
+        ),
+        SizedBox(
+          height: 16,
+        ),
+        if (Platform.isWindows || Platform.isLinux) ...[
+          ElevatedButton(
+            onPressed: () async {
+              showLoadingDialog(
+                context,
+                'Downloading and installing latest FFmpeg...',
+              );
+              try {
+                await downloadAndInstallFFmpeg();
+                context.pop();
+                ffmpegPathCtrl.text = dataBox.get('ffmpeg_path');
+                ffprobePathCtrl.text = dataBox.get('ffprobe_path');
+              } catch (e, st) {
+                context.pop();
+                showErrorDialog(context, e, st);
+              }
+            },
+            child: Text(
+              'Run ffmpeg installer',
+            ),
+          ),
+          SizedBox(
+            height: 16,
+          ),
+        ],
+        ElevatedButton(
           onPressed: () {
             dataBox.put('ffmpeg_path', 'ffmpeg');
             dataBox.put('ffprobe_path', 'ffprobe');
@@ -58,6 +104,24 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
           },
           child: Text(
             'Reset to defaults',
+          ),
+        ),
+        SizedBox(
+          height: 16,
+        ),
+        Text(
+          'Used MySky paths',
+          style: titleTextStyle,
+        ),
+        SizedBox(
+          height: 16,
+        ),
+        ElevatedButton(
+          onPressed: () {
+            mySky.dumpUsedMySkyPathsVault();
+          },
+          child: Text(
+            'Dump to log',
           ),
         ),
       ],

@@ -1,9 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:path/path.dart';
 import 'package:random_string/random_string.dart';
 import 'package:simple_observable/simple_observable.dart';
 import 'package:skynet/dacs.dart';
+import 'package:stash_hive/stash_hive.dart';
+import 'package:stash/stash_api.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 
@@ -12,10 +18,25 @@ class MySkyService extends VupService {
 
   final portalAccountsPath = 'skynet-mysky.hns/portal-accounts.json';
 
+  late final Vault<String> usedMySkyPathsVault;
+
   void setup(String cookie) {
+    final dbDir = Directory(join(
+      vupDataDir,
+      'stash',
+    ));
+    dbDir.createSync(recursive: true);
+
+    final hiveStore = newHiveDefaultVaultStore(path: dbDir.path);
+
+    usedMySkyPathsVault = hiveStore.vault<String>(
+      name: 'mysky_used_paths',
+    );
+
     skynetClient = SkynetClient(
       cookie: cookie,
       portal: currentPortalHost,
+      usedMySkyPathsVault: usedMySkyPathsVault,
     );
   }
 
@@ -117,5 +138,16 @@ class MySkyService extends VupService {
 
   Future<String?> loadSeedPhrase() async {
     return dataBox.get('seed');
+  }
+
+  void dumpUsedMySkyPathsVault() {
+    mySky.usedMySkyPathsVault.keys.then((value) async {
+      final list = <String>[];
+      for (final key in value) {
+        final path = await mySky.usedMySkyPathsVault.get(key);
+        if (path != null) list.add(path);
+      }
+      verbose('[dumpUsedMySkyPathsVault] ${json.encode(list)}');
+    });
   }
 }
