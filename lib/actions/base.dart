@@ -26,6 +26,7 @@ import 'package:vup/actions/share_directory.dart';
 import 'package:vup/actions/share_file_with_other_app.dart';
 import 'package:vup/actions/stream_to_cast_device.dart';
 import 'package:vup/actions/upload_files.dart';
+import 'package:vup/actions/upload_media_files.dart';
 import 'package:vup/actions/view_json.dart';
 import 'package:vup/actions/yt_dl.dart';
 import 'package:vup/app.dart';
@@ -39,6 +40,7 @@ final allActions = <VupFSAction>[
   SearchVupAction(),
   CreateDirectoryVupAction(),
   UploadFilesVupAction(),
+  UploadMediaFilesVupAction(),
   YTDLVupAction(),
   SetupSyncVupAction(),
   ShareDirectoryVupAction(),

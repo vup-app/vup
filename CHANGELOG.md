@@ -4,6 +4,7 @@
 
 - New and improved drag and drop system
 - The ffmpeg installer now also works on Windows
+- Added media file picker for iOS
 - Added tool to list used MySky paths
 - Improved video thumbnail extraction
 - Improved Jellyfin folder navigation
