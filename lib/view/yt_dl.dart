@@ -299,7 +299,7 @@ mp3: better compatibility''', // mkv: more features
                       videos = [];
                       selectedVideos = [];
                       process.stdout
-                          .transform(utf8.decoder)
+                          .transform(systemEncoding.decoder)
                           .transform(const LineSplitter())
                           .listen((event) {
                         if (event.isNotEmpty) {
@@ -309,7 +309,7 @@ mp3: better compatibility''', // mkv: more features
                       });
 
                       process.stderr
-                          .transform(utf8.decoder)
+                          .transform(systemEncoding.decoder)
                           .transform(const LineSplitter())
                           .listen((event) {
                         if (event.isNotEmpty) {

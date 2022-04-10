@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_full/ffmpeg_kit.dart';
@@ -35,7 +36,7 @@ Future<FFResult> runFFProbe(List<String> args) async {
     final output = await session.getOutput();
     return FFResult(exitCode: exitCode, stdout: output!);
   } else {
-    final res = await Process.run(ffprobePath, args);
+    final res = await Process.run(ffprobePath, args, stdoutEncoding: utf8);
     return FFResult(
       exitCode: res.exitCode,
       stdout: res.stdout,
@@ -57,7 +58,7 @@ Future<FFResult> runFFMpeg(List<String> args) async {
     final output = await session.getOutput();
     return FFResult(exitCode: exitCode, stdout: output!);
   } else {
-    final res = await Process.run(ffmpegPath, args);
+    final res = await Process.run(ffmpegPath, args, stdoutEncoding: utf8);
     return FFResult(
       exitCode: res.exitCode,
       stdout: res.stdout,

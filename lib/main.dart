@@ -367,6 +367,7 @@ void main(List<String> args) async {
           [
             '--version',
           ],
+          stdoutEncoding: systemEncoding,
         );
         isYTDlIntegrationEnabled = res.exitCode == 0;
       } catch (_) {}

@@ -36,7 +36,7 @@ class YTDLAction extends VupAction {
     );
 
     process.stdout
-        .transform(utf8.decoder)
+        .transform(systemEncoding.decoder)
         .transform(const LineSplitter())
         .listen((event) {
       if (event.isNotEmpty) {
@@ -55,7 +55,7 @@ class YTDLAction extends VupAction {
     });
 
     process.stderr
-        .transform(utf8.decoder)
+        .transform(systemEncoding.decoder)
         .transform(const LineSplitter())
         .listen((event) {
       if (event.isNotEmpty) {

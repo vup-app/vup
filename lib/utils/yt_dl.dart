@@ -95,7 +95,7 @@ class YTDLUtils {
 
     final percentRegExp = RegExp(r'([0-9\.]+)% of ');
     process.stdout
-        .transform(utf8.decoder)
+        .transform(systemEncoding.decoder)
         .transform(const LineSplitter())
         .listen((event) {
       if (event.isNotEmpty) {
@@ -113,7 +113,7 @@ class YTDLUtils {
     });
 
     process.stderr
-        .transform(utf8.decoder)
+        .transform(systemEncoding.decoder)
         .transform(const LineSplitter())
         .listen((event) {
       if (event.isNotEmpty) {
