@@ -383,114 +383,172 @@ class _DirectoryViewState extends State<DirectoryView> {
       widget.pathNotifier.value.join('/'),
     );
 
+    final directoryUri = widget.pathNotifier.toCleanUri().toString();
+
+    final contextMenuBuilder = (ctx) {
+      final actions = <Widget>[];
+      for (final ai in generateActions(
+        false,
+        null,
+        widget.pathNotifier,
+        ctx,
+        true,
+        widget.pathNotifier.hasWriteAccess(),
+        stateNotifier.state,
+      )) {
+        actions.add(ListTile(
+          leading: ai.icon == null ? null : Icon(ai.icon),
+          title: Text(ai.label),
+          onTap: () async {
+            context.pop();
+            // return;
+            try {
+              await ai.action.execute(context, ai);
+            } catch (e, st) {
+              showErrorDialog(context, e, st);
+            }
+          },
+        ));
+      }
+      return actions;
+    };
+
+    Widget gestureAreaBuilder(child) => MouseRegion(
+          opaque: false,
+          onEnter: (event) {
+            globalDragAndDropDirectoryViewUri = directoryUri;
+          },
+          onExit: (event) {
+            globalDragAndDropDirectoryViewUri = null;
+          },
+          child: GestureDetector(
+            onSecondaryTapDown: (details) async {
+              globalDragAndDropPossible = false;
+              globalDragAndDropPointerDown = false;
+              if (globalIsHoveringFileSystemEntity) return;
+
+              showContextMenu(
+                details.globalPosition,
+                context,
+                contextMenuBuilder,
+                8.0,
+                320.0,
+              );
+            },
+            child: child,
+          ),
+        );
+
     // late Widget child;
     if ((index!.directories.length +
             index!.files.length +
             uploadingFiles.length) ==
         0) {
-      return Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: (widget.pathNotifier.path.join('/') == 'home' &&
-                        !widget.pathNotifier.isSearching)
-                    ? [
-                        Text(
-                          'Welcome to Vup!',
-                          style: TextStyle(
-                            fontSize: 24,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 12, right: 12),
-                          child: Text(
-                            'It looks like your home directory is empty. Do you want to create some common sub-directories? (Documents, Music, ...)',
+      return gestureAreaBuilder(
+        Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: (widget.pathNotifier.path.join('/') == 'home' &&
+                          !widget.pathNotifier.isSearching)
+                      ? [
+                          Text(
+                            'Welcome to Vup!',
                             style: TextStyle(
-                              fontSize: 20,
+                              fontSize: 24,
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () async {
-                            showLoadingDialog(
-                              context,
-                              'Creating common directories...',
-                            );
-                            final dirs = [
-                              'Books',
-                              'Documents',
-                              'Music',
-                              'Videos',
-                              'Images',
-                            ];
-
-                            final futures = <Future>[];
-                            for (final dir in dirs) {
-                              futures.add(
-                                storageService.dac.createDirectory(
-                                  'home',
-                                  dir,
-                                ),
+                          SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, right: 12),
+                            child: Text(
+                              'It looks like your home directory is empty. Do you want to create some common sub-directories? (Documents, Music, ...)',
+                              style: TextStyle(
+                                fontSize: 20,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () async {
+                              showLoadingDialog(
+                                context,
+                                'Creating common directories...',
                               );
-                            }
-                            await Future.wait(futures);
-                            context.pop();
-                          },
-                          child: Text('Create them!'),
-                        ),
-                      ]
-                    : [
-                        Text(
-                          widget.pathNotifier.isSearching
-                              ? 'No search results found.'
-                              : 'This directory is empty.',
-                          style: TextStyle(
-                            fontSize: 24,
-                          ),
-                        ),
-                      ],
+                              final dirs = [
+                                'Books',
+                                'Documents',
+                                'Music',
+                                'Videos',
+                                'Images',
+                              ];
 
-                /*  SizedBox(
-                    height: 16,
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final result = await showTextInputDialog(
-                        context: context,
-                        textFields: [
-                          DialogTextField(
-                            hintText: 'skyfs://...',
+                              final futures = <Future>[];
+                              for (final dir in dirs) {
+                                futures.add(
+                                  storageService.dac.createDirectory(
+                                    'home',
+                                    dir,
+                                  ),
+                                );
+                              }
+                              await Future.wait(futures);
+                              context.pop();
+                            },
+                            child: Text('Create them!'),
+                          ),
+                        ]
+                      : [
+                          Text(
+                            widget.pathNotifier.isSearching
+                                ? 'No search results found.'
+                                : 'This directory is empty.',
+                            style: TextStyle(
+                              fontSize: 24,
+                            ),
                           ),
                         ],
-                      );
-                      if (result == null) {
-                        return;
-                      }
-                      final sharedSeed = result[0].trim();
-                      final uri = Uri.parse(sharedSeed);
-                      print(sharedSeed);
-                      await storageService.dac.mountUri(
-                        widget.path.join('/'),
-                        uri,
-                      );
-                      sub?.cancel();
-                      sub2?.cancel();
-                      _loadData();
-                    },
-                    child: Text(
-                      'Mount shared directory here',
+
+                  /*  SizedBox(
+                      height: 16,
                     ),
-                  ), */
+                    ElevatedButton(
+                      onPressed: () async {
+                        final result = await showTextInputDialog(
+                          context: context,
+                          textFields: [
+                            DialogTextField(
+                              hintText: 'skyfs://...',
+                            ),
+                          ],
+                        );
+                        if (result == null) {
+                          return;
+                        }
+                        final sharedSeed = result[0].trim();
+                        final uri = Uri.parse(sharedSeed);
+                        print(sharedSeed);
+                        await storageService.dac.mountUri(
+                          widget.path.join('/'),
+                          uri,
+                        );
+                        sub?.cancel();
+                        sub2?.cancel();
+                        _loadData();
+                      },
+                      child: Text(
+                        'Mount shared directory here',
+                      ),
+                    ), */
+                ),
               ),
             ),
-          ),
-          clipboardWidget,
-        ],
+            clipboardWidget,
+          ],
+        ),
       );
     } else {
       // TODO Make this more efficient
@@ -572,301 +630,279 @@ class _DirectoryViewState extends State<DirectoryView> {
             widget.pathNotifier.$();
           }),
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ((Platform.isAndroid || Platform.isIOS) &&
-                      entities.length > 100)
-                  ? DraggableScrollbar.semicircle(
-                      controller: widget.viewState.scrollCtrl,
-                      child: contentView,
-                    )
-                  : Scrollbar(
-                      controller: widget.viewState.scrollCtrl,
-                      child: contentView,
-                    ),
-            ),
-            if (widget.pathNotifier.isInSelectionMode) ...[
+        child: gestureAreaBuilder(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ((Platform.isAndroid || Platform.isIOS) &&
+                        entities.length > 100)
+                    ? DraggableScrollbar.semicircle(
+                        controller: widget.viewState.scrollCtrl,
+                        child: contentView,
+                      )
+                    : Scrollbar(
+                        controller: widget.viewState.scrollCtrl,
+                        child: contentView,
+                      ),
+              ),
+              if (widget.pathNotifier.isInSelectionMode) ...[
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0),
+                  child: LayoutBuilder(builder: (context, cons) {
+                    // final isFullSize = cons.maxWidth >= 600;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: 6.0,
+                                left: 8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(UniconsLine.layer_group),
+                                  SizedBox(
+                                    width: 8,
+                                  ),
+                                  /* Expanded(
+                                          child:  */
+                                  Text(
+                                    'Selected ' +
+                                        renderFileSystemEntityCount(
+                                          widget.pathNotifier.selectedFiles
+                                              .length,
+                                          widget.pathNotifier
+                                              .selectedDirectories.length,
+                                        ),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                    ),
+                                    /* ), */
+                                  ),
+                                ],
+                              ),
+                            ),
+                            FlatActionButton(
+                                icon: UniconsLine.layer_group,
+                                label: 'Select all',
+                                onTap: () {
+                                  widget.pathNotifier.selectedFiles.clear();
+                                  widget.pathNotifier.selectedDirectories
+                                      .clear();
+                                  _selectAll();
+                                  setState(() {});
+                                } /* Actions.handler<SelectAllIntent>(
+                                      context,
+                                      SelectAllIntent(/* controller: controller */),
+                                    )!, */
+                                /* () {
+                                      /* widget.pathNotifier.selectedDirectories.clear();
+                                      widget.pathNotifier.selectedFiles.clear(); */
+                                      widget.pathNotifier.$();
+                                    }, */
+                                ),
+                            FlatActionButton(
+                              icon: UniconsLine.layer_group_slash,
+                              label: 'Unselect',
+                              onTap: () {
+                                widget.pathNotifier.clearSelection();
+                              },
+                            ),
+                            FlatActionButton(
+                              icon: UniconsLine.exchange,
+                              label: 'Invert selection',
+                              onTap: () {
+                                final selFiles = List.from(
+                                    widget.pathNotifier.selectedFiles);
+                                final selDirs = List.from(
+                                    widget.pathNotifier.selectedDirectories);
+                                widget.pathNotifier.selectedFiles.clear();
+                                widget.pathNotifier.selectedDirectories.clear();
+
+                                _selectAll();
+
+                                widget.pathNotifier.selectedFiles.removeWhere(
+                                  (uri) => selFiles.contains(uri),
+                                );
+                                widget.pathNotifier.selectedDirectories
+                                    .removeWhere(
+                                  (uri) => selDirs.contains(uri),
+                                );
+                                setState(() {});
+                                /* widget.pathNotifier.selectedDirectories.clear();
+                                      widget.pathNotifier.selectedFiles.clear();
+                                      widget.pathNotifier.$(); */
+                              },
+                            ),
+                          ],
+                        ),
+                        Wrap(
+                          children: [
+                            for (final ai in generateActions(
+                              true,
+                              null,
+                              widget.pathNotifier,
+                              context,
+                              false,
+                              widget.pathNotifier.hasWriteAccess(),
+                              stateNotifier.state,
+                            ))
+                              FlatActionButton(
+                                icon: ai.icon ?? UniconsLine.question,
+                                label: ai.label,
+                                onTap: () async {
+                                  try {
+                                    await ai.action.execute(context, ai);
+                                  } catch (e, st) {
+                                    showErrorDialog(context, e, st);
+                                  }
+                                },
+                              ),
+                            /*    */
+                            /*  FlatActionButton(
+                                  icon: UniconsLine.copy,
+                                  label: 'Copy all',
+                                  onTap: () {
+                                    globalClipboardState.directoryUris = Set.from(
+                                        widget.pathNotifier.selectedDirectories);
+                                    globalClipboardState.fileUris =
+                                        Set.from(widget.pathNotifier.selectedFiles);
+                                    globalClipboardState.isCopy = true;
+                                    globalClipboardState.$();
+                      
+                                    widget.pathNotifier.clearSelection();
+                                  },
+                                ),
+                                FlatActionButton(
+                                  icon: UniconsLine.file_export,
+                                  label: 'Move all',
+                                  onTap: () {
+                                    globalClipboardState.directoryUris = Set.from(
+                                        widget.pathNotifier.selectedDirectories);
+                                    globalClipboardState.fileUris =
+                                        Set.from(widget.pathNotifier.selectedFiles);
+                                    globalClipboardState.isCopy = false;
+                                    globalClipboardState.$();
+                      
+                                    widget.pathNotifier.clearSelection();
+                                  },
+                                ), */
+                          ],
+                        )
+                      ],
+                    );
+                  }),
+                ),
+              ],
+              clipboardWidget,
               Divider(
                 height: 1,
                 thickness: 1,
               ),
-              Padding(
-                padding: const EdgeInsets.only(left: 16.0),
-                child: LayoutBuilder(builder: (context, cons) {
-                  // final isFullSize = cons.maxWidth >= 600;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              top: 6.0,
-                              left: 8,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(UniconsLine.layer_group),
-                                SizedBox(
-                                  width: 8,
-                                ),
-                                /* Expanded(
-                                    child:  */
-                                Text(
-                                  'Selected ' +
-                                      renderFileSystemEntityCount(
-                                        widget
-                                            .pathNotifier.selectedFiles.length,
-                                        widget.pathNotifier.selectedDirectories
-                                            .length,
-                                      ),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                  ),
-                                  /* ), */
-                                ),
-                              ],
+              ContextMenuArea(
+                builder: contextMenuBuilder,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16.0),
+                  child: LayoutBuilder(builder: (context, cons) {
+                    final isFullSize = cons.maxWidth >= 600;
+                    final hasRoundedCorners =
+                        MediaQuery.of(context).size.width < 600;
+                    return Row(
+                      children: [
+                        if (hasRoundedCorners)
+                          SizedBox(
+                            width: 8,
+                          ),
+                        Expanded(
+                          child: Text(
+                            footerStr,
+                            style: TextStyle(
+                              fontSize: 15,
                             ),
                           ),
-                          FlatActionButton(
-                              icon: UniconsLine.layer_group,
-                              label: 'Select all',
-                              onTap: () {
-                                widget.pathNotifier.selectedFiles.clear();
-                                widget.pathNotifier.selectedDirectories.clear();
-                                _selectAll();
-                                setState(() {});
-                              } /* Actions.handler<SelectAllIntent>(
-                                context,
-                                SelectAllIntent(/* controller: controller */),
-                              )!, */
-                              /* () {
-                                /* widget.pathNotifier.selectedDirectories.clear();
-                                widget.pathNotifier.selectedFiles.clear(); */
-                                widget.pathNotifier.$();
-                              }, */
-                              ),
-                          FlatActionButton(
-                            icon: UniconsLine.layer_group_slash,
-                            label: 'Unselect',
-                            onTap: () {
-                              widget.pathNotifier.clearSelection();
-                            },
-                          ),
-                          FlatActionButton(
-                            icon: UniconsLine.exchange,
-                            label: 'Invert selection',
-                            onTap: () {
-                              final selFiles =
-                                  List.from(widget.pathNotifier.selectedFiles);
-                              final selDirs = List.from(
-                                  widget.pathNotifier.selectedDirectories);
-                              widget.pathNotifier.selectedFiles.clear();
-                              widget.pathNotifier.selectedDirectories.clear();
-
-                              _selectAll();
-
-                              widget.pathNotifier.selectedFiles.removeWhere(
-                                (uri) => selFiles.contains(uri),
-                              );
-                              widget.pathNotifier.selectedDirectories
-                                  .removeWhere(
-                                (uri) => selDirs.contains(uri),
-                              );
-                              setState(() {});
-                              /* widget.pathNotifier.selectedDirectories.clear();
-                                widget.pathNotifier.selectedFiles.clear();
-                                widget.pathNotifier.$(); */
-                            },
-                          ),
-                        ],
-                      ),
-                      Wrap(
-                        children: [
-                          for (final ai in generateActions(
-                            true,
-                            null,
-                            widget.pathNotifier,
-                            context,
-                            false,
-                            widget.pathNotifier.hasWriteAccess(),
-                            stateNotifier.state,
-                          ))
-                            FlatActionButton(
-                              icon: ai.icon ?? UniconsLine.question,
-                              label: ai.label,
-                              onTap: () async {
-                                try {
-                                  await ai.action.execute(context, ai);
-                                } catch (e, st) {
-                                  showErrorDialog(context, e, st);
-                                }
-                              },
+                        ),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              zoomLevel.sizeValue = 0.2;
+                              zoomLevel.type = ZoomLevelType.list;
+                            });
+                            widget.viewState.save();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(
+                              UniconsLine.list_ul,
+                              color: zoomLevel.type == ZoomLevelType.list
+                                  ? Theme.of(context).primaryColor
+                                  : null,
                             ),
-                          /*    */
-                          /*  FlatActionButton(
-                            icon: UniconsLine.copy,
-                            label: 'Copy all',
-                            onTap: () {
-                              globalClipboardState.directoryUris = Set.from(
-                                  widget.pathNotifier.selectedDirectories);
-                              globalClipboardState.fileUris =
-                                  Set.from(widget.pathNotifier.selectedFiles);
-                              globalClipboardState.isCopy = true;
-                              globalClipboardState.$();
-
-                              widget.pathNotifier.clearSelection();
-                            },
                           ),
-                          FlatActionButton(
-                            icon: UniconsLine.file_export,
-                            label: 'Move all',
-                            onTap: () {
-                              globalClipboardState.directoryUris = Set.from(
-                                  widget.pathNotifier.selectedDirectories);
-                              globalClipboardState.fileUris =
-                                  Set.from(widget.pathNotifier.selectedFiles);
-                              globalClipboardState.isCopy = false;
-                              globalClipboardState.$();
-
-                              widget.pathNotifier.clearSelection();
+                        ),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              zoomLevel.sizeValue = 0.3;
+                              zoomLevel.type = ZoomLevelType.grid;
+                            });
+                            widget.viewState.save();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(
+                              UniconsLine.table,
+                              color: zoomLevel.type == ZoomLevelType.grid
+                                  ? Theme.of(context).primaryColor
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              zoomLevel.sizeValue = 0.3;
+                              zoomLevel.type = ZoomLevelType.gridCover;
+                            });
+                            widget.viewState.save();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(
+                              UniconsSolid.apps,
+                              color: zoomLevel.type == ZoomLevelType.gridCover
+                                  ? Theme.of(context).primaryColor
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        if (hasRoundedCorners)
+                          SizedBox(
+                            width: 16,
+                          ),
+                        if (isFullSize)
+                          Slider(
+                            value: zoomLevel.sizeValue,
+                            onChanged: (value) {
+                              setState(() {
+                                zoomLevel.sizeValue = value;
+                              });
                             },
-                          ), */
-                        ],
-                      )
-                    ],
-                  );
-                }),
+                          )
+                      ],
+                    );
+                  }),
+                ),
               ),
             ],
-            clipboardWidget,
-            Divider(
-              height: 1,
-              thickness: 1,
-            ),
-            ContextMenuArea(
-              builder: (ctx) {
-                final actions = <Widget>[];
-                for (final ai in generateActions(
-                  false,
-                  null,
-                  widget.pathNotifier,
-                  ctx,
-                  true,
-                  widget.pathNotifier.hasWriteAccess(),
-                  stateNotifier.state,
-                )) {
-                  actions.add(ListTile(
-                    leading: ai.icon == null ? null : Icon(ai.icon),
-                    title: Text(ai.label),
-                    onTap: () async {
-                      ctx.pop();
-                      try {
-                        await ai.action.execute(context, ai);
-                      } catch (e, st) {
-                        showErrorDialog(context, e, st);
-                      }
-                    },
-                  ));
-                }
-                return actions;
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(left: 16.0),
-                child: LayoutBuilder(builder: (context, cons) {
-                  final isFullSize = cons.maxWidth >= 600;
-                  final hasRoundedCorners =
-                      MediaQuery.of(context).size.width < 600;
-                  return Row(
-                    children: [
-                      if (hasRoundedCorners)
-                        SizedBox(
-                          width: 8,
-                        ),
-                      Expanded(
-                        child: Text(
-                          footerStr,
-                          style: TextStyle(
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            zoomLevel.sizeValue = 0.2;
-                            zoomLevel.type = ZoomLevelType.list;
-                          });
-                          widget.viewState.save();
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            UniconsLine.list_ul,
-                            color: zoomLevel.type == ZoomLevelType.list
-                                ? Theme.of(context).primaryColor
-                                : null,
-                          ),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            zoomLevel.sizeValue = 0.3;
-                            zoomLevel.type = ZoomLevelType.grid;
-                          });
-                          widget.viewState.save();
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            UniconsLine.table,
-                            color: zoomLevel.type == ZoomLevelType.grid
-                                ? Theme.of(context).primaryColor
-                                : null,
-                          ),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            zoomLevel.sizeValue = 0.3;
-                            zoomLevel.type = ZoomLevelType.gridCover;
-                          });
-                          widget.viewState.save();
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            UniconsSolid.apps,
-                            color: zoomLevel.type == ZoomLevelType.gridCover
-                                ? Theme.of(context).primaryColor
-                                : null,
-                          ),
-                        ),
-                      ),
-                      if (hasRoundedCorners)
-                        SizedBox(
-                          width: 16,
-                        ),
-                      if (isFullSize)
-                        Slider(
-                          value: zoomLevel.sizeValue,
-                          onChanged: (value) {
-                            setState(() {
-                              zoomLevel.sizeValue = value;
-                            });
-                          },
-                        )
-                    ],
-                  );
-                }),
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }

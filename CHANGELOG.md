@@ -2,10 +2,13 @@
 
 ## main
 
+- New and improved drag and drop system
 - The ffmpeg installer now also works on Windows
 - Added tool to list used MySky paths
 - Improved video thumbnail extraction
 - Improved Jellyfin folder navigation
+- The image grid view now shows progress bars and offline status for files
+- Disable integrated audio player by default
 - Fixed some bugs
 
 ## Beta 0.9.0

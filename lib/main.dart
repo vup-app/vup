@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:math';
 import 'package:alfred/alfred.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:contextmenu/contextmenu.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -15,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:vup/model/sync_task.dart';
 import 'package:sodium_libs/sodium_libs.dart' hide Box;
 import 'package:vup/theme.dart';
+import 'package:vup/utils/strings.dart';
 import 'package:vup/view/tab.dart';
 import 'package:vup/widget/app_bar_wrapper.dart';
 import 'package:vup/widget/vup_logo.dart';
@@ -582,142 +585,297 @@ class _HomePageState extends State<HomePage> with TrayListener {
 
         return Future.value(false);
       },
-      child: Scaffold(
-        drawer: context.isMobile
-            ? Drawer(
-                child: SafeArea(
-                  child: SidebarView(
-                    appLayoutState: appLayoutState,
-                  ),
-                ),
-              )
-            : null,
-        appBar: !context.isMobile
-            ? null
-            : AppBarWrapper(
-                child: AppBar(
-                  /*     leading: IconButton(
-                      onPressed: () {
-                        context.beamBack();
-                      },
-                      icon: Icon(
-                        Icons.arrow_upward,
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (event) {
+          if (event.buttons == kPrimaryButton ||
+              event.kind == PointerDeviceKind.stylus) {
+            if (globalDragAndDropPossible) {
+              globalDragAndDropPointerDown = true;
+            }
+          }
+        },
+        onPointerUp: (details) {
+          globalDragAndDropPointerDown = false;
+
+          if (globalDragAndDropActive) {
+            final targetUriString =
+                globalDragAndDropUri ?? globalDragAndDropDirectoryViewUri;
+            if (targetUriString != null) {
+              final targetUri = Uri.parse(targetUriString);
+
+              final entityStr = renderFileSystemEntityCount(
+                globalDragAndDropSourceFiles.length,
+                globalDragAndDropSourceDirectories.length,
+              );
+              final fileUris = globalDragAndDropSourceFiles;
+              final directoryUris = globalDragAndDropSourceDirectories;
+              showContextMenu(
+                details.position,
+                context,
+                (ctx) => [
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: 4.0,
+                      left: 16.0,
+                      right: 16.0,
+                      bottom: 4.0,
+                    ),
+                    child: Text(
+                      'Dropped $entityStr in ${targetUri.pathSegments.isEmpty ? '' : targetUri.pathSegments.sublist(1).join('/')}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
                       ),
-                    ), */
-                  title: VupLogo(),
-                  /* 
-                          :  */
-                  actions: [
-                    // TODO Notifications
-                    /*  IconButton(
-                          onPressed: () {
-                            if (!_isSearching) {}
-                            setState(() {
-                              _isSearching = !_isSearching;
-                            });
-                          },
-                          icon: Icon(
-                            _isSearching ? Icons.close : Icons.search,
-                          ),
-                        ), */
-                    /*  IconButton(
-                      onPressed: () {},
-                      icon: Icon(
-                        UniconsLine.bell,
-                      ),
-                    ), */
-                  ],
-                ),
-              ),
-        body: context.isMobile
-            ? BrowseView(pathNotifier: appLayoutState.currentTab[0].state)
-            : SafeArea(
-                child: MultiSplitViewTheme(
-                  data: MultiSplitViewThemeData(
-                    dividerThickness: 6,
-                    dividerPainter: DividerPainters.background(
-                      color: Theme.of(context).dividerColor,
                     ),
                   ),
-                  child: MultiSplitView(
-                    controller: splitCtrl,
-                    minimalSize: 200,
-                    children: [
-                      SidebarView(appLayoutState: appLayoutState),
-                      // for (final view in appLayoutState.views)
-                      Column(
-                        children: [
-                          SizedBox(
-                            height: (Platform.isWindows || Platform.isLinux)
-                                ? appWindow.titleBarHeight
-                                : 32,
-                            child: Container(
-                              color: Theme.of(context).dividerColor,
-                              margin: const EdgeInsets.only(left: 1),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                      child: MoveWindow(
-                                    child: StreamBuilder<Null>(
-                                        stream: appLayoutState.stream,
-                                        builder: (context, snapshot) {
-                                          return /* Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 6.0,
-                                              ),
-                                              child: */
-                                              Row(
-                                            children: [
-                                              for (int i = 0;
-                                                  i <
-                                                      appLayoutState
-                                                          .tabs.length;
-                                                  i++)
-                                                _buildTabIndicator(i, context),
-                                              InkWell(
-                                                onTap: () {
-                                                  appLayoutState.createTab();
-                                                },
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: Icon(
-                                                    UniconsLine.plus,
-                                                    size: 22,
-                                                  ),
-                                                ),
-                                              )
-                                            ],
-                                            /* ), */
-                                          );
-                                        }),
-                                  )),
-                                  WindowButtons(),
-                                ],
-                              ),
+                  ListTile(
+                    leading: Icon(UniconsLine.file_export),
+                    title: Text(
+                      'Move here',
+                    ),
+                    onTap: () async {
+                      logger.info(
+                          'moving ${fileUris} and ${directoryUris} to $targetUriString');
+                      ctx.pop();
+                      try {
+                        showLoadingDialog(context, 'Moving $entityStr...');
+                        final futures = <Future>[];
+
+                        for (final uri in fileUris) {
+                          futures.add(
+                            storageService.dac.moveFile(
+                              uri,
+                              storageService.dac
+                                  .getChildUri(targetUri,
+                                      Uri.parse(uri).pathSegments.last)
+                                  .toString(),
                             ),
-                          ),
-                          /*    Container(
-                              height: 6,
-                              color: Theme.of(context).dividerColor,
-                            ), */
-                          Expanded(
-                            child: StreamBuilder<Null>(
-                                stream: appLayoutState.stream,
-                                builder: (context, snapshot) {
-                                  return TabView(
-                                    tabIndex: appLayoutState.tabIndex,
-                                  );
-                                }),
-                          ),
-                        ],
-                      ),
+                          );
+                        }
+                        for (final uri in directoryUris) {
+                          futures.add(
+                            storageService.dac.moveDirectory(
+                              uri,
+                              storageService.dac
+                                  .getChildUri(targetUri,
+                                      Uri.parse(uri).pathSegments.last)
+                                  .toString(),
+                            ),
+                          );
+                        }
+                        await Future.wait(futures);
+                        context.pop();
+                      } catch (e, st) {
+                        context.pop();
+                        showErrorDialog(context, e, st);
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(UniconsLine.copy),
+                    title: Text(
+                      'Copy here',
+                    ),
+                    onTap: () async {
+                      logger.info(
+                          'copying ${fileUris} and ${directoryUris} to $targetUriString');
+                      ctx.pop();
+                      try {
+                        showLoadingDialog(context, 'Copying $entityStr...');
+                        final futures = <Future>[];
+
+                        for (final uri in fileUris) {
+                          futures.add(
+                            storageService.dac.copyFile(
+                              uri,
+                              targetUri.toString(),
+                            ),
+                          );
+                        }
+                        for (final uri in directoryUris) {
+                          final name = Uri.parse(uri).pathSegments.last;
+                          futures.add(
+                            storageService.dac.createDirectory(
+                              targetUri.toString(),
+                              name,
+                            ),
+                          );
+                          futures.add(
+                            storageService.dac.cloneDirectory(
+                              uri,
+                              storageService.dac
+                                  .getChildUri(
+                                    targetUri,
+                                    name,
+                                  )
+                                  .toString(),
+                            ),
+                          );
+                        }
+                        await Future.wait(futures);
+                        context.pop();
+                      } catch (e, st) {
+                        context.pop();
+                        showErrorDialog(context, e, st);
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(UniconsLine.times),
+                    title: Text(
+                      'Cancel',
+                    ),
+                    onTap: () {
+                      ctx.pop();
+                    },
+                  ),
+                ],
+                8.0,
+                320.0,
+              );
+            }
+          }
+          globalDragAndDropActive = false;
+        },
+        child: Scaffold(
+          drawer: context.isMobile
+              ? Drawer(
+                  child: SafeArea(
+                    child: SidebarView(
+                      appLayoutState: appLayoutState,
+                    ),
+                  ),
+                )
+              : null,
+          appBar: !context.isMobile
+              ? null
+              : AppBarWrapper(
+                  child: AppBar(
+                    /*     leading: IconButton(
+                        onPressed: () {
+                          context.beamBack();
+                        },
+                        icon: Icon(
+                          Icons.arrow_upward,
+                        ),
+                      ), */
+                    title: VupLogo(),
+                    /* 
+                            :  */
+                    actions: [
+                      // TODO Notifications
+                      /*  IconButton(
+                            onPressed: () {
+                              if (!_isSearching) {}
+                              setState(() {
+                                _isSearching = !_isSearching;
+                              });
+                            },
+                            icon: Icon(
+                              _isSearching ? Icons.close : Icons.search,
+                            ),
+                          ), */
+                      /*  IconButton(
+                        onPressed: () {},
+                        icon: Icon(
+                          UniconsLine.bell,
+                        ),
+                      ), */
                     ],
                   ),
-                  /*   );
-                        }), */
                 ),
-              ),
+          body: context.isMobile
+              ? BrowseView(pathNotifier: appLayoutState.currentTab[0].state)
+              : SafeArea(
+                  child: MultiSplitViewTheme(
+                    data: MultiSplitViewThemeData(
+                      dividerThickness: 6,
+                      dividerPainter: DividerPainters.background(
+                        color: Theme.of(context).dividerColor,
+                      ),
+                    ),
+                    child: MultiSplitView(
+                      controller: splitCtrl,
+                      minimalSize: 200,
+                      children: [
+                        SidebarView(appLayoutState: appLayoutState),
+                        // for (final view in appLayoutState.views)
+                        Column(
+                          children: [
+                            SizedBox(
+                              height: (Platform.isWindows || Platform.isLinux)
+                                  ? appWindow.titleBarHeight
+                                  : 32,
+                              child: Container(
+                                color: Theme.of(context).dividerColor,
+                                margin: const EdgeInsets.only(left: 1),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                        child: MoveWindow(
+                                      child: StreamBuilder<Null>(
+                                          stream: appLayoutState.stream,
+                                          builder: (context, snapshot) {
+                                            return /* Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 6.0,
+                                                ),
+                                                child: */
+                                                Row(
+                                              children: [
+                                                for (int i = 0;
+                                                    i <
+                                                        appLayoutState
+                                                            .tabs.length;
+                                                    i++)
+                                                  _buildTabIndicator(
+                                                      i, context),
+                                                InkWell(
+                                                  onTap: () {
+                                                    appLayoutState.createTab();
+                                                  },
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            4.0),
+                                                    child: Icon(
+                                                      UniconsLine.plus,
+                                                      size: 22,
+                                                    ),
+                                                  ),
+                                                )
+                                              ],
+                                              /* ), */
+                                            );
+                                          }),
+                                    )),
+                                    WindowButtons(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            /*    Container(
+                                height: 6,
+                                color: Theme.of(context).dividerColor,
+                              ), */
+                            Expanded(
+                              child: StreamBuilder<Null>(
+                                  stream: appLayoutState.stream,
+                                  builder: (context, snapshot) {
+                                    return TabView(
+                                      tabIndex: appLayoutState.tabIndex,
+                                    );
+                                  }),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    /*   );
+                          }), */
+                  ),
+                ),
+        ),
       ),
       /*   ), */
     );

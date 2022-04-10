@@ -62,26 +62,30 @@ class DirectoryCacheSyncService extends VupService with CustomState {
         );
 
         info('[sync] decompressing from ${devId}');
-        final Map<String, dynamic> remoteCache = json.decode(
-          utf8.decode(await compute(
-            lzma.decode,
-            res.data!,
-          )),
-        );
+        try {
+          final Map<String, dynamic> remoteCache = json.decode(
+            utf8.decode(await compute(
+              lzma.decode,
+              res.data!,
+            )),
+          );
 
-        info('[sync] importing from ${devId} (${remoteCache.length} keys)');
+          info('[sync] importing from ${devId} (${remoteCache.length} keys)');
 
-        for (final key in remoteCache.keys) {
-          final le = directoryIndexCache.get(key);
-          if (le == null || le.revision < remoteCache[key]['r']) {
-            directoryIndexCache.put(
-              key,
-              CachedEntry(
-                revision: remoteCache[key]['r'],
-                data: remoteCache[key]['d'],
-              ),
-            );
+          for (final key in remoteCache.keys) {
+            final le = directoryIndexCache.get(key);
+            if (le == null || le.revision < remoteCache[key]['r']) {
+              directoryIndexCache.put(
+                key,
+                CachedEntry(
+                  revision: remoteCache[key]['r'],
+                  data: remoteCache[key]['d'],
+                ),
+              );
+            }
           }
+        } catch (e, st) {
+          error('$e $st');
         }
       }
     }

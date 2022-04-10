@@ -156,6 +156,10 @@ class _BrowseViewState extends State<BrowseView> {
                     builder: (context, snapshot) {
                       return DropTarget(
                         onDragDone: (detail) async {
+                          logger.verbose(
+                            'dropped local files in $globalIsHoveringDirectoryUri',
+                          );
+
                           final files = <File>[];
                           final directories = <Directory>[];
                           logger.verbose(detail.urls);
@@ -202,7 +206,7 @@ class _BrowseViewState extends State<BrowseView> {
                           /* print('files $files');
                           print('directories $directories');
                           return; */
-                          final currentUri =
+                          final currentUri = globalIsHoveringDirectoryUri ??
                               pathNotifier.toCleanUri().toString();
                           final currentPath = pathNotifier.value;
                           try {
@@ -624,11 +628,13 @@ class _BrowseViewState extends State<BrowseView> {
                                         padding: const EdgeInsets.all(8.0),
                                         child: Row(
                                           children: [
-                                            Text(
-                                              'This is a Jellyfin media directory of type "$jellyfinCollectionType"',
-                                              style: TextStyle(
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.bold,
+                                            Expanded(
+                                              child: Text(
+                                                'This is a Jellyfin media directory of type "$jellyfinCollectionType"',
+                                                style: TextStyle(
+                                                  color: Colors.black,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ),
                                             SizedBox(

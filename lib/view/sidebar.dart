@@ -166,8 +166,6 @@ MimeType=x-scheme-handler/vup;
     });
   }
 
-
-
   late final Widget userWidget;
 
   @override
@@ -471,6 +469,7 @@ MimeType=x-scheme-handler/vup;
                       ),
                     );
                     if (res == true) {
+                      // TODO Fix this on Windows
                       showLoadingDialog(context, 'Deleting local data...');
 
                       logger.info('delete $vupTempDir');
@@ -913,7 +912,7 @@ MimeType=x-scheme-handler/vup;
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (syncTasks.isNotEmpty)
+                if (syncTasks.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.only(left: 16.0),
                     child: Text(
@@ -923,6 +922,7 @@ MimeType=x-scheme-handler/vup;
                       ),
                     ),
                   ),
+                ],
                 for (final String syncKey in syncTasks.keys)
                   StateNotifierBuilder<FileState>(
                       stateNotifier:

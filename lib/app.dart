@@ -49,6 +49,9 @@ late bool isAppWindowVisible;
 bool get isWatchOpenedFilesEnabled =>
     dataBox.get('watch_opened_files_enabled') ?? false;
 
+bool get isIntegratedAudioPlayerEnabled =>
+    dataBox.get('integrated_audio_player_enabled') ?? false;
+
 bool get isColumnViewFeatureEnabled =>
     dataBox.get('column_view_enabled') ?? false;
 
@@ -449,6 +452,18 @@ Future<void> requestAndroidBackgroundPermissions() async {
 
 final globalClipboardState = GlobalClipboardState();
 
+bool globalIsHoveringFileSystemEntity = false;
+String? globalIsHoveringDirectoryUri;
+bool globalDragAndDropPossible = false;
+bool globalDragAndDropPointerDown = false;
+
+Set<String> globalDragAndDropSourceFiles = {};
+Set<String> globalDragAndDropSourceDirectories = {};
+
+bool globalDragAndDropActive = false;
+String? globalDragAndDropUri;
+String? globalDragAndDropDirectoryViewUri;
+
 class GlobalClipboardState with CustomState {
   bool isCopy = true;
   Set<String> fileUris = {};
@@ -490,6 +505,7 @@ class PathNotifierState with CustomState {
   }
 
   void disableSearchMode() {
+    globalIsHoveringFileSystemEntity = false;
     if (!isSearching) return;
     searchTextCtrl.clear();
     setQueryParameters({});

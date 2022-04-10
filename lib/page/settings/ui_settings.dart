@@ -132,6 +132,18 @@ class _UISettingsPageState extends State<UISettingsPage> {
           ),
         ],
         CheckboxListTile(
+          value: isIntegratedAudioPlayerEnabled,
+          title: Text('Integrated audio player enabled'),
+          subtitle: Text(
+            'Not recommended, use the Jellyfin server instead.',
+          ),
+          onChanged: (val) {
+            dataBox.put('integrated_audio_player_enabled', val!);
+
+            setState(() {});
+          },
+        ),
+        CheckboxListTile(
           value: devModeEnabled,
           title: Text('Dev Mode enabled'),
           subtitle: Text(

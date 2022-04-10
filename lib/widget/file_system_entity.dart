@@ -145,10 +145,49 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
             print('onDoubleTap');
           }, */
         focusNode: focusNode,
-        // TODO Use for flexible drag n' drop
-        /* onHover: (value) {
-          print('onHover $value');
-        }, */
+        onHover: (value) {
+          if (!isDoubleClickToOpenEnabled) return;
+          globalIsHoveringFileSystemEntity = value;
+
+          if (isDirectory) {
+            globalIsHoveringDirectoryUri = value ? uri : null;
+          }
+
+          if (globalDragAndDropActive) {
+            if (value && isDirectory) {
+              globalDragAndDropUri = uri;
+            } else {
+              globalDragAndDropUri = null;
+            }
+            return;
+          }
+
+          if (value == true) {
+            globalDragAndDropPossible = true;
+            return;
+          }
+          if (globalDragAndDropPossible && globalDragAndDropPointerDown) {
+            logger.verbose('start drag and drop operation');
+            if (isSelected) {
+              globalDragAndDropSourceFiles = widget.pathNotifier.selectedFiles;
+              globalDragAndDropSourceDirectories =
+                  widget.pathNotifier.selectedDirectories;
+            } else {
+              if (isDirectory) {
+                globalDragAndDropSourceFiles = {};
+                globalDragAndDropSourceDirectories = {uri};
+              } else {
+                globalDragAndDropSourceFiles = {uri};
+                globalDragAndDropSourceDirectories = {};
+              }
+            }
+            globalDragAndDropActive = true;
+            globalDragAndDropUri = null;
+            globalDragAndDropPossible = false;
+            return;
+          }
+          globalDragAndDropPossible = false;
+        },
         onTap: (!enabled || isUploading)
             ? null
             : () async {
@@ -320,7 +359,8 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
                     final ext = extension(file.name).toLowerCase();
 
-                    if (supportedAudioExtensionsForPlayback.contains(ext) &&
+                    if (isIntegratedAudioPlayerEnabled &&
+                        supportedAudioExtensionsForPlayback.contains(ext) &&
                         !(Platform.isWindows || Platform.isLinux)) {
                       logger.info('use audioPlayer');
                       audioPlayer.pause();
@@ -393,13 +433,6 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
   }
 
   Widget _buildContent(Color? textColor) {
-    if (widget.zoomLevel.type == ZoomLevelType.gridCover && !isDirectory) {
-      if ((file.ext ?? {}).containsKey('thumbnail'))
-        return ThumbnailCoverWidget(
-          file: file,
-        );
-    }
-
     final stateNotifier = storageService.dac.getFileStateChangeNotifier(
       isDirectory
           ? [...widget.pathNotifier.value, dir.name].join('/')
@@ -407,6 +440,75 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
     );
 
     if (widget.zoomLevel.type != ZoomLevelType.list) {
+      final fileStateWidget = StateNotifierBuilder<FileState>(
+          stateNotifier: stateNotifier,
+          builder: (context, state, _) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (state.type != FileStateType.idle) ...[
+                  Icon(
+                    iconMap[state.type],
+                    size: 16,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  SizedBox(
+                    width: 8,
+                  ),
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: state.progress,
+                    ),
+                  ),
+                  /* 
+                        SizedBox(
+                          width: 8,
+                        ), */
+                  if (false)
+                    InkWell(
+                      onTap: () {
+                        // TODO stateNotifier.cancel();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Icon(
+                          UniconsLine.times,
+                          size: 16,
+                        ),
+                      ),
+                    )
+                ],
+                if (!isDirectory && localFiles.containsKey(file.file.hash)) ...[
+                  Icon(
+                    UniconsLine.check_circle,
+                    size: widget.zoomLevel.size * 0.23,
+                    color: context.theme.colorScheme.secondary,
+                  ),
+                ]
+              ],
+            );
+          });
+
+      if (widget.zoomLevel.type == ZoomLevelType.gridCover && !isDirectory) {
+        if ((file.ext ?? {}).containsKey('thumbnail'))
+          return Stack(
+            fit: StackFit.passthrough,
+            children: [
+              ThumbnailCoverWidget(
+                file: file,
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: EdgeInsets.all(widget.zoomLevel.size * 0.1),
+                  child: fileStateWidget,
+                ),
+              ),
+            ],
+          );
+      }
+
       return Stack(
         alignment: Alignment.center,
         children: [
@@ -438,65 +540,14 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
               ),
             ],
           ),
-          StateNotifierBuilder<FileState>(
-              stateNotifier: stateNotifier,
-              builder: (context, state, _) {
-                return Padding(
-                  padding: EdgeInsets.only(
-                    right: widget.zoomLevel.size * 0.3,
-                    top: widget.zoomLevel.size * 0.2,
-                    left: widget.zoomLevel.size * 0.3,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (state.type != FileStateType.idle) ...[
-                        Icon(
-                          iconMap[state.type],
-                          size: 16,
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
-                        SizedBox(
-                          width: 8,
-                        ),
-                        Expanded(
-                          child: LinearProgressIndicator(
-                            value: state.progress,
-                          ),
-                        ),
-                        /* 
-                        SizedBox(
-                          width: 8,
-                        ), */
-                        if (false)
-                          InkWell(
-                            onTap: () {
-                              // TODO stateNotifier.cancel();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Icon(
-                                UniconsLine.times,
-                                size: 16,
-                              ),
-                            ),
-                          )
-                      ],
-                      if (!isDirectory &&
-                          localFiles.containsKey(file.file.hash)) ...[
-                        Icon(
-                          UniconsLine.check_circle,
-                          size: widget.zoomLevel.size * 0.23,
-                          color: context.theme.colorScheme.secondary,
-                        ),
-                      ]
-                    ],
-                  ),
-                );
-
-                return SizedBox();
-              }),
+          Padding(
+            padding: EdgeInsets.only(
+              right: widget.zoomLevel.size * 0.3,
+              top: widget.zoomLevel.size * 0.2,
+              left: widget.zoomLevel.size * 0.3,
+            ),
+            child: fileStateWidget,
+          ),
         ],
       );
     }
