@@ -445,109 +445,113 @@ class _DirectoryViewState extends State<DirectoryView> {
             uploadingFiles.length) ==
         0) {
       return gestureAreaBuilder(
-        Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: (widget.pathNotifier.path.join('/') == 'home' &&
-                          !widget.pathNotifier.isSearching)
-                      ? [
-                          Text(
-                            'Welcome to Vup!',
-                            style: TextStyle(
-                              fontSize: 24,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12, right: 12),
-                            child: Text(
-                              'It looks like your home directory is empty. Do you want to create some common sub-directories? (Documents, Music, ...)',
+        Container(
+          color: Colors.transparent,
+          child: Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: (widget.pathNotifier.path.join('/') == 'home' &&
+                            !widget.pathNotifier.isSearching)
+                        ? [
+                            Text(
+                              'Welcome to Vup!',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 24,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                          ),
-                          SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () async {
-                              showLoadingDialog(
-                                context,
-                                'Creating common directories...',
-                              );
-                              final dirs = [
-                                'Books',
-                                'Documents',
-                                'Music',
-                                'Videos',
-                                'Images',
-                              ];
-
-                              final futures = <Future>[];
-                              for (final dir in dirs) {
-                                futures.add(
-                                  storageService.dac.createDirectory(
-                                    'home',
-                                    dir,
-                                  ),
+                            SizedBox(height: 16),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 12, right: 12),
+                              child: Text(
+                                'It looks like your home directory is empty. Do you want to create some common sub-directories? (Documents, Music, ...)',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () async {
+                                showLoadingDialog(
+                                  context,
+                                  'Creating common directories...',
                                 );
-                              }
-                              await Future.wait(futures);
-                              context.pop();
-                            },
-                            child: Text('Create them!'),
-                          ),
-                        ]
-                      : [
-                          Text(
-                            widget.pathNotifier.isSearching
-                                ? 'No search results found.'
-                                : 'This directory is empty.',
-                            style: TextStyle(
-                              fontSize: 24,
-                            ),
-                          ),
-                        ],
+                                final dirs = [
+                                  'Books',
+                                  'Documents',
+                                  'Music',
+                                  'Videos',
+                                  'Images',
+                                ];
 
-                  /*  SizedBox(
-                      height: 16,
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final result = await showTextInputDialog(
-                          context: context,
-                          textFields: [
-                            DialogTextField(
-                              hintText: 'skyfs://...',
+                                final futures = <Future>[];
+                                for (final dir in dirs) {
+                                  futures.add(
+                                    storageService.dac.createDirectory(
+                                      'home',
+                                      dir,
+                                    ),
+                                  );
+                                }
+                                await Future.wait(futures);
+                                context.pop();
+                              },
+                              child: Text('Create them!'),
+                            ),
+                          ]
+                        : [
+                            Text(
+                              widget.pathNotifier.isSearching
+                                  ? 'No search results found.'
+                                  : 'This directory is empty.',
+                              style: TextStyle(
+                                fontSize: 24,
+                              ),
                             ),
                           ],
-                        );
-                        if (result == null) {
-                          return;
-                        }
-                        final sharedSeed = result[0].trim();
-                        final uri = Uri.parse(sharedSeed);
-                        print(sharedSeed);
-                        await storageService.dac.mountUri(
-                          widget.path.join('/'),
-                          uri,
-                        );
-                        sub?.cancel();
-                        sub2?.cancel();
-                        _loadData();
-                      },
-                      child: Text(
-                        'Mount shared directory here',
+
+                    /*  SizedBox(
+                        height: 16,
                       ),
-                    ), */
+                      ElevatedButton(
+                        onPressed: () async {
+                          final result = await showTextInputDialog(
+                            context: context,
+                            textFields: [
+                              DialogTextField(
+                                hintText: 'skyfs://...',
+                              ),
+                            ],
+                          );
+                          if (result == null) {
+                            return;
+                          }
+                          final sharedSeed = result[0].trim();
+                          final uri = Uri.parse(sharedSeed);
+                          print(sharedSeed);
+                          await storageService.dac.mountUri(
+                            widget.path.join('/'),
+                            uri,
+                          );
+                          sub?.cancel();
+                          sub2?.cancel();
+                          _loadData();
+                        },
+                        child: Text(
+                          'Mount shared directory here',
+                        ),
+                      ), */
+                  ),
                 ),
               ),
-            ),
-            clipboardWidget,
-          ],
+              clipboardWidget,
+            ],
+          ),
         ),
       );
     } else {
