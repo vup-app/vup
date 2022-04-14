@@ -259,7 +259,7 @@ class DirectoryViewState with CustomState, VupService {
 
   void load() {
     verbose('load ${pathNotifier.toCleanUri()}');
-    final key = md5
+    final key = sha1
         .convert(utf8.encode(pathNotifier.toCleanUri().toString()))
         .toString();
     final state = directoryViewStates.get(key) ??
@@ -292,7 +292,7 @@ class DirectoryViewState with CustomState, VupService {
       'firstSortStep': firstSortStep.id,
     };
 
-    final key = md5
+    final key = sha1
         .convert(utf8.encode(pathNotifier.toCleanUri().toString()))
         .toString();
 
@@ -668,12 +668,12 @@ final subTitleTextStyle = TextStyle(
   fontWeight: FontWeight.bold,
 );
 
-showInfoDialog(
+Future showInfoDialog(
   BuildContext context,
   String title,
   String content,
 ) {
-  showDialog(
+  return showDialog(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(

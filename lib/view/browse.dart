@@ -154,6 +154,45 @@ class _BrowseViewState extends State<BrowseView> {
                 child: StreamBuilder<Null>(
                     stream: widget.pathNotifier.stream,
                     builder: (context, snapshot) {
+                      final uri = storageService.dac
+                          .parsePath(path.join('/'))
+                          .toString();
+
+                      final hasWriteAccess =
+                          storageService.dac.checkAccess(uri.toString());
+
+                      final sharedDirsIndex = storageService.dac
+                          .getDirectoryIndexCached(
+                              'vup.hns/.internal/shared-directories');
+
+                      bool isDirectorySharedReadOnly = false;
+
+                      if (sharedDirsIndex != null) {
+                        for (final sharedUri
+                            in sharedDirsIndex.directories.keys) {
+                          if (uri == sharedUri ||
+                              '$uri/'.startsWith(sharedUri)) {
+                            isDirectorySharedReadOnly = true;
+                            break;
+                          }
+                        }
+                      }
+                      final nonMountedUri = storageService.dac
+                          .parsePath(
+                            path.join('/'),
+                            resolveMounted: false,
+                          )
+                          .toString();
+
+                      bool isDirectorySharedReadWrite = false;
+
+                      for (final mountUri in storageService.dac.mounts.keys) {
+                        if (nonMountedUri == mountUri ||
+                            nonMountedUri.startsWith('$mountUri/')) {
+                          isDirectorySharedReadWrite = true;
+                          break;
+                        }
+                      }
                       return DropTarget(
                         onDragDone: (detail) async {
                           logger.verbose(
@@ -678,109 +717,127 @@ class _BrowseViewState extends State<BrowseView> {
                                     );
                                   }),
                             ],
-                            ...((path.isNotEmpty &&
-                                    path.first.startsWith('skyfs://'))
-                                ? [
-                                    Container(
-                                      width: double.infinity,
-                                      color: Theme.of(context).primaryColor,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                'You are browsing a read-only shared directory.',
-                                                style: TextStyle(
-                                                  color: Colors.black,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                            ElevatedButton(
-                                              onPressed: () async {
-                                                showLoadingDialog(
-                                                  context,
-                                                  'Adding to "Shared with me" directory...',
-                                                );
-                                                final uri = path.first;
-
-                                                final index =
-                                                    await storageService.dac
-                                                        .getDirectoryIndex(uri);
-
-                                                await storageService.dac
-                                                    .doOperationOnDirectory(
-                                                        storageService.dac
-                                                            .parsePath(
-                                                          'vup.hns/.internal/shared-with-me',
-                                                        ), (di) async {
-                                                  di.directories[uri] =
-                                                      DirectoryDirectory(
-                                                    name:
-                                                        renderFileSystemEntityCount(
-                                                              index
-                                                                  .files.length,
-                                                              index.directories
-                                                                  .length,
-                                                            ) +
-                                                            ' (' +
-                                                            [
-                                                              ...index
-                                                                  .directories
-                                                                  .keys,
-                                                              ...index
-                                                                  .files.keys
-                                                            ].join(', ') +
-                                                            ')',
-                                                    created: DateTime.now()
-                                                        .millisecondsSinceEpoch,
-                                                  );
-                                                });
-
-                                                context.pop();
-
-                                                pathNotifier.value = [
-                                                  'vup.hns',
-                                                  '.internal',
-                                                  'shared-with-me'
-                                                ];
-                                              },
-                                              style: ButtonStyle(
-                                                backgroundColor:
-                                                    MaterialStateProperty.all(
-                                                  Colors.black,
-                                                ),
-                                              ),
-                                              child: Text(
-                                                'Add to your SkyFS',
-                                              ),
-                                            )
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  ]
-                                : [
-                                    if (!storageService.dac
-                                        .checkAccess(path.join('/')))
-                                      Container(
-                                        width: double.infinity,
-                                        color: Theme.of(context).primaryColor,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Text(
-                                            'This directory is read-only',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                            if (path.isNotEmpty &&
+                                path.first.startsWith('skyfs://')) ...[
+                              Container(
+                                width: double.infinity,
+                                color: Theme.of(context).primaryColor,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'You are browsing a shared directory.',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-                                  ]),
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          showLoadingDialog(
+                                            context,
+                                            'Adding to "Shared with me" directory...',
+                                          );
+                                          final uri = path.first;
+
+                                          final index = await storageService.dac
+                                              .getDirectoryIndex(uri);
+
+                                          await storageService.dac
+                                              .doOperationOnDirectory(
+                                                  storageService.dac.parsePath(
+                                                    'vup.hns/.internal/shared-with-me',
+                                                  ), (di) async {
+                                            di.directories[uri] =
+                                                DirectoryDirectory(
+                                              name: renderFileSystemEntityCount(
+                                                    index.files.length,
+                                                    index.directories.length,
+                                                  ) +
+                                                  ' (' +
+                                                  [
+                                                    ...index.directories.keys,
+                                                    ...index.files.keys
+                                                  ].join(', ') +
+                                                  ')',
+                                              created: DateTime.now()
+                                                  .millisecondsSinceEpoch,
+                                            );
+                                          });
+
+                                          context.pop();
+
+                                          pathNotifier.value = [
+                                            'vup.hns',
+                                            '.internal',
+                                            'shared-with-me'
+                                          ];
+                                        },
+                                        style: ButtonStyle(
+                                          backgroundColor:
+                                              MaterialStateProperty.all(
+                                            Colors.black,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Add to your SkyFS',
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              )
+                            ],
+                            if (!hasWriteAccess)
+                              Container(
+                                width: double.infinity,
+                                color: Theme.of(context).primaryColor,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    'This directory is read-only',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (isDirectorySharedReadOnly)
+                              Container(
+                                width: double.infinity,
+                                color: Theme.of(context).primaryColor,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    'This directory is shared (read-only)',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (isDirectorySharedReadWrite)
+                              Container(
+                                width: double.infinity,
+                                color: Theme.of(context).primaryColor,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    'This directory is shared (read and write)',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             StreamBuilder<Null>(
                                 stream: directoryViewState.stream,
                                 builder: (context, _) {

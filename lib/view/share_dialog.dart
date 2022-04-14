@@ -2,6 +2,8 @@ import 'package:clipboard/clipboard.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vup/app.dart';
+import 'package:vup/widget/hint_card.dart';
+import 'package:vup/widget/sky_button.dart';
 
 class ShareDialog extends StatefulWidget {
   final List<String> directoryUris;
@@ -20,11 +22,20 @@ class _ShareDialogState extends State<ShareDialog> {
   List<String> get directoryUris => widget.directoryUris;
   List<String> get fileUris => widget.fileUris;
 
-  String type = 'static';
+  bool _isStatic = true;
+  bool _isWithWriteAccess = false;
 
   bool _isRunning = false;
 
-  bool _doReEncryptFiles = false;
+  bool _advancedSharePossible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (directoryUris.length == 1 && fileUris.isEmpty) {
+      _advancedSharePossible = true;
+    }
+  }
 
   String renderUri(String uri) {
     final segments = List.from(Uri.parse(uri).pathSegments);
@@ -41,7 +52,12 @@ class _ShareDialogState extends State<ShareDialog> {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Share online'),
+          Text(
+            'Share online',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           if (!_isRunning)
             IconButton(
               onPressed: () {
@@ -61,7 +77,9 @@ class _ShareDialogState extends State<ShareDialog> {
           children: [
             if (directoryUris.isNotEmpty) ...[
               Text(
-                '${directoryUris.length} directories',
+                directoryUris.length == 1
+                    ? '1 directory'
+                    : '${directoryUris.length} directories',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                 ),
@@ -69,6 +87,10 @@ class _ShareDialogState extends State<ShareDialog> {
               for (final dir in directoryUris) Text(renderUri(dir)),
             ],
             if (fileUris.isNotEmpty) ...[
+              if (directoryUris.isNotEmpty)
+                SizedBox(
+                  height: 8,
+                ),
               Text(
                 '${fileUris.length} files',
                 style: TextStyle(
@@ -84,11 +106,80 @@ class _ShareDialogState extends State<ShareDialog> {
               'Sharing type',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
             ),
-            Wrap(
-              children: [
-                Padding(
+            if (!_advancedSharePossible) ...[
+              SizedBox(
+                height: 8,
+              ),
+              HintCard(
+                icon: UniconsLine.info_circle,
+                color: Theme.of(context).primaryColor,
+                content: Text(
+                  'Your share link will only contain the current version of everything you selected. If you want to share a directory including its future changes or want to allow other users to write to the shared directory, you have to select only one directory.',
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+            if (_advancedSharePossible) ...[
+              RadioListTile<bool>(
+                title: Text('Static (only the current version)'),
+                value: true,
+                groupValue: _isStatic,
+                onChanged: (val) {
+                  setState(() {
+                    _isStatic = val!;
+                  });
+                },
+              ),
+              RadioListTile<bool>(
+                title: Text(
+                    'With changes (all updates to this directory in the future)'),
+                value: false,
+                groupValue: _isStatic,
+                onChanged: (val) {
+                  setState(() {
+                    _isStatic = val!;
+                  });
+                },
+              ),
+              if (!_isStatic) ...[
+                CheckboxListTile(
+                  title: Text('Allow writes'),
+                  subtitle: Text(
+                    'If enabled, any user who knows the share link can not only read but also write to your shared directory.',
+                  ),
+                  value: _isWithWriteAccess,
+                  onChanged: (val) {
+                    setState(() {
+                      _isWithWriteAccess = val!;
+                    });
+                  },
+                ),
+                SizedBox(
+                  height: 4,
+                ),
+                HintCard(
+                  icon: UniconsLine.exclamation_octagon,
+                  color: SkyColors.warning,
+                  content: Text(
+                    'It\'s not yet possible to revoke access to directories you shared using the "With changes" mode. This feature will be added in a later version of Vup.',
+                    style: TextStyle(
+                      color: SkyColors.warning,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+            if (false)
+              Wrap(
+                children: [
+                  /*     Padding(
                   padding: const EdgeInsets.all(4.0),
                   child: ChoiceChip(
                     label: Text('Static (read-only, no updates)'),
@@ -104,8 +195,8 @@ class _ShareDialogState extends State<ShareDialog> {
                           }, // ! Only static allows multiple directories and files (mix and match)
                     // ! You can still add files and directories to the share manually later, but it will not be updated automatically
                   ),
-                ),
-                /*     Padding(
+                ), */
+                  /*     Padding(
                   padding: const EdgeInsets.all(4.0),
                   child: ChoiceChip(
                     // ! only 1 dir, creates a virtual directory, copies everything there and mounts it
@@ -123,13 +214,13 @@ class _ShareDialogState extends State<ShareDialog> {
                     onSelected: null, // ! also allows single file later
                   ),
                 ), */
-                /*     ChoiceChip(
+                  /*     ChoiceChip(
                     label: Text('Public (with the world)'),
                     selected: type == 'todo',
                     onSelected: null,
                   ), */
-              ],
-            ),
+                ],
+              ),
             /*  if (type == 'static')
               CheckboxListTile(
                 value: _doReEncryptFiles,
@@ -147,9 +238,15 @@ class _ShareDialogState extends State<ShareDialog> {
                   'Requires fully downloading, decrypting, encrypting and re-uploading all shared files.',
                 ),
               ), */
+            SizedBox(
+              height: 16,
+            ),
             Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton(
+              padding: const EdgeInsets.only(),
+              child: SkyButton(
+                color: Theme.of(context).primaryColor,
+                filled: true,
+                enabled: !_isRunning,
                 onPressed: _isRunning
                     ? null
                     : () async {
@@ -157,7 +254,7 @@ class _ShareDialogState extends State<ShareDialog> {
                           _isRunning = true;
                         });
                         try {
-                          if (type == 'static') {
+                          if (_isStatic) {
                             logger
                                 .verbose('Preparing static share operation...');
                             final uuid = Uuid().v4();
@@ -204,24 +301,94 @@ class _ShareDialogState extends State<ShareDialog> {
 
                             final shareLink =
                                 'https://share.vup.app/#${shareSeed}';
+                            context.pop();
                             showShareResultDialog(context, shareLink);
+                          } else {
+                            if (_isWithWriteAccess) {
+                              logger.info(
+                                  'preparing non-static read+write share operation...');
+
+                              final localUri = storageService.dac.parsePath(
+                                directoryUris.first,
+                                resolveMounted: false,
+                              );
+
+                              final shareUri = await storageService.dac
+                                  .generateSharedReadWriteDirectory();
+
+                              await storageService.dac.cloneDirectory(
+                                localUri.toString(),
+                                shareUri,
+                              );
+
+                              await storageService.dac.mountUri(
+                                localUri.toString(),
+                                Uri.parse(shareUri),
+                              );
+
+                              final shareLink =
+                                  'https://share.vup.app/#${shareUri}';
+                              context.pop();
+                              showShareResultDialog(context, shareLink);
+                            } else {
+                              logger.info(
+                                  'preparing non-static read-only share operation...');
+
+                              final dirUri = storageService.dac
+                                  .parsePath(directoryUris.first);
+
+                              final sharedDirectoriesUri = storageService.dac
+                                  .parsePath(
+                                      'vup.hns/.internal/shared-directories');
+
+                              final res = await storageService.dac
+                                  .doOperationOnDirectory(
+                                sharedDirectoriesUri,
+                                (directoryIndex) async {
+                                  directoryIndex
+                                          .directories[dirUri.toString()] =
+                                      DirectoryDirectory(
+                                    name: dirUri.pathSegments.isEmpty
+                                        ? 'RW share URI'
+                                        : dirUri.pathSegments.last,
+                                    created:
+                                        DateTime.now().millisecondsSinceEpoch,
+                                  );
+                                },
+                              );
+
+                              if (!res.success) throw res.error.toString();
+
+                              final shareSeed =
+                                  await storageService.dac.getShareUriReadOnly(
+                                dirUri.toString(),
+                              );
+
+                              final shareLink =
+                                  'https://share.vup.app/#${shareSeed}';
+                              context.pop();
+                              showShareResultDialog(context, shareLink);
+                            }
                           }
                         } catch (e, st) {
                           showErrorDialog(context, e, st);
                         }
-                        setState(() {
-                          _isRunning = false;
-                        });
+                        if (mounted) {
+                          setState(() {
+                            _isRunning = false;
+                          });
+                        }
                       },
-                child: Text(
-                  'Start sharing process ',
-                ),
+                label: 'Start sharing process',
               ),
             ),
             if (_isRunning)
-              ListTile(
-                leading: CircularProgressIndicator(),
-                title: Text('Doing things...'),
+              Padding(
+                padding: const EdgeInsets.only(top: 12.0),
+                child: ListTile(
+                  leading: CircularProgressIndicator(),
+                  title: Text('Generating share link...'),
+                ),
               )
           ],
         ),

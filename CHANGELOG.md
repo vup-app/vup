@@ -2,14 +2,21 @@
 
 ## main
 
+- New advanced sharing features (with future changes and read+write)
 - New and improved drag and drop system
 - The ffmpeg installer now also works on Windows
+- Fixed high idle CPU usage on Windows
 - Added media file picker for iOS
 - Added tool to list used MySky paths
 - Improved video thumbnail extraction
 - Improved Jellyfin folder navigation
+- Added settings page to manage SkyFS mounts
+- Added support for 3D model thumbnails (requires OpenSCAD to be installed)
+- Added support for PDF thumbnails (requires ImageMagick to be installed)
+- Added support for SVG thumbnails (requires Inkscape to be installed)
 - The image grid view now shows progress bars and offline status for files
 - Disable integrated audio player by default
+- Improved DirectoryIndex cache efficiency
 - Fixed some bugs
 
 ## Beta 0.9.0

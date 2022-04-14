@@ -5,6 +5,7 @@ import 'package:vup/page/settings/cache.dart';
 import 'package:vup/page/settings/custom_themes.dart';
 import 'package:vup/page/settings/devices.dart';
 import 'package:vup/page/settings/jellyfin.dart';
+import 'package:vup/page/settings/mounts.dart';
 import 'package:vup/page/settings/portal_auth.dart';
 import 'package:vup/page/settings/scripts.dart';
 import 'package:vup/page/settings/ui_settings.dart';
@@ -69,6 +70,11 @@ class _SettingsPageState extends State<SettingsPage> {
       title: 'Manage Cache',
       build: () => CacheSettingsPage(),
     ),
+    if (devModeEnabled)
+      SettingsPane(
+        title: 'Edit mounts.json',
+        build: () => MountsSettingsPage(),
+      ),
     SettingsPane(
       title: 'Advanced',
       build: () => AdvancedSettingsPage(),

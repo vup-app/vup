@@ -3,7 +3,7 @@ import 'package:vup/app.dart';
 Future<void> pinAll(BuildContext context, String uri) async {
   showLoadingDialog(context, 'Aggregating skylinks...');
   try {
-    logger.info('aggregateAllSkylinks');
+    logger.info('aggregateAllSkylinks'); // TODO Ignore non-Skylinks
     final map = await storageService.dac.aggregateAllSkylinks(
       startDirectory: uri,
       registryFetchDelay: 1200,

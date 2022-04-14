@@ -83,7 +83,7 @@ class _DirectoryViewState extends State<DirectoryView> {
     sub = storageService.dac
         .getDirectoryIndexChangeNotifier(
           storageService.dac.convertUriToHashForCache(
-            storageService.dac.resolvePath(
+            storageService.dac.parsePath(
               widget.pathNotifier.value.join('/'),
             ),
           ),
@@ -189,6 +189,21 @@ class _DirectoryViewState extends State<DirectoryView> {
       ...uploadingFiles.values,
       ...files,
     ];
+
+    for (final entity in entities) {
+      if (entity.uri != null) {
+        if (entity.uri.startsWith('skyfs://rw:')) {
+          for (final mountUri in storageService.dac.mounts.keys) {
+            final uri = storageService.dac.mounts[mountUri]!['uri']!;
+            if (entity.uri.startsWith(uri)) {
+              entity.uri = mountUri + entity.uri.substring(uri.length);
+
+              break;
+            }
+          }
+        }
+      }
+    }
   }
 
   bool showLoadingIndicator = false;

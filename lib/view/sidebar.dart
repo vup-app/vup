@@ -736,6 +736,10 @@ MimeType=x-scheme-handler/vup;
                   path: 'vup.hns/.internal/shared-static-directories',
                   appLayoutState: widget.appLayoutState,
                 ),
+                SidebarShortcutWidget(
+                  path: 'vup.hns/.internal/shared-directories',
+                  appLayoutState: widget.appLayoutState,
+                ),
               ],
               // TODO Recent
 

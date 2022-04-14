@@ -47,6 +47,13 @@ final bookParsers = {
   // '.pdf': PdfParser(pdfFactory),
 };
 
+const supported3DModelExtensions = [
+  '.3mf',
+  '.amf',
+  '.off',
+  '.stl',
+];
+
 Future<String> hashFileSha256(File file) async {
   var output = new AccumulatorSink<Digest>();
   var input = sha256.startChunkedConversion(output);
@@ -89,7 +96,7 @@ class StorageService extends VupService {
 
   get trashPath => 'home/.trash';
 
-  final customRemotes = <String,Map>{};
+  final customRemotes = <String, Map>{};
 
   Future<void> init(Sodium sodium) async {
     mySkyProvider = NativeMySkyProvider(mySky.skynetClient);
@@ -217,7 +224,7 @@ class StorageService extends VupService {
 
           final outFile = File(join(
             temporaryDirectory,
-            '${multihash}-thumbnail-extract.jpg',
+            '${Uuid().v4()}-thumbnail-extract.jpg',
           ));
           if (!outFile.existsSync()) {
             final extractThumbnailArgs = [
@@ -452,7 +459,7 @@ class StorageService extends VupService {
             final outFile = File(join(
               temporaryDirectory,
               'thumbnails',
-              '${multihash}-thumbnail-extract.jpg',
+              '${Uuid().v4()}-thumbnail-extract.jpg',
             ));
 
             outFile.createSync(recursive: true);
@@ -497,6 +504,97 @@ class StorageService extends VupService {
           additionalExt['publication'] = publicationExt;
         }
         // print(res.publication.get(link));
+      } else if (supported3DModelExtensions.contains(ext) &&
+          (Platform.isLinux || Platform.isWindows)) {
+        try {
+          final temporaryScadFile = File(join(
+            temporaryDirectory,
+            'models',
+            '${Uuid().v4()}-thumbnail-extract.scad',
+          ));
+
+          temporaryScadFile.createSync(recursive: true);
+          temporaryScadFile.writeAsStringSync('import("${file.path}");');
+
+          final outFile = File(join(
+            temporaryDirectory,
+            'thumbnails',
+            '${Uuid().v4()}-thumbnail-extract.png',
+          ));
+
+          outFile.parent.createSync(recursive: true);
+          final colorscheme = 'Tomorrow Night';
+          final res = await Process.run('openscad', [
+            '--colorscheme=$colorscheme',
+            '--imgsize=384,384',
+            '-o',
+            outFile.path,
+            temporaryScadFile.path,
+          ]);
+
+          if (outFile.existsSync()) {
+            videoThumbnailFile = outFile;
+            generateMetadata = true;
+          }
+        } catch (e, st) {
+          warning(e);
+          verbose(st);
+        }
+      } else if (Platform.isLinux && ext == '.pdf') {
+        try {
+          final outFile = File(join(
+            temporaryDirectory,
+            'thumbnails',
+            '${Uuid().v4()}-thumbnail-extract.png',
+          ));
+
+          outFile.parent.createSync(recursive: true);
+
+          final res = await Process.run('convert', [
+            '-thumbnail',
+            'x384',
+            '-background',
+            'white',
+            '-alpha',
+            'remove',
+            file.path + '[0]',
+            outFile.path,
+          ]);
+
+          if (outFile.existsSync()) {
+            videoThumbnailFile = outFile;
+            generateMetadata = true;
+          }
+        } catch (e, st) {
+          warning(e);
+          verbose(st);
+        }
+      } else if (Platform.isLinux && ext == '.svg') {
+        try {
+          final outFile = File(join(
+            temporaryDirectory,
+            'thumbnails',
+            '${Uuid().v4()}-thumbnail-extract.png',
+          ));
+
+          outFile.parent.createSync(recursive: true);
+
+          final res = await Process.run('inkscape', [
+            '-h',
+            '384',
+            file.path,
+            '-o',
+            outFile.path,
+          ]);
+
+          if (outFile.existsSync()) {
+            videoThumbnailFile = outFile;
+            generateMetadata = true;
+          }
+        } catch (e, st) {
+          warning(e);
+          verbose(st);
+        }
       }
 
       final fileData = await dac.uploadFileData(
@@ -524,7 +622,7 @@ class StorageService extends VupService {
               throw '$e: $st';
             }
           } else {
-            // return await uploadPlaintextFile(file, multihash);
+            // return await uploadPlaintextFileTODO(file, multihash);
           }
         },
         generateMetadata: generateMetadata,

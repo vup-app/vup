@@ -73,6 +73,7 @@ class DirectoryCacheSyncService extends VupService with CustomState {
           info('[sync] importing from ${devId} (${remoteCache.length} keys)');
 
           for (final key in remoteCache.keys) {
+            if (key.length == 64) continue;
             final le = directoryIndexCache.get(key);
             if (le == null || le.revision < remoteCache[key]['r']) {
               directoryIndexCache.put(
@@ -98,6 +99,12 @@ class DirectoryCacheSyncService extends VupService with CustomState {
     info('[upload] compressing local cache...');
 
     await directoryIndexCache.compact();
+
+    for (final String key in directoryIndexCache.keys) {
+      if (key.length == 64) {
+        directoryIndexCache.delete(key);
+      }
+    }
 
     final path = 'vup.hns/cache/directory_sync/device_${deviceId}.json';
 

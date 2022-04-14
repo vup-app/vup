@@ -312,7 +312,7 @@ packages:
       name: connectivity_plus
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.2.1"
+    version: "2.3.0"
   connectivity_plus_linux:
     dependency: transitive
     description:
@@ -326,7 +326,7 @@ packages:
       name: connectivity_plus_macos
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.2.1"
+    version: "1.2.2"
   connectivity_plus_platform_interface:
     dependency: transitive
     description:
@@ -461,7 +461,7 @@ packages:
       name: device_info_plus
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.2.2"
+    version: "3.2.3"
   device_info_plus_linux:
     dependency: transitive
     description:
@@ -475,7 +475,7 @@ packages:
       name: device_info_plus_macos
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.2.2"
+    version: "2.2.3"
   device_info_plus_platform_interface:
     dependency: transitive
     description:
@@ -651,7 +651,7 @@ packages:
     description:
       path: dac
       ref: HEAD
-      resolved-ref: "8a64aaef368e4ade07990d25db952d1b77c02623"
+      resolved-ref: "1f4cfe90a67a1114c8ed95c45217794c1f5e40c4"
       url: "https://github.com/redsolver/skyfs"
     source: git
     version: "0.7.0"
@@ -710,7 +710,7 @@ packages:
       name: flutter_blurhash
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.6.4"
+    version: "0.6.6"
   flutter_colorpicker:
     dependency: "direct main"
     description:
@@ -1040,7 +1040,7 @@ packages:
       name: multi_split_view
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.11.0+1"
+    version: "1.12.0"
   multicast_dns:
     dependency: transitive
     description:
@@ -1422,7 +1422,7 @@ packages:
       name: share_plus
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "4.0.3"
+    version: "4.0.4"
   share_plus_linux:
     dependency: transitive
     description:
