@@ -16,7 +16,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:vup/model/sync_task.dart';
 import 'package:sodium_libs/sodium_libs.dart' hide Box;
+import 'package:vup/service/notification/provider/flutter.dart';
 import 'package:vup/theme.dart';
+import 'package:vup/utils/device_info/flutter.dart';
+import 'package:vup/utils/external_ip/flutter.dart';
+import 'package:vup/utils/ffmpeg/flutter.dart';
+import 'package:vup/utils/ffmpeg/io.dart';
 import 'package:vup/utils/strings.dart';
 import 'package:vup/view/tab.dart';
 import 'package:vup/widget/app_bar_wrapper.dart';
@@ -131,6 +136,15 @@ Future<void> initApp() async {
   logger.info('vupConfigDir $vupConfigDir');
   logger.info('vupTempDir $vupTempDir');
   logger.info('vupDataDir $vupDataDir');
+
+  if (UniversalPlatform.isLinux || UniversalPlatform.isWindows) {
+    ffMpegProvider = IOFFmpegProvider();
+  } else {
+    ffMpegProvider = FlutterFFmpegProvider();
+  }
+  notificationProvider = FlutterNotificationProvider();
+  externalIpAddressProvider = FlutterExternalIpAddressProvider();
+  deviceInfoProvider = FlutterDeviceInfoProvider();
 
   Hive.init(join(vupConfigDir, 'hive'));
 
@@ -363,7 +377,7 @@ void main(List<String> args) async {
         UniversalPlatform.isWindows) {
       try {
         final res = await Process.run(
-          'yt-dlp',
+          ytDlPath,
           [
             '--version',
           ],

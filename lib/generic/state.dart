@@ -8,6 +8,7 @@ import 'package:vup/service/directory_cache_sync.dart';
 import 'package:vup/service/jellyfin_server.dart';
 import 'package:vup/service/logger.dart';
 import 'package:vup/service/mysky.dart';
+import 'package:vup/service/notification/provider/base.dart';
 import 'package:vup/service/playlist_service.dart';
 import 'package:vup/service/quota_service.dart';
 import 'package:vup/service/sidebar_service.dart';
@@ -15,6 +16,9 @@ import 'package:vup/service/storage.dart';
 import 'package:vup/service/temporary_streaming_server.dart';
 import 'package:vup/service/web_server.dart';
 import 'package:vup/service/webdav_server.dart';
+import 'package:vup/utils/device_info/base.dart';
+import 'package:vup/utils/external_ip/base.dart';
+import 'package:vup/utils/ffmpeg/base.dart';
 
 export 'package:skynet/src/skystandards/fs.dart';
 
@@ -25,8 +29,16 @@ late Box<int> syncTasksLock;
 late Box dataBox;
 late Box localFiles;
 
+late String vupConfigDir;
+late String vupTempDir;
+late String vupDataDir;
+
 // Global Services
 late StorageService storageService;
+late FFmpegProvider ffMpegProvider;
+late NotificationProvider notificationProvider;
+late ExternalIpAddressProvider externalIpAddressProvider;
+late DeviceInfoProvider deviceInfoProvider;
 final mySky = MySkyService();
 final webServerService = WebServerService();
 final temporaryStreamingServerService = TemporaryStreamingServerService();
@@ -39,6 +51,11 @@ final activityService = ActivityService();
 final playlistService = PlaylistService();
 final directoryCacheSyncService = DirectoryCacheSyncService();
 final cacheService = CacheService();
+
+const vupUserAgent = 'vup';
+
+bool isYTDlIntegrationEnabled = false;
+String ytDlPath = 'yt-dlp';
 
 final logger = Global();
 

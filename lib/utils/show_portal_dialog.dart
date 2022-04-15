@@ -188,7 +188,10 @@ Future<void> showPortalDialog(BuildContext context) async {
                   portalAccountTweak,
                 );
 
-                mySky.skynetClient.headers = {'cookie': jwt};
+                mySky.skynetClient.headers = {
+                  'cookie': jwt,
+                  'user-agent': vupUserAgent,
+                };
 
                 dataBox.put('portal_host', portalHost);
                 dataBox.put('cookie', jwt);

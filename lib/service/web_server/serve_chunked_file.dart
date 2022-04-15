@@ -8,7 +8,7 @@ import 'package:angel3_range_header/angel3_range_header.dart';
 import 'package:alfred/alfred.dart';
 import 'package:path/path.dart';
 import 'package:sodium/sodium.dart';
-import 'package:vup/app.dart';
+import 'package:vup/generic/state.dart';
 import 'package:skynet/src/encode_endian/encode_endian.dart';
 import 'package:skynet/src/encode_endian/base.dart';
 

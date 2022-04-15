@@ -13,7 +13,7 @@ import 'package:universal_platform/universal_platform.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vup/app.dart';
 import 'package:vup/page/settings.dart';
-import 'package:vup/utils/ffmpeg.dart';
+import 'package:vup/utils/ffmpeg/base.dart';
 import 'package:vup/utils/ffmpeg_installer.dart';
 import 'package:vup/utils/show_portal_dialog.dart';
 import 'package:vup/view/setup_sync_dialog.dart';

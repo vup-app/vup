@@ -415,7 +415,10 @@ class _RegisterViewState extends State<RegisterView> {
                         email,
                         portalAccountTweak,
                       );
-                      mySky.skynetClient.headers = {'cookie': jwt};
+                      mySky.skynetClient.headers = {
+                        'cookie': jwt,
+                        'user-agent': vupUserAgent,
+                      };
                       // print(jwt);
 
                       await storageService.mySkyProvider.setJSONEncrypted(

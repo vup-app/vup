@@ -1,4 +1,4 @@
-import 'package:vup/app.dart';
+import 'package:vup/generic/state.dart';
 import 'package:vup/library/state.dart';
 import 'package:vup/service/base.dart';
 

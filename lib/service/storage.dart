@@ -4,8 +4,11 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:hive/hive.dart';
 import 'package:random_string/random_string.dart';
 import 'package:stash/stash_api.dart';
+import 'package:vup/generic/state.dart';
+import 'package:vup/library/compute.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:dio/dio.dart' as dio;
 import 'package:stash_hive/stash_hive.dart';
@@ -13,19 +16,16 @@ import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
 import 'package:filesize/filesize.dart';
 import 'package:filesystem_dac/dac.dart';
-import 'package:flutter/foundation.dart';
 
 import 'package:mime/mime.dart';
 import 'package:path/path.dart';
 import 'package:mno_streamer/parser.dart';
 import 'package:sodium/sodium.dart' hide Box;
 import 'package:uuid/uuid.dart';
-import 'package:vup/app.dart';
 import 'package:vup/model/sync_task.dart';
 import 'package:skynet/skynet.dart';
 import 'package:skynet/src/mysky_provider/native.dart';
 import 'package:vup/service/base.dart';
-import 'package:vup/utils/ffmpeg.dart';
 import 'package:skynet/src/encode_endian/encode_endian.dart';
 import 'package:skynet/src/encode_endian/base.dart';
 import 'package:skynet/src/mysky/encrypted_files.dart';
@@ -181,7 +181,7 @@ class StorageService extends VupService {
             file.path,
           ];
 
-          final res = await runFFProbe(args);
+          final res = await ffMpegProvider.runFFProbe(args);
 
           final format = json.decode(res.stdout)['format'];
 
@@ -239,7 +239,7 @@ class StorageService extends VupService {
               outFile.path,
             ];
 
-            final res2 = await runFFMpeg(extractThumbnailArgs);
+            final res2 = await ffMpegProvider.runFFMpeg(extractThumbnailArgs);
           }
 
           if (outFile.existsSync()) {
@@ -266,7 +266,7 @@ class StorageService extends VupService {
             file.path,
           ];
 
-          final res = await runFFProbe(args);
+          final res = await ffMpegProvider.runFFProbe(args);
 
           final data = json.decode(res.stdout);
 
@@ -308,7 +308,7 @@ class StorageService extends VupService {
 
           additionalExt['video'] = videoExt;
 
-          final subtitleRes = await runFFProbe([
+          final subtitleRes = await ffMpegProvider.runFFProbe([
             '-v',
             'quiet',
             '-select_streams',
@@ -347,7 +347,7 @@ class StorageService extends VupService {
                 subOutFile.parent.createSync(recursive: true);
 
                 try {
-                  await runFFMpeg([
+                  await ffMpegProvider.runFFMpeg([
                     '-i',
                     file.path,
                     '-map',
@@ -399,7 +399,7 @@ class StorageService extends VupService {
               outFile.path,
             ];
 
-            final res2 = await runFFMpeg(extractThumbnailArgs);
+            final res2 = await ffMpegProvider.runFFMpeg(extractThumbnailArgs);
           }
 
           if (outFile.existsSync()) {
@@ -419,7 +419,7 @@ class StorageService extends VupService {
                 outFile.path,
               ];
 
-              await runFFMpeg(extractThumbnailArgs);
+              await ffMpegProvider.runFFMpeg(extractThumbnailArgs);
             } catch (_) {}
             if (!outFile.existsSync()) {
               final extractThumbnailArgs = [
@@ -432,7 +432,7 @@ class StorageService extends VupService {
                 outFile.path,
               ];
 
-              await runFFMpeg(extractThumbnailArgs);
+              await ffMpegProvider.runFFMpeg(extractThumbnailArgs);
             }
             if (outFile.existsSync()) {
               videoThumbnailFile = outFile;
@@ -791,11 +791,11 @@ class StorageService extends VupService {
         syncTasksLock.put(syncKey, DateTime.now().millisecondsSinceEpoch);
       });
 
-      flutterLocalNotificationsPlugin?.show(
+      notificationProvider.show(
         1,
         'Started Sync',
         dir.path,
-        syncNotificationChannelSpecifics,
+        // syncNotificationChannelSpecifics,
         payload: 'sync:$syncKey',
       );
     }
@@ -978,11 +978,11 @@ class StorageService extends VupService {
 
       syncTasksLock.delete(syncKey);
       syncTasksTimestamps.put(syncKey, DateTime.now().millisecondsSinceEpoch);
-      flutterLocalNotificationsPlugin?.show(
+      notificationProvider.show(
         1,
         'Finished Sync',
         dir.path,
-        syncNotificationChannelSpecifics,
+        // syncNotificationChannelSpecifics,
         payload: 'sync:$syncKey',
       );
     }

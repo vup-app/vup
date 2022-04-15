@@ -288,7 +288,7 @@ mp3: better compatibility''', // mkv: more features
                         _isFetchingMetadata = true;
                       });
                       final process = await Process.start(
-                        'yt-dlp',
+                        ytDlPath,
                         [
                           '--dump-json',
                           '--flat-playlist',

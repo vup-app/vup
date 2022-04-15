@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:alfred/alfred.dart';
 import 'package:intl/intl.dart';
-import 'package:network_info_plus/network_info_plus.dart';
 import 'package:random_string/random_string.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
@@ -32,12 +31,7 @@ class TemporaryStreamingServerService extends VupService {
     ).toLowerCase();
     availableFiles[streamingKey] = file;
 
-    final info = NetworkInfo();
-    String? ipAddress;
-    try {
-      ipAddress = await info.getWifiIP();
-    } catch (_) {}
-    ipAddress ??= '127.0.0.1';
+    final ipAddress = await externalIpAddressProvider.getIpAddress();
 
     return 'http://$ipAddress:43913/stream/$streamingKey/${file.name}';
   }

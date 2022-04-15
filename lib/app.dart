@@ -26,10 +26,6 @@ import 'package:vup/service/icon_pack_service.dart';
 
 export 'package:hive_flutter/hive_flutter.dart';
 
-const vupUserAgent = 'vup';
-
-bool isYTDlIntegrationEnabled = false;
-
 bool get devModeEnabled => dataBox.get('dev_mode_enabled') ?? false;
 
 late PackageInfo packageInfo;
@@ -61,10 +57,6 @@ class Settings {
 }
 
 late AppLocalizations al;
-
-late String vupConfigDir;
-late String vupTempDir;
-late String vupDataDir;
 
 final globalThumbnailMemoryCache = <String, Uint8List>{};
 

@@ -2,14 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:path/path.dart';
 import 'package:random_string/random_string.dart';
 import 'package:simple_observable/simple_observable.dart';
 import 'package:skynet/dacs.dart';
 import 'package:stash_hive/stash_hive.dart';
 import 'package:stash/stash_api.dart';
-import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 
@@ -38,6 +36,8 @@ class MySkyService extends VupService {
       portal: currentPortalHost,
       usedMySkyPathsVault: usedMySkyPathsVault,
     );
+    skynetClient.headers ??= {};
+    skynetClient.headers!['user-agent'] = vupUserAgent;
   }
 
   late ProfileDAC profileDAC;
@@ -105,9 +105,7 @@ class MySkyService extends VupService {
 
     if (data['devices'][deviceId] == null) {
       info('adding this device...');
-      final deviceInfoPlugin = DeviceInfoPlugin();
-      final deviceInfo = await deviceInfoPlugin.deviceInfo;
-      final map = deviceInfo.toMap();
+      final map = await deviceInfoProvider.load();
 
       data['devices'][deviceId] = {
         'created': DateTime.now().millisecondsSinceEpoch,

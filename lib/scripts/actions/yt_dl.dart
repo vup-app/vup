@@ -27,7 +27,7 @@ class YTDLAction extends VupAction {
     final videos = [];
 
     final process = await Process.start(
-      'yt-dlp',
+      ytDlPath,
       [
         '--dump-json',
         '--flat-playlist',

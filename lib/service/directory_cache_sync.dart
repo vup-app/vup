@@ -3,10 +3,10 @@ import 'dart:typed_data';
 
 import 'package:filesize/filesize.dart';
 import 'package:filesystem_dac/model/cached_entry.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:lzma/lzma.dart';
 import 'package:vup/generic/state.dart';
+import 'package:vup/library/compute.dart';
 import 'package:vup/library/state.dart';
 import 'package:vup/service/base.dart';
 

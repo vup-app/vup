@@ -210,7 +210,10 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                   portalAccountTweak,
                 );
 
-                mySky.skynetClient.headers = {'cookie': jwt};
+                mySky.skynetClient.headers = {
+                  'cookie': jwt,
+                  'user-agent': vupUserAgent,
+                };
 
                 dataBox.put('cookie', jwt);
 

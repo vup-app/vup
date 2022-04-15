@@ -4,29 +4,33 @@ import 'package:hive/hive.dart';
 import 'package:path/path.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/model/sync_task.dart';
+import 'package:vup/service/notification/provider/apprise.dart';
 import 'package:vup/service/storage.dart';
+import 'package:vup/utils/device_info/docker.dart';
+import 'package:vup/utils/external_ip/docker.dart';
+import 'package:vup/utils/ffmpeg/io.dart';
 import 'package:xdg_directories/xdg_directories.dart';
 
 Future<void> initAppGeneric({required bool isRunningInFlutterMode}) async {
   // TODO Store Hive thumbnail and directory cache in data directory
 
   final tempDir = Directory('/tmp');
-  Directory? configDir = Platform.isLinux ? configHome : null;
 
-  final vupConfigDir = join(configDir!.path, 'vup');
-  final vupTempDir = join(tempDir.path, 'vup');
+  vupTempDir = join(tempDir.path, 'vup');
+
+  vupConfigDir = '/config';
+  vupDataDir = '/data';
 
   await logger.init(vupTempDir);
-
-  String? vupDataDir;
-
-  vupDataDir = join(dataHome.path, 'vup');
-
-  // TODO Use custom directories for Docker
 
   logger.info('vupConfigDir $vupConfigDir');
   logger.info('vupTempDir $vupTempDir');
   logger.info('vupDataDir $vupDataDir');
+
+  ffMpegProvider = IOFFmpegProvider();
+  notificationProvider = AppriseNotificationProvider();
+  externalIpAddressProvider = DockerExternalIpAddressProvider();
+  deviceInfoProvider = DockerDeviceInfoProvider();
 
   Hive.init(join(vupConfigDir, 'hive'));
 
@@ -44,8 +48,6 @@ Future<void> initAppGeneric({required bool isRunningInFlutterMode}) async {
 
   localFiles = await Hive.openBox('localFiles');
 
-/*   await playlistService.init();
-  await quotaService.init(); */
   cacheService.init(tempDirPath: vupTempDir);
 
   storageService = StorageService(

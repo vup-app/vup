@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:vup/app.dart';
-import 'package:vup/utils/ffmpeg.dart';
+import 'package:vup/utils/ffmpeg/base.dart';
 import 'package:vup/utils/ffmpeg_installer.dart';
 
 class AdvancedSettingsPage extends StatefulWidget {
@@ -55,8 +55,8 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
         ElevatedButton(
           onPressed: () async {
             try {
-              final res = await runFFMpeg(['-version']);
-              final res2 = await runFFProbe(['-version']);
+              final res = await ffMpegProvider.runFFMpeg(['-version']);
+              final res2 = await ffMpegProvider.runFFProbe(['-version']);
               showInfoDialog(
                   context, 'ffmpeg version', res.stdout + '\n' + res2.stdout);
             } catch (e, st) {

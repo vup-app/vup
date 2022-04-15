@@ -54,7 +54,6 @@ bin/
 
 appimagetool-x86_64.AppImage
 deploy.sh
-Dockerfile
 Vup.AppImage
 
 data/

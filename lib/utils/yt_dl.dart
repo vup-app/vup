@@ -81,7 +81,7 @@ class YTDLUtils {
     await outDirectory.create(recursive: true);
 
     final process = await Process.start(
-      'yt-dlp',
+      ytDlPath,
       args,
       workingDirectory: outDirectory.path,
     );

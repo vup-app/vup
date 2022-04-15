@@ -6,7 +6,6 @@ import 'dart:typed_data';
 import 'package:alfred/alfred.dart';
 import 'package:crypto/crypto.dart';
 
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
@@ -2005,7 +2004,7 @@ class JellyfinServerService extends VupService {
     };
 
     app = Alfred(
-      logLevel: kDebugMode ? LogType.info : LogType.warn,
+      logLevel: /* kDebugMode ? */ LogType.info /* : LogType.warn */,
     );
     final tokenRegExp = RegExp(r'token="(.+)"');
 
@@ -3039,7 +3038,7 @@ class JellyfinServerService extends VupService {
       if (file == null) {
         /*  final stream = mediaStreamsByHash[hash]!;
         final p = await Process.start(
-          'yt-dlp',
+          ytDlPath,
           [
             '-o',
             '-',
