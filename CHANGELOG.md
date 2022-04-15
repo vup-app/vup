@@ -1,6 +1,6 @@
 # Vup Changelog
 
-## main
+## Beta 0.10.0
 
 - New advanced sharing features (with future changes and read+write)
 - New and improved drag and drop system

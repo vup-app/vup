@@ -235,7 +235,7 @@ packages:
       name: built_value
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "8.1.4"
+    version: "8.2.0"
   characters:
     dependency: transitive
     description:
@@ -257,13 +257,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.0.1"
-  circular_menu:
-    dependency: "direct main"
-    description:
-      name: circular_menu
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.2.3"
   cli_util:
     dependency: transitive
     description:
@@ -539,13 +532,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "3.0.0"
-  fab_circular_menu:
-    dependency: "direct main"
-    description:
-      name: fab_circular_menu
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.0.2"
   fake_async:
     dependency: transitive
     description:
@@ -655,13 +641,6 @@ packages:
       url: "https://github.com/redsolver/skyfs"
     source: git
     version: "0.7.0"
-  filesystem_picker:
-    dependency: "direct main"
-    description:
-      name: filesystem_picker
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "2.0.0"
   fimber:
     dependency: transitive
     description:
@@ -1535,13 +1514,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.8.1"
-  split_view:
-    dependency: "direct main"
-    description:
-      name: split_view
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "3.1.0"
   sprintf:
     dependency: transitive
     description:
@@ -1820,9 +1792,11 @@ packages:
   webdav_client:
     dependency: "direct main"
     description:
-      name: webdav_client
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "."
+      ref: HEAD
+      resolved-ref: "3c9d9b5b32142b9080a7c0abc1b37a3ecb4b1065"
+      url: "https://github.com/redsolver/webdav_client.git"
+    source: git
     version: "1.1.6"
   win32:
     dependency: transitive
