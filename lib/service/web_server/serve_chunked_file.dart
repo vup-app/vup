@@ -235,6 +235,8 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
 
             final end = min(encStartByte + encChunkSize - 1, totalEncSize - 1);
 
+            bool hasDownloadError = false;
+
             if (downloadedEncData.isEmpty) {
               logger.info('[chunk] send http range request');
               final request = http.Request('GET', url);
@@ -275,6 +277,7 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
                   isDone = true;
                 },
                 onError: (e, st) {
+                  hasDownloadError = true;
                   logger.error('[chunk] $e $st');
                 },
               );
@@ -283,10 +286,12 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
 
             if (isLastChunk) {
               while (!isDone) {
+                if (hasDownloadError) throw 'Download HTTP request failed';
                 await Future.delayed(Duration(milliseconds: 10));
               }
             } else {
               while (downloadedEncData.length < (df.file.chunkSize + 16)) {
+                if (hasDownloadError) throw 'Download HTTP request failed';
                 await Future.delayed(Duration(milliseconds: 10));
               }
             }
