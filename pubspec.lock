@@ -1794,7 +1794,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "3c9d9b5b32142b9080a7c0abc1b37a3ecb4b1065"
+      resolved-ref: "7e68dcf8283c754b329c71ace43ab6dfd0a867a9"
       url: "https://github.com/redsolver/webdav_client.git"
     source: git
     version: "1.1.6"
