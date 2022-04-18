@@ -51,6 +51,8 @@ class _YTDLDialogState extends State<YTDLDialog> {
 
   int downloadedCount = 0;
 
+  final _scrollCtrl = ScrollController();
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -338,6 +340,7 @@ mp3: better compatibility''', // mkv: more features
                 /* height: min(500, MediaQuery.of(context).size.height - 420),
                 width: 700, */
                 child: ListView.builder(
+                  controller: _scrollCtrl,
                   itemCount: videos.length,
                   itemBuilder: (context, index) {
                     final video = videos[index];
