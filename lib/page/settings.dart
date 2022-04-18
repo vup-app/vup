@@ -1,3 +1,4 @@
+import 'package:open_file/open_file.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vup/app.dart';
 import 'package:vup/page/settings/advanced.dart';
@@ -163,42 +164,58 @@ class _SettingsPageState extends State<SettingsPage> {
           child: SelectableText('Log file: ${logger.logFilePath}'),
         ),
         Center(
-          child: ElevatedButton(
-            onPressed: () async {
-              try {
-                showLoadingDialog(
-                  context,
-                  'Uploading log file and generating share link...',
-                );
-                final uuid = Uuid().v4();
+          child: Column(
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  OpenFile.open(logger.logFilePath);
+                },
+                child: Text(
+                  'Open log file',
+                ),
+              ),
+              SizedBox(
+                height: 12,
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    showLoadingDialog(
+                      context,
+                      'Uploading log file and generating share link...',
+                    );
+                    final uuid = Uuid().v4();
 
-                await storageService.dac.createDirectory(
-                  'vup.hns/.internal/shared-static-directories',
-                  uuid,
-                );
-                final shareUri = storageService.dac.parsePath(
-                    'vup.hns/.internal/shared-static-directories/$uuid');
+                    await storageService.dac.createDirectory(
+                      'vup.hns/.internal/shared-static-directories',
+                      uuid,
+                    );
+                    final shareUri = storageService.dac.parsePath(
+                        'vup.hns/.internal/shared-static-directories/$uuid');
 
-                await storageService.startFileUploadingTask(
-                  shareUri.toString(),
-                  logger.logFile,
-                );
+                    await storageService.startFileUploadingTask(
+                      shareUri.toString(),
+                      logger.logFile,
+                    );
 
-                final shareSeed = await storageService.dac.getShareUriReadOnly(
-                  shareUri.toString(),
-                );
+                    final shareSeed =
+                        await storageService.dac.getShareUriReadOnly(
+                      shareUri.toString(),
+                    );
 
-                final shareLink = 'https://share.vup.app/#${shareSeed}';
-                context.pop();
-                showShareResultDialog(context, shareLink);
-              } catch (e, st) {
-                context.pop();
-                showErrorDialog(context, e, st);
-              }
-            },
-            child: Text(
-              'Generate share link for log file',
-            ),
+                    final shareLink = 'https://share.vup.app/#${shareSeed}';
+                    context.pop();
+                    showShareResultDialog(context, shareLink);
+                  } catch (e, st) {
+                    context.pop();
+                    showErrorDialog(context, e, st);
+                  }
+                },
+                child: Text(
+                  'Generate share link for log file',
+                ),
+              ),
+            ],
           ),
         ),
         SizedBox(
