@@ -469,19 +469,19 @@ MimeType=x-scheme-handler/vup;
                       ),
                     );
                     if (res == true) {
-                      // TODO Fix this on Windows
                       showLoadingDialog(context, 'Deleting local data...');
 
-                      logger.info('delete $vupTempDir');
+                      logger.sink.close();
+                      await Hive.close();
+
                       await Directory(vupTempDir).delete(recursive: true);
 
                       for (final dir in Directory(vupDataDir).listSync()) {
                         if (basename(dir.path) == 'app') continue;
-                        logger.info('delete $dir');
+
                         await dir.delete(recursive: true);
                       }
 
-                      logger.info('delete $vupConfigDir');
                       await Directory(vupConfigDir).delete(recursive: true);
 
                       exit(0);
