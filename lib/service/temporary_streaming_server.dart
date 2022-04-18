@@ -33,7 +33,7 @@ class TemporaryStreamingServerService extends VupService {
 
     final ipAddress = await externalIpAddressProvider.getIpAddress();
 
-    return 'http://$ipAddress:43913/stream/$streamingKey/${file.name}';
+    return 'http://$ipAddress:43913/stream/$streamingKey/${Uri.encodeComponent(file.name)}';
   }
 
   void start(int port, String bindIp) {
