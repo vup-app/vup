@@ -7,8 +7,8 @@ class FlutterNotificationProvider extends NotificationProvider {
     String? title,
     String? body, {
     String? payload,
-  }) {
-    return flutterLocalNotificationsPlugin!.show(
+  }) async {
+    flutterLocalNotificationsPlugin?.show(
       id,
       title,
       body,
