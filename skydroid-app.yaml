@@ -14,6 +14,10 @@ localized:
 # !!! DO NO EDIT BELOW THIS LINE !!!
 
 builds:
+  - versionName: 0.10.1
+    versionCode: 1001
+    sha256: fdb27b8a1dc674b93bb623eff77fa3d2aa3e00ecdfb53a690660fc660eaef294
+    apkLink: sia://AADyNSKIyLtiJ8RObFRA67mIJyBDaKJ0NkQLazolgF9eyQ
   - versionName: 0.10.0
     versionCode: 1000
     sha256: c150b19a62c0a462937ed1b597ee27aed742c4d00dd0a383e0b430a1e69cfd3b
@@ -27,8 +31,8 @@ builds:
     sha256: bcde25f1842164a2f6feffa0a039151bff1f1f12c2e9292a1be78dc558fd7589
     apkLink: sia://AACqd9wLrXvhDUaj2IPBkJhNsF9GFgxVHQBaxf4of9jOtw
 
-currentVersionName: 0.10.0
-currentVersionCode: 1000
+currentVersionName: 0.10.1
+currentVersionCode: 1001
 
 added: 1635794570056
-lastUpdated: 1650108072942
+lastUpdated: 1650374036074
