@@ -1475,7 +1475,7 @@ packages:
     description:
       path: "."
       ref: experimental
-      resolved-ref: bd24db85f91b2b35c2a07479abd932bd649e0b2b
+      resolved-ref: "25b3d1bc289da8c67cb1acb2e05f9e1d13cb5e99"
       url: "https://github.com/redsolver/skynet.git"
     source: git
     version: "5.0.0"

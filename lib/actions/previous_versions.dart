@@ -79,42 +79,66 @@ class PreviousFileVersionsVupAction extends VupFSAction {
     final dt = DateTime.fromMillisecondsSinceEpoch(fileData.ts);
 
     return ListTile(
-      leading: SizedBox(
-        width: 40,
-        child: Center(
-          child: Text(
-            version,
-            style: TextStyle(
-              fontSize: 24,
+        leading: SizedBox(
+          width: 40,
+          child: Center(
+            child: Text(
+              version,
+              style: TextStyle(
+                fontSize: 24,
+              ),
             ),
           ),
         ),
-      ),
-      title: Text('${timeago.format(dt)} (${filesize(fileData.size)})'),
-      subtitle: Text(formatDateTime(dt)),
-      trailing: !hasWriteAccess
-          ? null
-          : ElevatedButton(
-              onPressed: () async {
-                context.pop();
-                showLoadingDialog(context, 'Restoring version $version...');
-                try {
-                  await storageService.dac.updateFile(
-                    pathNotifier.toUriString(),
-                    file.name,
-                    fileData,
-                  );
-
-                  context.pop();
-                } catch (e, st) {
-                  context.pop();
-                  showErrorDialog(context, e, st);
-                }
-              },
-              child: Text(
-                'Restore',
+        title: Text('${timeago.format(dt)} (${filesize(fileData.size)})'),
+        subtitle: Text(formatDateTime(dt)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (devModeEnabled)
+              Padding(
+                padding: const EdgeInsets.only(right: 12.0),
+                child: TextButton(
+                  onPressed: () async {
+                    try {
+                      showLoadingDialog(context, 'Unpinning version...');
+                      await mySky.skynetClient.portalAccount.unpinSkylink(
+                        fileData.url.substring(6),
+                      );
+                      context.pop();
+                    } catch (e, st) {
+                      context.pop();
+                      showErrorDialog(context, e, st);
+                    }
+                  },
+                  child: Text(
+                    'Unpin',
+                  ),
+                ),
               ),
-            ),
-    );
+            if (hasWriteAccess)
+              ElevatedButton(
+                onPressed: () async {
+                  context.pop();
+                  showLoadingDialog(context, 'Restoring version $version...');
+                  try {
+                    await storageService.dac.updateFile(
+                      pathNotifier.toUriString(),
+                      file.name,
+                      fileData,
+                    );
+
+                    context.pop();
+                  } catch (e, st) {
+                    context.pop();
+                    showErrorDialog(context, e, st);
+                  }
+                },
+                child: Text(
+                  'Restore',
+                ),
+              ),
+          ],
+        ));
   }
 }

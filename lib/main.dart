@@ -22,6 +22,7 @@ import 'package:vup/utils/device_info/flutter.dart';
 import 'package:vup/utils/external_ip/flutter.dart';
 import 'package:vup/utils/ffmpeg/flutter.dart';
 import 'package:vup/utils/ffmpeg/io.dart';
+import 'package:vup/utils/special_titles.dart';
 import 'package:vup/utils/strings.dart';
 import 'package:vup/view/tab.dart';
 import 'package:vup/widget/app_bar_wrapper.dart';
@@ -363,6 +364,20 @@ void main(List<String> args) async {
           jellyfinServerUsername,
           jellyfinServerPassword,
         );
+      } catch (e, st) {
+        logger.error('$e $st');
+      }
+    }
+
+    /* apiServerService.start(
+      2121,
+      '127.0.0.1',
+      'TOKEN',
+    ); */
+
+    if (isPortalProxyServerEnabled) {
+      try {
+        portalProxyServerService.start(4444, '0.0.0.0');
       } catch (e, st) {
         logger.error('$e $st');
       }
@@ -902,6 +917,7 @@ class _HomePageState extends State<HomePage> with TrayListener {
 /*       topLeft: i == 0 ? Radius.zero : Radius.circular(16),
       topRight: Radius.circular(16), */
         );
+    final tabState = appLayoutState.tabs[i][0].state;
     return ClipRRect(
       borderRadius: borderRadius,
       child: InkWell(
@@ -917,16 +933,22 @@ class _HomePageState extends State<HomePage> with TrayListener {
           /* margin:
                                                       const EdgeInsets.all(4), */
           child: StreamBuilder<Null>(
-              stream: appLayoutState.tabs[i][0].state.stream,
+              stream: tabState.stream,
               builder: (context, snapshot) {
+                var specialTitle = getSpecialTitle(
+                  tabState.toUriString(),
+                );
+                if (tabState.path.length == 1 &&
+                    tabState.path.first.startsWith('skyfs://')) {
+                  specialTitle = 'Shared directory';
+                }
                 return Row(
                   children: [
                     Settings.tabsTitleShowFullPath
                         ? SizedOverflowBox(
                             size: Size(164, 30),
                             alignment: Alignment.centerRight,
-                            child: Text(
-                                '${appLayoutState.tabs[i][0].state.path.join(' / ')}',
+                            child: Text('${tabState.path.join(' / ')}',
                                 style: isSelected
                                     ? TextStyle(
                                         color: Theme.of(context).primaryColor,
@@ -939,7 +961,8 @@ class _HomePageState extends State<HomePage> with TrayListener {
                             child: SizedBox(
                               width: 156,
                               child: Text(
-                                  '${appLayoutState.tabs[i][0].state.path.isEmpty ? '/' : appLayoutState.tabs[i][0].state.path.last}',
+                                  specialTitle ??
+                                      '${tabState.path.isEmpty ? '/' : tabState.path.last}',
                                   maxLines: 1,
                                   style: isSelected
                                       ? TextStyle(

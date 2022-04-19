@@ -600,6 +600,28 @@ class PathNotifierState with CustomState {
   bool hasWriteAccess() {
     return storageService.dac.checkAccess(path.join('/')) && !isInTrash;
   }
+
+  void navigateToUri(String dirUri) {
+    final uri = Uri.parse(dirUri);
+
+    disableSearchMode();
+    queryParamaters = Map.from(
+      uri.queryParameters,
+    );
+
+    if (uri.host == 'local') {
+      path = uri.pathSegments.sublist(1);
+
+      $();
+    } else {
+      path = [
+        dirUri.substring(0, dirUri.length - uri.path.length),
+        ...uri.pathSegments,
+      ];
+
+      $();
+    }
+  }
 }
 
 enum SearchMode {

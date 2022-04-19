@@ -39,11 +39,7 @@ class OpenInNewTabVupAction extends VupFSAction {
         uri.queryParameters,
       );
 
-      if (uri.host == 'local') {
-        newPathNotifier.path = uri.pathSegments.sublist(1);
-      } else {
-        newPathNotifier.path = [instance.entity.uri!];
-      }
+      newPathNotifier.navigateToUri(instance.entity.uri!);
     } else {
       newPathNotifier.value = [
         ...instance.pathNotifier.value,

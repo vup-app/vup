@@ -17,13 +17,15 @@ class ShareDirectoryVupAction extends VupFSAction {
       bool isSelected) {
     if (!isDirectoryView) return null;
 
-    if (pathNotifier.value.length > 1) {
-      return VupFSActionInstance(
-        label: 'Share directory',
-        icon: UniconsLine.share_alt,
-      );
+    if (pathNotifier.value.length < 2) {
+      if (pathNotifier.toUriString().startsWith('skyfs://local/')) {
+        return null;
+      }
     }
-    return null;
+    return VupFSActionInstance(
+      label: 'Share directory',
+      icon: UniconsLine.share_alt,
+    );
   }
 
   @override

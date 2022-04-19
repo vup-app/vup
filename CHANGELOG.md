@@ -1,5 +1,23 @@
 # Vup Changelog
 
+## Beta 0.10.1
+
+- Added experimental portal proxy server
+- Added some custom directory names (Shared and Trash)
+- Added "Remove shared directory" action
+- Added button to unpin previous versions of a file (requires dev mode)
+- Added button to open log file
+- Improved navigation of shared directories
+- Hide "Add to your SkyFS" button when it's already added
+- Fixed moving directories with the same name to trash
+- Fixed logout on Windows
+- Fixed notification crash on unsupported platforms
+- Fixed stuck file streaming on some portal errors
+- Fixed "Add to your SkyFS" button for subdirectories of a shared directory
+- Fixed not being able to share the root directory of a shared directory
+- Fixed scrolling in YT-DL dialog
+- Fixed URL encoding for temporary streaming server
+
 ## Beta 0.10.0
 
 - New advanced sharing features (with future changes and read+write)

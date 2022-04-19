@@ -53,12 +53,13 @@ class MoveToTrashVupAction extends VupFSAction {
           );
         }
         for (final uri in instance.pathNotifier.selectedDirectories) {
-          // TODO Generate random key
           futures.add(
             storageService.dac.moveDirectory(
               uri,
-              storageService.trashPath + '/' + Uri.parse(uri).pathSegments.last,
-              // generateRandomKey: true,
+              storageService.trashPath +
+                  '/' +
+                  Uri.parse(uri).pathSegments.last +
+                  ' (${DateTime.now().toString().split('.').first})',
             ),
           );
         }
@@ -75,8 +76,10 @@ class MoveToTrashVupAction extends VupFSAction {
         } else {
           await storageService.dac.moveDirectory(
             uri,
-            storageService.trashPath + '/' + Uri.parse(uri).pathSegments.last,
-            // generateRandomKey: true,
+            storageService.trashPath +
+                '/' +
+                Uri.parse(uri).pathSegments.last +
+                ' (${DateTime.now().toString().split('.').first})',
           );
         }
       }

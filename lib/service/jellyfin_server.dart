@@ -3293,7 +3293,7 @@ class JellyfinServerService extends VupService {
       );
     });
 
-    app.printRoutes();
+    // app.printRoutes();
 
     app.listen(port, bindIp);
 

@@ -15,6 +15,7 @@ import 'package:vup/actions/open_in_new_tab.dart';
 import 'package:vup/actions/pin_all.dart';
 import 'package:vup/actions/previous_versions.dart';
 import 'package:vup/actions/regenerate_metadata.dart';
+import 'package:vup/actions/remove_shared_directory.dart';
 import 'package:vup/actions/rename_directory.dart';
 import 'package:vup/actions/rename_file.dart';
 import 'package:vup/actions/save_locally.dart';
@@ -62,6 +63,7 @@ final allActions = <VupFSAction>[
 
   MoveToTrashVupAction(),
   AddToQuickAccessVupAction(),
+  RemoveSharedDirectoryVupAction(),
   PinAllVupAction(),
   PreviousFileVersionsVupAction(),
   ShowFileDetailsVupAction(),
@@ -86,6 +88,11 @@ List<VupFSActionInstance> generateActions(
       : isFile
           ? pathNotifier.selectedFiles.contains(entity.uri)
           : pathNotifier.selectedDirectories.contains(entity.uri);
+
+  if (pathNotifier.toUriString() ==
+      'skyfs://local/fs-dac.hns/vup.hns/.internal/shared-with-me') {
+    hasWriteAccess = false;
+  }
 
   for (final action in allActions) {
     final i = action.check(

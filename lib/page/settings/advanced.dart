@@ -124,6 +124,30 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
             'Dump to log',
           ),
         ),
+        if (devModeEnabled) ...[
+          SizedBox(
+            height: 16,
+          ),
+          Text(
+            'Vup portal proxy',
+            style: titleTextStyle,
+          ),
+          SizedBox(
+            height: 16,
+          ),
+          SwitchListTile(
+            title: Text('Enable Vup Portal Proxy'),
+            subtitle: Text(
+              'Requires restart, runs a local portal proxy at http://localhost:4444',
+            ),
+            value: isPortalProxyServerEnabled,
+            onChanged: (val) {
+              setState(() {
+                dataBox.put('portal_proxy_server_enabled', val);
+              });
+            },
+          ),
+        ],
       ],
     );
   }

@@ -62,6 +62,7 @@ class _ScriptsSettingsPageState extends State<ScriptsSettingsPage> {
                                     sState(() {});
                                     for (final a in script['actions']) {
                                       final action = YTDLAction();
+                                      logger.info('[scripts] running $a');
                                       await action.run(a['config']);
                                     }
                                     scriptsStatus.remove(id);

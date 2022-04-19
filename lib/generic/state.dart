@@ -3,6 +3,7 @@ import 'package:pool/pool.dart';
 import 'package:state_notifier/state_notifier.dart';
 import 'package:vup/model/sync_task.dart';
 import 'package:vup/service/activity_service.dart';
+import 'package:vup/service/api_server.dart';
 import 'package:vup/service/cache.dart';
 import 'package:vup/service/directory_cache_sync.dart';
 import 'package:vup/service/jellyfin_server.dart';
@@ -10,6 +11,7 @@ import 'package:vup/service/logger.dart';
 import 'package:vup/service/mysky.dart';
 import 'package:vup/service/notification/provider/base.dart';
 import 'package:vup/service/playlist_service.dart';
+import 'package:vup/service/portal_proxy_server.dart';
 import 'package:vup/service/quota_service.dart';
 import 'package:vup/service/sidebar_service.dart';
 import 'package:vup/service/storage.dart';
@@ -43,6 +45,8 @@ final mySky = MySkyService();
 final webServerService = WebServerService();
 final temporaryStreamingServerService = TemporaryStreamingServerService();
 final webDavServerService = WebDavServerService();
+final apiServerService = APIServerService();
+final portalProxyServerService = PortalProxyServerService();
 final sidebarService = SidebarService();
 var jellyfinServerService = JellyfinServerService();
 // final koelServerService = KoelServerService();
@@ -74,6 +78,9 @@ String get webDavServerUsername =>
     dataBox.get('webdav_server_username') ?? 'user';
 String get webDavServerPassword =>
     dataBox.get('webdav_server_password') ?? 'password';
+
+bool get isPortalProxyServerEnabled =>
+    dataBox.get('portal_proxy_server_enabled') ?? false;
 
 /* bool get isKoelServerEnabled => dataBox.get('koel_server_enabled') ?? false;
 int get koelServerPort => dataBox.get('koel_server_port') ?? 6060;

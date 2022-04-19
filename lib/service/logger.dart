@@ -10,8 +10,13 @@ class Global extends VupService {
   late String logFilePath;
 
   Future<void> init(String path) async {
-    logFile =
-        File(join(path, 'logs', '${DateTime.now().toIso8601String().replaceAll(':', '_')}.log'));
+    logFile = File(
+      join(
+        path,
+        'logs',
+        '${DateTime.now().toIso8601String().replaceAll(':', '_')}.log.txt',
+      ),
+    );
     logFile.createSync(recursive: true);
 
     logFilePath = logFile.absolute.path;

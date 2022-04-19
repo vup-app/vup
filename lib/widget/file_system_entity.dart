@@ -316,22 +316,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                     return;
                   }
                   if (dir.uri?.startsWith('skyfs://') ?? false) {
-                    final uri = Uri.parse(dir.uri!);
-
-                    widget.pathNotifier.disableSearchMode();
-                    widget.pathNotifier.queryParamaters = Map.from(
-                      uri.queryParameters,
-                    );
-
-                    if (uri.host == 'local') {
-                      widget.pathNotifier.path = uri.pathSegments.sublist(1);
-
-                      widget.pathNotifier.$();
-                    } else {
-                      widget.pathNotifier.path = [dir.uri!];
-
-                      widget.pathNotifier.$();
-                    }
+                    widget.pathNotifier.navigateToUri(dir.uri!);
                   } else {
                     widget.pathNotifier.value = [
                       ...widget.pathNotifier.value,
