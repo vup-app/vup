@@ -6,7 +6,7 @@ Check out https://vup.app for an overview of what Vup can do.
 
 ## License
 
-Vup is licensed under the GPL-3.0 license.
+Vup is licensed under the EUPL-1.2-or-later.
 
 It uses FFmpegKit which is licensed under the LGPL v3.0.
 

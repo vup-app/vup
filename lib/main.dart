@@ -1042,7 +1042,7 @@ class _AuthPageState extends State<AuthPage> {
                     SelectableAutoLinkText(
                       [
                         'You can submit feedback or report bugs here: https://github.com/redsolver/vup/issues\n',
-                        'Vup is open-source and licensed under the GPL-3.0 license.\nSource code: https://github.com/redsolver/vup\n',
+                        'Vup is open-source and licensed under the EUPL-1.2-or-later.\nSource code: https://github.com/redsolver/vup\n',
                         if (!Platform.isIOS)
                           'You can support this project on GitHub Sponsors: https://github.com/sponsors/redsolver'
                       ].join(),
