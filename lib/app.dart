@@ -23,6 +23,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/icon_pack_service.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 export 'package:hive_flutter/hive_flutter.dart';
 
@@ -390,7 +391,11 @@ class AppLayoutState with CustomState {
   }
 
   void closeTab(int i) {
-    if (tabs.length <= 1) return;
+    if (tabs.length <= 1) {
+      isAppWindowVisible = false;
+      appWindow.hide();
+      return;
+    }
     tabs.removeAt(i);
     if (tabIndex >= i) {
       tabIndex--;
