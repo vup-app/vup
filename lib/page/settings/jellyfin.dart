@@ -19,6 +19,7 @@ class _JellyfinServerSettingsPageState
   final bindIpCtrl = TextEditingController(text: jellyfinServerBindIp);
   final usernameCtrl = TextEditingController(text: jellyfinServerUsername);
   final passwordCtrl = TextEditingController(text: jellyfinServerPassword);
+  var isPasswordHidden = true;
 
   late final List<Map> list;
 
@@ -252,9 +253,21 @@ class _JellyfinServerSettingsPageState
                   controller: passwordCtrl,
                   decoration: InputDecoration(
                     labelText: 'Password',
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          isPasswordHidden = !isPasswordHidden;
+                        });
+                      },
+                      icon: Icon(
+                        isPasswordHidden
+                            ? UniconsLine.eye_slash
+                            : UniconsLine.eye,
+                      ),
+                    ),
                   ),
                   enabled: !isJellyfinServerEnabled,
-                  obscureText: true,
+                  obscureText: isPasswordHidden,
                   onChanged: (s) {
                     dataBox.put('jellyfin_server_password', s);
                   },
@@ -263,6 +276,52 @@ class _JellyfinServerSettingsPageState
             ],
           ),
         ),
+        if (Platform.isLinux || Platform.isWindows)
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: SwitchListTile(
+                  value: richStatusService.isDiscordRPCEnabled,
+                  title: Text('Enable Discord RPC'),
+                  subtitle: Text(
+                    'Integrates with Discord\'s rich presence feature to display the currently playing song, movie or show as your status when using Jellyfin',
+                  ),
+                  onChanged: (val) {
+                    if (richStatusService.isDiscordRPCEnabled) {
+                      richStatusService.stop();
+                      dataBox.put(
+                          'rich_status_service_discord_rpc_enabled', false);
+                    } else {
+                      // richStatusService.init();
+                      dataBox.put(
+                          'rich_status_service_discord_rpc_enabled', true);
+                    }
+
+                    setState(() {});
+                  },
+                ),
+              ),
+              if (richStatusService.isDiscordRPCEnabled)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: CheckboxListTile(
+                    value: richStatusService.isDiscordThumbnailsEnabled,
+                    title: Text('Show media thumbnails'),
+                    subtitle: Text(
+                      'When enabled, thumbnails of the media files you are playing are uploaded to Skynet without encryption and shown in your status',
+                    ),
+                    onChanged: (val) {
+                      dataBox.put(
+                        'rich_status_service_discord_thumbnails_enabled',
+                        val,
+                      );
+                      setState(() {});
+                    },
+                  ),
+                ),
+            ],
+          ),
         if (revision == null) ...[
           ListTile(
             leading: CircularProgressIndicator(),

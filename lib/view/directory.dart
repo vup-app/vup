@@ -51,7 +51,7 @@ class _DirectoryViewState extends State<DirectoryView> {
   }
 
   void _calculateSizes() async {
-    if (isRecursiveDirectorySizesEnabled) {
+    if (isRecursiveDirectorySizesEnabled && !widget.pathNotifier.isSearching) {
       for (final dir in (index?.directories.keys.toList() ?? [])) {
         index!.directories[dir]!.size =
             await storageService.dac.calculateRecursiveDirectorySize(
@@ -101,18 +101,40 @@ class _DirectoryViewState extends State<DirectoryView> {
       }
     });
 
-    final changeNotif = storageService.dac.getUploadingFilesChangeNotifier(
-      widget.pathNotifier.toCleanUri().toString(),
-    );
-    uploadingFiles = changeNotif.state;
+    if (uri == 'skyfs://local/fs-dac.hns/vup.hns/.internal/active-files') {
+      // TODO This doesn't really work yet
+      void update(bool shouldSetState) {
+        final notifs = storageService.dac.getAllUploadingFilesChangeNotifiers();
+        uploadingFiles.clear();
+        for (final n in notifs.values) {
+          // ignore: invalid_use_of_protected_member
+          uploadingFiles.addAll(n.state);
+        }
+        if (shouldSetState && mounted) {
+          setState(() {});
+        }
+      }
 
-    sub2 = changeNotif.stream.listen((event) {
-      if (mounted)
-        setState(() {
-          uploadingFiles = event;
-          sort();
-        });
-    });
+      update(false);
+
+      sub2 = Stream.periodic(const Duration(seconds: 1)).listen((event) {
+        update(true);
+      });
+    } else {
+      final changeNotif = storageService.dac.getUploadingFilesChangeNotifier(
+        widget.pathNotifier.toCleanUri().toString(),
+      );
+      // ignore: invalid_use_of_protected_member
+      uploadingFiles = changeNotif.state;
+
+      sub2 = changeNotif.stream.listen((event) {
+        if (mounted)
+          setState(() {
+            uploadingFiles = event;
+            sort();
+          });
+      });
+    }
 
     if (index != null) {
       sort();

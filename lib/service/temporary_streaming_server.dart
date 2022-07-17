@@ -7,6 +7,7 @@ import 'package:random_string/random_string.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/web_server/serve_chunked_file.dart';
+import 'package:vup/service/web_server/serve_plaintext_file.dart';
 
 class TemporaryStreamingServerService extends VupService {
   bool isRunning = false;
@@ -75,6 +76,8 @@ class TemporaryStreamingServerService extends VupService {
       if (file.file.encryptionType == 'libsodium_secretbox') {
         await handleChunkedFile(req, res, file, file.file.size);
         return null;
+      } else if (file.file.encryptionType == null) {
+        return await handlePlaintextFile(req, res, file);
       }
     });
 

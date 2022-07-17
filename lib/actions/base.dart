@@ -12,6 +12,7 @@ import 'package:vup/actions/file_details.dart';
 import 'package:vup/actions/make_available_offline.dart';
 import 'package:vup/actions/move_to_trash.dart';
 import 'package:vup/actions/open_in_new_tab.dart';
+import 'package:vup/actions/open_parent_directory.dart';
 import 'package:vup/actions/pin_all.dart';
 import 'package:vup/actions/previous_versions.dart';
 import 'package:vup/actions/regenerate_metadata.dart';
@@ -25,7 +26,9 @@ import 'package:vup/actions/setup_sync.dart';
 import 'package:vup/actions/share.dart';
 import 'package:vup/actions/share_directory.dart';
 import 'package:vup/actions/share_file_with_other_app.dart';
+import 'package:vup/actions/share_webapp.dart';
 import 'package:vup/actions/stream_to_cast_device.dart';
+import 'package:vup/actions/upload_directory.dart';
 import 'package:vup/actions/upload_files.dart';
 import 'package:vup/actions/upload_media_files.dart';
 import 'package:vup/actions/view_json.dart';
@@ -41,10 +44,12 @@ final allActions = <VupFSAction>[
   SearchVupAction(),
   CreateDirectoryVupAction(),
   UploadFilesVupAction(),
+  // TODO UploadDirectoryVupAction(),
   UploadMediaFilesVupAction(),
   YTDLVupAction(),
   SetupSyncVupAction(),
   ShareDirectoryVupAction(),
+  ShareWebAppVupAction(),
   // ! FileSystemEntity Actions
   SelectVupAction(),
   OpenInNewTabVupAction(),
@@ -59,6 +64,7 @@ final allActions = <VupFSAction>[
   ShareVupAction(),
 
   MakeAvailableOfflineVupAction(),
+
   DeleteFromDeviceVupAction(),
 
   MoveToTrashVupAction(),
@@ -66,6 +72,9 @@ final allActions = <VupFSAction>[
   RemoveSharedDirectoryVupAction(),
   PinAllVupAction(),
   PreviousFileVersionsVupAction(),
+
+  OpenParentDirectoryVupAction(),
+
   ShowFileDetailsVupAction(),
   CopyTemporaryStreamingLinkVupAction(),
   RegenerateMetadataVupAction(),

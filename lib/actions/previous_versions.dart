@@ -37,7 +37,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Previous versions'),
+        title: const Text('Previous versions'),
         content: SizedBox(
           width: dialogWidth,
           height: dialogHeight,
@@ -58,7 +58,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
         actions: [
           TextButton(
             onPressed: () => ctx.pop(),
-            child: Text(
+            child: const Text(
               'Close',
             ),
           ),
@@ -84,7 +84,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
           child: Center(
             child: Text(
               version,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
               ),
             ),
@@ -111,7 +111,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
                       showErrorDialog(context, e, st);
                     }
                   },
-                  child: Text(
+                  child: const Text(
                     'Unpin',
                   ),
                 ),
@@ -134,7 +134,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
                     showErrorDialog(context, e, st);
                   }
                 },
-                child: Text(
+                child: const Text(
                   'Restore',
                 ),
               ),

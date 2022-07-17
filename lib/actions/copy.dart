@@ -1,4 +1,3 @@
-import 'package:clipboard/clipboard.dart';
 import 'package:filesystem_dac/dac.dart';
 import 'package:vup/app.dart';
 import 'package:vup/utils/strings.dart';

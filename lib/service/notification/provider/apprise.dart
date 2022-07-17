@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/notification/provider/base.dart';
 
+// TODO https://github.com/caronc/apprise
+
 class AppriseNotificationProvider extends NotificationProvider {
   static var servers = <String>[];
   Future<void> show(

@@ -104,15 +104,15 @@ class FileDetailsDialogState extends State<FileDetailsDialog> {
                   ),
                 ),
               ),
-              _buildRow('Type', file.file.encryptionType),
+              _buildRow('Type', file.file.encryptionType ?? 'None'),
               _buildRow(
                 'Padding',
-                '${filesize(file.file.padding)} (${file.file.padding} bytes)',
+                '${filesize(file.file.padding ?? 0)} (${file.file.padding} bytes)',
               ),
               _buildRow('Blob URI', file.file.url),
               _buildRow(
                 'Chunk Size',
-                '${filesize(file.file.chunkSize)} (${file.file.chunkSize} bytes)',
+                '${filesize(file.file.chunkSize ?? 0)} (${file.file.chunkSize} bytes)',
               ),
               Center(
                 child: Padding(

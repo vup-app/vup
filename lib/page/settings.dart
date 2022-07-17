@@ -8,6 +8,7 @@ import 'package:vup/page/settings/devices.dart';
 import 'package:vup/page/settings/jellyfin.dart';
 import 'package:vup/page/settings/mounts.dart';
 import 'package:vup/page/settings/portal_auth.dart';
+import 'package:vup/page/settings/remotes.dart';
 import 'package:vup/page/settings/scripts.dart';
 import 'package:vup/page/settings/ui_settings.dart';
 import 'package:vup/page/settings/web_server.dart';
@@ -36,6 +37,10 @@ class SettingsPane {
 class _SettingsPageState extends State<SettingsPage> {
   final panes = [
     SettingsPane(
+      title: 'Preferences',
+      build: () => UISettingsPage(),
+    ),
+    SettingsPane(
       title: 'Portal Auth',
       build: () => PortalAuthSettingsPage(),
     ),
@@ -47,10 +52,6 @@ class _SettingsPageState extends State<SettingsPage> {
       title: 'Manage file system index',
       build: () => ManageFSIndexPage(),
     ), */
-    SettingsPane(
-      title: 'Behaviour',
-      build: () => UISettingsPage(),
-    ),
     SettingsPane(
       title: 'Custom themes',
       build: () => CustomThemesSettingsPage(),
@@ -71,11 +72,16 @@ class _SettingsPageState extends State<SettingsPage> {
       title: 'Manage Cache',
       build: () => CacheSettingsPage(),
     ),
-    if (devModeEnabled)
+    if (devModeEnabled) ...[
       SettingsPane(
         title: 'Edit mounts.json',
         build: () => MountsSettingsPage(),
       ),
+      SettingsPane(
+        title: 'Edit remotes.json',
+        build: () => RemotesSettingsPage(),
+      ),
+    ],
     SettingsPane(
       title: 'Advanced',
       build: () => AdvancedSettingsPage(),

@@ -199,11 +199,16 @@ class _BrowseViewState extends State<BrowseView> {
                       bool isDirectoryAddedToSharedWithMe = false;
 
                       if (isDirectoryShared) {
-                        final di = storageService.dac.getDirectoryIndexCached(
-                          'vup.hns/.internal/shared-with-me',
-                        );
-                        if (di?.directories.containsKey(path.first) ?? false) {
-                          isDirectoryAddedToSharedWithMe = true;
+                        if (widget.pathNotifier.toCleanUri().host == 'remote') {
+                          isDirectoryShared = false;
+                        } else {
+                          final di = storageService.dac.getDirectoryIndexCached(
+                            'vup.hns/.internal/shared-with-me',
+                          );
+                          if (di?.directories.containsKey(path.first) ??
+                              false) {
+                            isDirectoryAddedToSharedWithMe = true;
+                          }
                         }
                       }
                       return DropTarget(
@@ -260,6 +265,11 @@ class _BrowseViewState extends State<BrowseView> {
                           return; */
                           final currentUri = globalIsHoveringDirectoryUri ??
                               pathNotifier.toCleanUri().toString();
+
+                          /* logger.verbose(
+                              'globalIsHoveringDirectoryUri: $globalIsHoveringDirectoryUri');
+                          logger.verbose(
+                              'pathNotifier: ${pathNotifier.toCleanUri().toString()}'); */
                           final currentPath = pathNotifier.value;
                           try {
                             await uploadMultipleFiles(

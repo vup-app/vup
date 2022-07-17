@@ -8,7 +8,7 @@ import 'package:skynet/src/portal_accounts/index.dart';
 Future<void> showPortalDialog(BuildContext context) async {
   final portalList = [
     {"host": "siasky.net", "public": true, "open": true},
-    {"host": "fileportal.org", "public": true, "open": true},
+    {"host": "web3portal.com", "public": true, "open": true},
     {"host": "skynetfree.net", "open": true},
     {"host": "skynetpro.net", "open": true},
     {"host": "seveysky.net", "open": true},

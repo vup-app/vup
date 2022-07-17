@@ -484,6 +484,8 @@ MimeType=x-scheme-handler/vup;
 
                       await Directory(vupConfigDir).delete(recursive: true);
 
+                      await mySky.secureStorage.deleteAll();
+
                       exit(0);
                     }
                   },
@@ -699,6 +701,21 @@ MimeType=x-scheme-handler/vup;
                 icon: 'folder-shared',
               ),
 
+              if (storageService.dac.customRemotes.isNotEmpty) ...[
+                SizedBox(
+                  height: 16,
+                ),
+                Text(
+                  'Remotes',
+                  style: shortcutGroupTitleStyle,
+                ),
+                for (final remoteId in storageService.dac.customRemotes.keys)
+                  SidebarShortcutWidget(
+                    path: 'skyfs://$remoteId@remote',
+                    appLayoutState: widget.appLayoutState,
+                  ),
+              ],
+
               if ((dataBox.get('jellyfin_server_collections') ?? [])
                   .isNotEmpty) ...[
                 SizedBox(
@@ -731,6 +748,11 @@ MimeType=x-scheme-handler/vup;
                 Text(
                   'Internal (Debug)',
                   style: shortcutGroupTitleStyle,
+                ),
+                SidebarShortcutWidget(
+                  path: 'vup.hns/.internal/active-files',
+                  appLayoutState: widget.appLayoutState,
+                  title: 'Active files',
                 ),
                 SidebarShortcutWidget(
                   path: 'vup.hns/.internal/shared-static-directories',

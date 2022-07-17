@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/library/state.dart';
 import 'package:vup/service/base.dart';
+import 'package:skynet/src/portal_accounts/index.dart';
 
 class QuotaService extends VupService with CustomState {
   int usedBytes = 0;
@@ -13,6 +14,30 @@ class QuotaService extends VupService with CustomState {
 
   Future<void> init() async {
     historyBox = await Hive.openBox('stats_history');
+
+    Stream.periodic(Duration(minutes: 9)).listen((event) {
+      _unpinDeletedSkylinks();
+    });
+
+    Future.delayed(Duration(minutes: 2)).then((value) {
+      refreshAuthCookie();
+    });
+  }
+
+  void _unpinDeletedSkylinks() async {
+    info('_unpinDeletedSkylinks');
+    for (final key in storageService.dac.deletedSkylinks.keys.toList()) {
+      String skylink = storageService.dac.deletedSkylinks.get(key) as String;
+      if (skylink.startsWith('sia://')) {
+        skylink = skylink.substring(6);
+      }
+
+      if (skylink.length == 46) {
+        verbose('unpin $skylink');
+        await mySky.skynetClient.portalAccount.unpinSkylink(skylink);
+        storageService.dac.deletedSkylinks.delete(key);
+      }
+    }
   }
 
   int counter = 0;
@@ -62,5 +87,26 @@ class QuotaService extends VupService with CustomState {
     } catch (e, st) {
       print('quota $e $st');
     }
+  }
+
+  Future<void> refreshAuthCookie() async {
+    info('refreshAuthCookie');
+    final portalAccounts = dataBox.get('mysky_portal_auth_accounts');
+    final currentPortalAccounts = portalAccounts[mySky.skynetClient.portalHost];
+    final portalAccountTweak = currentPortalAccounts['accountNicknames']
+        [currentPortalAccounts['activeAccountNickname']];
+
+    final jwt = await login(
+      mySky.skynetClient,
+      mySky.user.rawSeed,
+      portalAccountTweak,
+    );
+    mySky.skynetClient.headers = {'cookie': jwt};
+    dataBox.put('cookie', jwt);
+
+    dataBox.put(
+      'mysky_portal_auth_ts',
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 }

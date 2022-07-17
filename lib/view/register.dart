@@ -462,7 +462,10 @@ class _RegisterViewState extends State<RegisterView> {
                         ),
                       ); */
                     } catch (e) {
-                      dataBox.delete('seed');
+                      try {
+                        await mySky.secureStorage.delete(key: 'seed');
+                      } catch (_) {}
+                      // dataBox.delete('seed');
                       _error = e.toString();
                     }
 

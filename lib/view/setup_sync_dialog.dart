@@ -6,7 +6,8 @@ import 'package:universal_platform/universal_platform.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vup/app.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
+
+import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:vup/model/sync_task.dart';
 
 class SetupSyncDialog extends StatefulWidget {
@@ -103,7 +104,7 @@ class _SetupSyncDialogState extends State<SetupSyncDialog> {
                 filePath = await FilePicker.platform.getDirectoryPath();
               } else {
                 filePath =
-                    await FileSelectorPlatform.instance.getDirectoryPath();
+                    await file_selector.getDirectoryPath();
                 //
               }
 

@@ -12,8 +12,6 @@ import 'package:vup/utils/ffmpeg/io.dart';
 import 'package:xdg_directories/xdg_directories.dart';
 
 Future<void> initAppGeneric({required bool isRunningInFlutterMode}) async {
-  // TODO Store Hive thumbnail and directory cache in data directory
-
   final tempDir = Directory('/tmp');
 
   vupTempDir = join(tempDir.path, 'vup');

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:launch_at_startup/launch_at_startup.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:path/path.dart';
 import 'package:vup/app.dart';
 
@@ -32,12 +33,27 @@ class _UISettingsPageState extends State<UISettingsPage> {
     super.initState();
   }
 
+  Widget _createTitle(String title, {required BuildContext context}) => Padding(
+        padding: const EdgeInsets.only(
+          left: 16,
+          top: 16,
+          bottom: 8,
+        ),
+        child: Text(
+          title,
+          style: subTitleTextStyle.copyWith(
+            color: Theme.of(context).primaryColor,
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        SizedBox(
-          height: 16,
+        _createTitle(
+          'Interface',
+          context: context,
         ),
         CheckboxListTile(
           value: isRecursiveDirectorySizesEnabled,
@@ -83,6 +99,46 @@ class _UISettingsPageState extends State<UISettingsPage> {
 
             setState(() {});
           },
+        ),
+        if (Platform.isAndroid || Platform.isIOS || Platform.isWindows) ...[
+          _createTitle(
+            'Security',
+            context: context,
+          ),
+          CheckboxListTile(
+            value: Settings.securityIsBiometricAuthenticationEnabled,
+            title: Text('Use biometric authentication'),
+            subtitle: Text(
+              'When enabled, biometric authentication will be required every time you open Vup.',
+            ),
+            onChanged: (val) async {
+              if (val == true) {
+                if (!(await localAuth.canCheckBiometrics)) {
+                  showErrorDialog(context,
+                      'Biometrics are not available on this device.', '');
+                  return;
+                }
+                final availableBiometrics =
+                    await localAuth.getAvailableBiometrics();
+
+                if (!(availableBiometrics.contains(BiometricType.strong) ||
+                    availableBiometrics.contains(BiometricType.face) ||
+                    availableBiometrics.contains(BiometricType.fingerprint) ||
+                    availableBiometrics.contains(BiometricType.iris))) {
+                  showErrorDialog(context,
+                      'No auth methods enrolled. $availableBiometrics', '');
+                  return;
+                }
+              }
+              dataBox.put('security_biometric_authentication_enabled', val!);
+
+              setState(() {});
+            },
+          ),
+        ],
+        _createTitle(
+          'Behaviour',
+          context: context,
         ),
         CheckboxListTile(
           value: isWatchOpenedFilesEnabled,

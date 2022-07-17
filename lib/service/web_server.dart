@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/web_server/serve_chunked_file.dart';
+import 'package:vup/service/web_server/serve_plaintext_file.dart';
 
 class WebServerService extends VupService {
   bool isRunning = false;
@@ -133,6 +134,8 @@ class WebServerService extends VupService {
         if (file.file.encryptionType == 'libsodium_secretbox') {
           await handleChunkedFile(req, res, file, file.file.size);
           return null;
+        } else if (file.file.encryptionType == null) {
+          return await handlePlaintextFile(req, res, file);
         }
 
         if (downloadCompleters.containsKey(file.file.hash)) {

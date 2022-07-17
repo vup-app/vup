@@ -119,28 +119,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
             onPressed: () async {
               try {
                 showLoadingDialog(context, 'Logging in using MySky...');
-
-                final portalAccounts =
-                    dataBox.get('mysky_portal_auth_accounts');
-                final currentPortalAccounts =
-                    portalAccounts[mySky.skynetClient.portalHost];
-                final portalAccountTweak =
-                    currentPortalAccounts['accountNicknames']
-                        [currentPortalAccounts['activeAccountNickname']];
-
-                final jwt = await login(
-                  mySky.skynetClient,
-                  mySky.user.rawSeed,
-                  portalAccountTweak,
-                );
-                mySky.skynetClient.headers = {'cookie': jwt};
-                dataBox.put('cookie', jwt);
-
-                dataBox.put(
-                  'mysky_portal_auth_ts',
-                  DateTime.now().millisecondsSinceEpoch,
-                );
-
+                await quotaService.refreshAuthCookie();
                 context.pop();
               } catch (e, st) {
                 context.pop();

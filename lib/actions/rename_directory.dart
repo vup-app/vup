@@ -32,10 +32,12 @@ class RenameDirectoryVupAction extends VupFSAction {
     VupFSActionInstance instance,
   ) async {
     final ctrl = TextEditingController(text: instance.entity.name);
+    ctrl.selection =
+        TextSelection(baseOffset: 0, extentOffset: ctrl.text.length);
     final name = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Rename your directory'),
+        title: const Text('Rename your directory'),
         content: TextField(
           controller: ctrl,
           autofocus: true,
@@ -44,11 +46,11 @@ class RenameDirectoryVupAction extends VupFSAction {
         actions: [
           TextButton(
             onPressed: () => context.pop(),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () => context.pop(ctrl.text),
-            child: Text('Rename'),
+            child: const Text('Rename'),
           ),
         ],
       ),

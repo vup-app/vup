@@ -29,6 +29,8 @@ class _ShareDialogState extends State<ShareDialog> {
 
   bool _advancedSharePossible = false;
 
+  String? currentViewType;
+
   @override
   void initState() {
     super.initState();
@@ -176,6 +178,43 @@ class _ShareDialogState extends State<ShareDialog> {
                 ),
               ],
             ],
+            if (_isStatic && devModeEnabled) ...[
+              SizedBox(
+                height: 16,
+              ),
+              Text(
+                'View type',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              SizedBox(
+                height: 8,
+              ),
+              Wrap(
+                children: [
+                  for (final viewType in [
+                    ['generic', 'Generic'],
+                    ['audio', 'Audio'],
+                    ['video', 'Video'],
+                    ['webamp', 'Webamp'],
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ChoiceChip(
+                        label: Text(viewType[1]),
+                        selected: currentViewType == viewType[0],
+                        onSelected: (_) async {
+                          setState(() {
+                            currentViewType = viewType[0];
+                          });
+                        },
+                      ),
+                    ),
+                ],
+              )
+            ],
             if (false)
               Wrap(
                 children: [
@@ -299,8 +338,7 @@ class _ShareDialogState extends State<ShareDialog> {
                               shareUri.toString(),
                             );
 
-                            final shareLink =
-                                'https://share.vup.app/#${shareSeed}';
+                            final shareLink = _buildShareLink(shareSeed);
                             context.pop();
                             showShareResultDialog(context, shareLink);
                           } else {
@@ -326,8 +364,7 @@ class _ShareDialogState extends State<ShareDialog> {
                                 Uri.parse(shareUri),
                               );
 
-                              final shareLink =
-                                  'https://share.vup.app/#${shareUri}';
+                              final shareLink = _buildShareLink(shareUri);
                               context.pop();
                               showShareResultDialog(context, shareLink);
                             } else {
@@ -364,8 +401,7 @@ class _ShareDialogState extends State<ShareDialog> {
                                 dirUri.toString(),
                               );
 
-                              final shareLink =
-                                  'https://share.vup.app/#${shareSeed}';
+                              final shareLink = _buildShareLink(shareSeed);
                               context.pop();
                               showShareResultDialog(context, shareLink);
                             }
@@ -394,6 +430,14 @@ class _ShareDialogState extends State<ShareDialog> {
         ),
       ),
     );
+  }
+
+  String _buildShareLink(String shareSeed) {
+    if (currentViewType == null) {
+      return 'https://share.vup.app/#${shareSeed}';
+    } else {
+      return 'https://mstream.hns.${mySky.skynetClient.portalHost}/#${shareSeed}?viewType=$currentViewType';
+    }
   }
 }
 

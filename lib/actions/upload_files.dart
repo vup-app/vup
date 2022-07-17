@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
+import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:filesystem_dac/dac.dart';
 import 'package:vup/app.dart';
 
@@ -43,7 +43,7 @@ class UploadFilesVupAction extends VupFSAction {
         }
       }
     } else {
-      final res = await FileSelectorPlatform.instance.openFiles();
+      final res = await file_selector.openFiles();
 
       for (final xfile in res) {
         files.add(File(xfile.path));

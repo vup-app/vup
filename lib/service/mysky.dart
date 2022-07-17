@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
 import 'package:random_string/random_string.dart';
 import 'package:simple_observable/simple_observable.dart';
@@ -55,6 +56,7 @@ class MySkyService extends VupService {
       user = await SkynetUser.fromMySkySeedPhrase(value);
 
       storageService.mySkyProvider.skynetUser = user;
+      storageService.mySkyProvider.isLoggedIn = true;
       storageService.dac.onUserLogin();
       isLoggedIn.value = true;
       registerDeviceId();
@@ -122,8 +124,17 @@ class MySkyService extends VupService {
     }
   }
 
+  late FlutterSecureStorage secureStorage;
+
   Future<void> init() async {
     info('Using portal ${skynetClient.portalHost}');
+
+    secureStorage = const FlutterSecureStorage();
+
+    if (dataBox.containsKey('seed')) {
+      await secureStorage.write(key: 'seed', value: dataBox.get('seed'));
+      await dataBox.delete('seed');
+    }
 
     profileDAC = ProfileDAC(skynetClient);
 
@@ -131,11 +142,11 @@ class MySkyService extends VupService {
   }
 
   Future<void> storeSeedPhrase(String seed) async {
-    await dataBox.put('seed', seed);
+    await secureStorage.write(key: 'seed', value: seed);
   }
 
   Future<String?> loadSeedPhrase() async {
-    return dataBox.get('seed');
+    return secureStorage.read(key: 'seed');
   }
 
   void dumpUsedMySkyPathsVault() {

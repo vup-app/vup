@@ -32,7 +32,7 @@ class CreateDirectoryVupAction extends VupFSAction {
     final name = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Name your new directory'),
+        title: const Text('Name your new directory'),
         content: TextField(
           controller: ctrl,
           autofocus: true,
@@ -41,11 +41,11 @@ class CreateDirectoryVupAction extends VupFSAction {
         actions: [
           TextButton(
             onPressed: () => context.pop(),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () => context.pop(ctrl.text),
-            child: Text('Create'),
+            child: const Text('Create'),
           ),
         ],
       ),
@@ -61,7 +61,9 @@ class CreateDirectoryVupAction extends VupFSAction {
         if (!res.success) throw res.error!;
         context.pop();
         instance.pathNotifier.path = instance.pathNotifier.path + [name];
+        globalIsHoveringDirectoryUri = null;
         instance.pathNotifier.$();
+        globalIsHoveringDirectoryUri = null;
       } catch (e, st) {
         context.pop();
         showErrorDialog(context, e, st);

@@ -20,7 +20,7 @@ class YTDLUtils {
     Stream<Null>? cancelStream,
     List<String>? additionalArgs,
   }) async {
-    final dlCount = 1;
+    final dlCount = 100;
 
     final outDirectory = Directory(join(
       storageService.temporaryDirectory,

@@ -33,7 +33,7 @@ class ShowFileDetailsVupAction extends VupFSAction {
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('File details'),
+        title: const Text('File details'),
         content: SizedBox(
           width: dialogWidth,
           height: dialogHeight,
@@ -45,7 +45,7 @@ class ShowFileDetailsVupAction extends VupFSAction {
         actions: [
           TextButton(
             onPressed: () => ctx.pop(),
-            child: Text(
+            child: const Text(
               'Close',
             ),
           ),

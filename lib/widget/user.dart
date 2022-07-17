@@ -21,11 +21,22 @@ class _UserWidgetState extends State<UserWidget> {
     super.initState();
   }
 
-  Profile? profile;
+  static Profile? profile;
 
   void _loadProfile() async {
     // await Future.delayed(Duration(seconds: 10));
-    profile = await mySky.profileDAC.getProfile(widget.userId);
+    try {
+      profile = await mySky.profileDAC.getProfile(widget.userId).timeout(
+            const Duration(seconds: 10),
+          );
+      if (profile == null) throw '';
+    } catch (e) {
+      profile ??= Profile(
+        version: 1,
+        username: 'You',
+        location: 'Using Vup',
+      );
+    }
     final avatarUri = profile?.getAvatarUrl() ??
         'sia://CABdyKgcVLkjdsa0HIjBfNicRv0pqU7YL-tgrfCo23DmWw';
     final avatarUrl = mySky.skynetClient.resolveSkylink(

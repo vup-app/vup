@@ -9,13 +9,18 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart';
 import 'package:tuple/tuple.dart';
 import 'package:uuid/uuid.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
+import 'package:vup/service/jellyfin_server/metadata_cleanup.dart';
+import 'package:vup/service/jellyfin_server/statistics.dart';
+import 'package:vup/service/rich_status_service.dart';
 import 'package:vup/service/web_server/serve_chunked_file.dart';
 import 'package:alfred/src/type_handlers/websocket_type_handler.dart';
 import 'package:subtitle/subtitle.dart';
 
 import 'package:archive2/archive_io.dart';
+import 'package:vup/service/web_server/serve_plaintext_file.dart';
 
 const tickMultiplier = 1000 * 1000 * 10;
 String createIdHash(List<int> bytes) {
@@ -173,7 +178,7 @@ class JellyfinServerService extends VupService {
 
     if (type == 'music') {
       musicCollectionIds.add(collectionId);
-      final processedAlbumNames = <String>{};
+      final processedAlbumIds = <String>{};
       final totalAlbumMusicLength = <String, int>{};
       final totalArtistMusicLength = <String, int>{};
       final albumGenres = <String, Set<String>>{};
@@ -249,24 +254,24 @@ class JellyfinServerService extends VupService {
             ? song.ext?['thumbnail']?['key']
             : song.ext?['audio']?['coverKey'];
 
-        final albumId =
-            createIdHash(utf8.encode('album_' + albumName)).toString();
+        final albumId = createIdHash(
+                utf8.encode('album_' + albumArtist + '###' + albumName))
+            .toString();
 
-        final artistId = processArtist(artist);
-        final albumArtistId = processArtist(albumArtist);
+        final artists = MetadataCleanup.parseArtists(artist);
+        final albumArtists = MetadataCleanup.parseArtists(albumArtist);
 
-        if (!processedAlbumNames.contains(albumName)) {
-          processedAlbumNames.add(albumName);
+        final artistIds = artists.map<String>(processArtist).toList();
+        final albumArtistIds = albumArtists.map<String>(processArtist).toList();
+
+        if (!processedAlbumIds.contains(albumId)) {
+          processedAlbumIds.add(albumId);
 
           recursiveParentToChildMap[collectionId]!.add(albumId);
           addLatestItem(albumId);
 
           if (coverKey != null) allCoverKeysMap[albumId] = coverKey;
           parentToChildMap[albumId] = [];
-
-          parentToChildMap[artistId] ??= [];
-
-          parentToChildMap[artistId]!.add(albumId);
 
           totalAlbumMusicLength[albumId] = 0;
 
@@ -292,21 +297,21 @@ class JellyfinServerService extends VupService {
               "Played": false,
               "Key": "a8b472e7763145e28526af47adac43f0"
             },
-            "Artists": [
-              artist,
-            ],
+            "Artists": artists,
             "ArtistItems": [
-              {
-                "Name": artist,
-                "Id": artistId,
-              }
+              for (int i = 0; i < artists.length; i++)
+                {
+                  "Name": artists[i],
+                  "Id": artistIds[i],
+                }
             ],
-            "AlbumArtist": albumArtist,
+            "AlbumArtist": albumArtists.first,
             "AlbumArtists": [
-              {
-                "Name": albumArtist,
-                "Id": albumArtistId,
-              }
+              for (int i = 0; i < albumArtists.length; i++)
+                {
+                  "Name": albumArtists[i],
+                  "Id": albumArtistIds[i],
+                }
             ],
             "ImageTags":
                 allCoverKeysMap[albumId] == null ? {} : {"Primary": albumId},
@@ -322,7 +327,16 @@ class JellyfinServerService extends VupService {
           };
         }
 
+        for (final artistId in artistIds) {
+          parentToChildMap[artistId] ??= [];
+          parentToChildMap[artistId]!.add(albumId);
+        }
+
         final songId = song.file.hash;
+
+        for (final artistId in artistIds) {
+          parentToChildMap[artistId]!.add(songId);
+        }
 
         final genre = song.ext?['audio']['genre'];
         String? genreId;
@@ -346,8 +360,10 @@ class JellyfinServerService extends VupService {
         totalAlbumMusicLength[albumId] =
             (totalAlbumMusicLength[albumId]! + ticks).round();
 
-        totalArtistMusicLength[artistId] =
-            (totalArtistMusicLength[artistId]! + ticks).round();
+        for (final artistId in artistIds) {
+          totalArtistMusicLength[artistId] =
+              (totalArtistMusicLength[artistId]! + ticks).round();
+        }
 
         final songItem = _buildAudioItemForFile(
           song,
@@ -361,22 +377,24 @@ class JellyfinServerService extends VupService {
         }
 
         songItem.addAll(<String, dynamic>{
-          "Artists": [artist],
+          "Artists": artists,
           "ArtistItems": [
-            {
-              "Name": artist,
-              "Id": artistId,
-            }
+            for (int i = 0; i < artists.length; i++)
+              {
+                "Name": artists[i],
+                "Id": artistIds[i],
+              }
           ],
           "Album": albumName,
           "AlbumId": albumId,
           "AlbumPrimaryImageTag": albumId,
-          "AlbumArtist": albumArtist,
+          "AlbumArtist": albumArtists.first,
           "AlbumArtists": [
-            {
-              "Name": albumArtist,
-              "Id": albumArtistId,
-            }
+            for (int i = 0; i < albumArtists.length; i++)
+              {
+                "Name": albumArtists[i],
+                "Id": albumArtistIds[i],
+              }
           ],
         });
 
@@ -1169,7 +1187,7 @@ class JellyfinServerService extends VupService {
 
     info('create collection $collectionId $name');
 
-    collectionsMap[collectionId] = {
+    final collectionMap = {
       "Name": name,
       "ServerId": serverId,
       "Id": collectionId,
@@ -1185,8 +1203,8 @@ class JellyfinServerService extends VupService {
       },
       "CollectionType": type,
       "ImageTags": {},
-      "BackdropImageTags": [],
       "ImageBlurHashes": {},
+      "BackdropImageTags": [],
       "LocationType": "Remote",
       // ---
       "Etag": DateTime.now().toIso8601String(),
@@ -1219,6 +1237,18 @@ class JellyfinServerService extends VupService {
       "LockedFields": [],
       "LockData": false
     };
+    if (coverImages[''] != null) {
+      final key = addThumbnail(
+        map: collectionMap,
+        id: collectionId,
+        type: 'Primary',
+        uri: coverImages[''],
+      );
+
+      allCoverKeysMap[collectionId] = key;
+    }
+
+    collectionsMap[collectionId] = collectionMap;
     allItems[collectionId] = collectionsMap[collectionId];
   }
 
@@ -2245,7 +2275,7 @@ class JellyfinServerService extends VupService {
           queryParameters['contributingartistids'];
 
       bool isFavorite = queryParameters['isfavorite'] == 'true';
-      var recursive = queryParameters['recursive'] == 'true';
+      var recursive = queryParameters['recursive']?.toLowerCase() == 'true';
       if (isFavorite) {
         parentId = 'favorites';
         recursive = false;
@@ -2338,7 +2368,7 @@ class JellyfinServerService extends VupService {
         });
       }
 
-      if (filter == 'music') {
+      if (filter == 'music' && !recursive) {
         items.clear();
         for (final mid in musicCollectionIds) {
           for (final itemId in parentToChildMap[mid]!) {
@@ -2390,19 +2420,7 @@ class JellyfinServerService extends VupService {
           "StartIndex": 0,
         }; */
       }
-
-      if (searchTerms != null) {
-        items.removeWhere((element) {
-          for (final term in searchTerms) {
-            if (!element.toString().toLowerCase().contains(term)) {
-              return true;
-            }
-          }
-          return false;
-        });
-      }
       var sortOrder = queryParameters['sortorder'] ?? 'Ascending';
-
       if (resume) {
         items.removeWhere((i) => i['UserData']['PlaybackPositionTicks'] == 0);
         // if (!(includeItemTypes ?? []).contains('Video')) {
@@ -2413,6 +2431,21 @@ class JellyfinServerService extends VupService {
         sortBy = 'DatePlayed';
         sortOrder = 'Descending';
         // limit = 1000;
+      }
+      if (searchTerms != null) {
+        items.removeWhere((element) {
+          for (final term in searchTerms) {
+            if (!element.toString().toLowerCase().contains(term)) {
+              return true;
+            }
+          }
+          return false;
+        });
+        if (includeItemTypes.length == 1 &&
+            includeItemTypes.first == 'MusicAlbum') {
+          sortBy = 'ChildCount';
+          sortOrder = 'Descending';
+        }
       }
 
       final sortModifier = sortOrder == 'Ascending' ? 1 : -1;
@@ -2457,6 +2490,11 @@ class JellyfinServerService extends VupService {
         items.sort((a, b) => (sortModifier *
             (a['CommunityRating'] ?? 0.0).compareTo(
               b['CommunityRating'] ?? 0.0,
+            )) as int);
+      } else if (sortBy == 'ChildCount') {
+        items.sort((a, b) => (sortModifier *
+            (a['ChildCount'] ?? 0).compareTo(
+              b['ChildCount'] ?? 0,
             )) as int);
       }
 
@@ -2608,19 +2646,75 @@ class JellyfinServerService extends VupService {
       return '';
     });
 
+    void processPlayingRequest({
+      required String itemId,
+      required int positionMillis,
+      required bool isPaused,
+    }) {
+      try {
+        final item = getItemById(itemId);
+        // print(json.encode(item));
+        final mediaType = item!['MediaType'];
+
+        final thumbnailKey =
+            allCoverKeysMap[itemId] ?? allCoverKeysMap['$itemId/Primary'];
+
+        if (mediaType == 'Audio') {
+          richStatusService.setStatus(
+            title: item['Name']!,
+            artists: item['Artists'] ?? [],
+            album: item['Album'],
+            date: item['ProductionYear'] == null
+                ? null
+                : item['ProductionYear'].toString(),
+            duration: (item['RunTimeTicks']! / tickMultiplier * 1000).round(),
+            progress: positionMillis,
+            thumbnailKey: thumbnailKey,
+            isPaused: isPaused,
+            type: RichStatusType.music,
+          );
+        } else if (mediaType == 'Video') {
+          richStatusService.setStatus(
+            title: item['Name']!,
+            indexNumber: item['IndexNumber'],
+            // artists: item['Artists'] ?? [],
+            // album: item['Album'],
+            seasonName: item['SeasonName'],
+            seriesName: item['SeriesName'],
+            duration: (item['RunTimeTicks']! / tickMultiplier * 1000).round(),
+            progress: positionMillis,
+            thumbnailKey: thumbnailKey,
+            isPaused: isPaused,
+            type: RichStatusType.video,
+          );
+        }
+      } catch (e, st) {
+        print(e);
+        print(st);
+      }
+    }
+
     app.post('/sessions/playing/progress', (req, res) async {
       final body = await req.bodyAsJsonMap;
 
       final itemId = body['ItemId']!;
+      final positionTicks = body['PositionTicks'] ?? 0;
+      final positionMillis = (positionTicks / tickMultiplier * 1000).round();
 
       if (!ignoreProgressEventsForIds.contains(itemId)) {
-        final positionTicks = body['PositionTicks'] ?? 0;
         activityService.setPlayPosition(
-            itemId, (positionTicks / tickMultiplier * 1000).round());
-        getItemById(itemId);
+          itemId,
+          positionMillis,
+        );
+        // getItemById(itemId);
       } else {
         verbose('ignoring progress event');
       }
+      processPlayingRequest(
+        itemId: itemId,
+        positionMillis: positionMillis,
+        isPaused: body['IsPaused'] ?? false,
+      );
 
       res.statusCode = HttpStatus.noContent;
       return '';
@@ -2630,14 +2724,21 @@ class JellyfinServerService extends VupService {
       final body = await req.bodyAsJsonMap;
 
       final itemId = body['ItemId']!;
+
+      final positionTicks = body['PositionTicks'] ?? 0;
+      final positionMillis = (positionTicks / tickMultiplier * 1000).round();
+
       if (!ignoreProgressEventsForIds.contains(itemId)) {
-        final positionTicks = body['PositionTicks'] ?? 0;
-        activityService.setPlayPosition(
-            itemId, (positionTicks / tickMultiplier * 1000).round());
+        activityService.setPlayPosition(itemId, positionMillis);
         getItemById(itemId);
       } else {
         verbose('ignoring progress event');
       }
+      processPlayingRequest(
+        itemId: itemId,
+        positionMillis: positionMillis,
+        isPaused: body['IsPaused'] ?? false,
+      );
 
       res.statusCode = HttpStatus.noContent;
       return '';
@@ -2911,9 +3012,11 @@ class JellyfinServerService extends VupService {
           res,
           file,
           file.file.size,
-          storeLocalFile: duration < 3600,
+          storeLocalFile: false && duration < 3600,
         );
         return null;
+      } else if (file.file.encryptionType == null) {
+        return await handlePlaintextFile(req, res, file);
       }
 
       if (downloadCompleters.containsKey(file.file.hash)) {
@@ -3068,9 +3171,10 @@ class JellyfinServerService extends VupService {
       if (localFile != null) return localFile;
 
       if (file.file.encryptionType == 'libsodium_secretbox') {
-        // TODO Check if file is available offline
         await handleChunkedFile(req, res, file, file.file.size);
         return null;
+      } else if (file.file.encryptionType == null) {
+        return await handlePlaintextFile(req, res, file);
       }
     });
 
@@ -3291,6 +3395,11 @@ class JellyfinServerService extends VupService {
         ),
         status: HttpStatus.temporaryRedirect,
       );
+    });
+
+    app.get('/statistics', (req, res) {
+      res.setContentTypeFromExtension('html');
+      return utf8.encode(generateStatisticsPage(allItems));
     });
 
     // app.printRoutes();

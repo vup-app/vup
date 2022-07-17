@@ -34,20 +34,20 @@ class ViewJSONVupAction extends VupFSAction {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('JSON Metadata'),
+        title: const Text('JSON Metadata'),
         content: SizedBox(
           width: dialogWidth,
           height: dialogHeight,
           child: SingleChildScrollView(
             reverse: true,
             child: SelectableText(
-              JsonEncoder.withIndent('  ').convert(
+              const JsonEncoder.withIndent('  ').convert(
                 instance.entity,
               ),
               /* language: 'json',
                             theme: draculaTheme,
                             padding: EdgeInsets.all(12), */
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 16,
               ),

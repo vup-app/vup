@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:pool/pool.dart';
 import 'package:vup/scripts/actions/base.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/utils/yt_dl.dart';
@@ -23,7 +24,7 @@ class YTDLAction extends VupAction {
         existingUrls.add(fileUrl);
       }
     }
-    info('existingUrls $existingUrls');
+    // info('existingUrls $existingUrls');
     final videos = [];
 
     final process = await Process.start(
@@ -43,7 +44,7 @@ class YTDLAction extends VupAction {
         final video = json.decode(event.toString());
 
         final url = video['webpage_url'] ?? video['original_url'];
-        info('got video $url');
+        // info('got video $url');
 
         if (existingUrls.contains(url)) {
           // process.kill();
@@ -68,19 +69,30 @@ class YTDLAction extends VupAction {
     // if (exitCode != 0) throw 'yt-dlp exit code $exitCode';
 
     info('total videos ${videos.length}');
+
+    final pool = Pool(8);
+
+    final futures = <Future>[];
+
     for (final video in videos) {
       final url = video['webpage_url'] ?? video['original_url'];
       info('[process] ${url}');
-      await YTDLUtils.downloadAndUploadVideo(
-        url,
-        targetURI,
-        format,
-        /* onProgress: (progress) {
+
+      futures.add(
+        pool.withResource(
+          () => YTDLUtils.downloadAndUploadVideo(
+            url,
+            targetURI,
+            format,
+            /* onProgress: (progress) {
         setState(() {
           downloadProgress[url] = progress;
         });
       } */
+          ),
+        ),
       );
     }
+    await Future.wait(futures);
   }
 }

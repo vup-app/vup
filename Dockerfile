@@ -1,7 +1,11 @@
 FROM debian:latest
 
 # Install some Vup dependencies
-RUN apt-get update && apt-get install ca-certificates libsodium23 dnsutils ffmpeg atomicparsley -y
+RUN apt-get update
+RUN apt-get install ca-certificates dnsutils -y
+RUN apt-get install libsodium23 -y
+RUN apt-get install ffmpeg -y
+RUN apt-get install atomicparsley -y
 # TODO imagemagick openscad inkscape
 
 # Install some Vup dependencies

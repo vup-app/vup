@@ -32,10 +32,18 @@ class RenameFileVupAction extends VupFSAction {
     VupFSActionInstance instance,
   ) async {
     final ctrl = TextEditingController(text: instance.entity.name);
+
+    final parts = instance.entity.name.split('.');
+
+    ctrl.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: ctrl.text.length -
+          (parts.length > 1 ? (parts.last.length + 1) : 0) as int,
+    );
     final name = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Rename your file'),
+        title: const Text('Rename your file'),
         content: TextField(
           controller: ctrl,
           autofocus: true,
@@ -44,11 +52,11 @@ class RenameFileVupAction extends VupFSAction {
         actions: [
           TextButton(
             onPressed: () => context.pop(),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () => context.pop(ctrl.text),
-            child: Text('Rename'),
+            child: const Text('Rename'),
           ),
         ],
       ),

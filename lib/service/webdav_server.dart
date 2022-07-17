@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/web_server/serve_chunked_file.dart';
+import 'package:vup/service/web_server/serve_plaintext_file.dart';
 
 final esc = HtmlEscape();
 
@@ -333,6 +334,8 @@ class WebDavServerService extends VupService {
         if (file.file.encryptionType == 'libsodium_secretbox') {
           await handleChunkedFile(req, res, file, file.file.size);
           return null;
+        } else if (file.file.encryptionType == null) {
+          return await handlePlaintextFile(req, res, file);
         }
 
         if (downloadCompleters.containsKey(file.file.hash)) {
@@ -387,7 +390,11 @@ class WebDavServerService extends VupService {
 
         cacheFile.createSync(recursive: true);
 
-        await cacheFile.openWrite().addStream(req);
+        final sink = cacheFile.openWrite();
+        await sink.addStream(req);
+
+        await sink.flush();
+        await sink.close();
 
         final dirIndex = storageService.dac.getDirectoryIndexCached(
               // TODO Check if this is ok

@@ -9,6 +9,7 @@ import 'package:random_string/random_string.dart';
 import 'package:stash/stash_api.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/library/compute.dart';
+import 'package:vup/utils/download/generate_download_config.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:dio/dio.dart' as dio;
 import 'package:stash_hive/stash_hive.dart';
@@ -96,10 +97,12 @@ class StorageService extends VupService {
 
   get trashPath => 'home/.trash';
 
-  final customRemotes = <String, Map>{};
+  late dio.Dio dioClient;
 
   Future<void> init(Sodium sodium) async {
     mySkyProvider = NativeMySkyProvider(mySky.skynetClient);
+
+    dioClient = dio.Dio();
 
     final logger = SkyFS();
 
@@ -170,7 +173,7 @@ class StorageService extends VupService {
       String? customMimeType;
 
       //if (generateMetadata) {
-      if (supportedAudioExtensionsForPlayback.contains(ext)) {
+      if (supportedAudioExtensionsForPlayback.contains(ext) || ext == '.opus') {
         try {
           final args = [
             '-v',
@@ -178,12 +181,15 @@ class StorageService extends VupService {
             '-print_format',
             'json',
             '-show_format',
+            '-show_streams',
             file.path,
           ];
 
           final res = await ffMpegProvider.runFFProbe(args);
 
-          final format = json.decode(res.stdout)['format'];
+          final metadata = json.decode(res.stdout);
+
+          final format = metadata['format'];
 
           final audioExt = {
             'format_name': format['format_name'],
@@ -191,9 +197,23 @@ class StorageService extends VupService {
             'bit_rate': int.tryParse(format['bit_rate']),
           };
 
-          if ((format['tags'] ?? {}).isNotEmpty) {
-            for (final key in format['tags'].keys.toList()) {
-              format['tags'][key.toLowerCase()] = format['tags'][key];
+          if (audioExt['format_name'] == 'ogg') {
+            customMimeType = 'audio/ogg';
+          }
+
+          final streams = metadata['streams'] ?? [];
+
+          final Map<String, dynamic> tags = (streams.isEmpty
+                  ? <String, dynamic>{}
+                  : streams[0]?['tags']?.cast<String, dynamic>()) ??
+              <String, dynamic>{};
+          tags.addAll((format['tags'] ?? {}).cast<String, dynamic>());
+
+          // verbose('tags $tags');
+
+          if (tags.isNotEmpty) {
+            for (final key in tags.keys.toList()) {
+              tags[key.toLowerCase()] = tags[key];
             }
             final includedTags = [
               'title',
@@ -203,20 +223,21 @@ class StorageService extends VupService {
               'track',
               'date',
               'genre',
+              'bpm',
               'isrc',
               'comment',
               'description',
             ];
             for (final tag in includedTags) {
-              if (format['tags'][tag] != null) {
-                audioExt[tag] = format['tags'][tag];
+              if (tags[tag] != null) {
+                audioExt[tag] = tags[tag];
               }
             }
-            if (format['tags']['tsrc'] != null) {
-              audioExt['isrc'] = format['tags']['tsrc'].trim();
+            if (tags['tsrc'] != null) {
+              audioExt['isrc'] = tags['tsrc'].trim();
             }
-            if (audioExt['date'] == null && format['tags']['year'] != null) {
-              audioExt['date'] = format['tags']['year'].trim();
+            if (audioExt['date'] == null && tags['year'] != null) {
+              audioExt['date'] = tags['year'].trim();
             }
           }
 
@@ -743,11 +764,11 @@ class StorageService extends VupService {
       DirectoryFile(
         created: now,
         file: FileData(
-          chunkSize: 0,
-          encryptionType: 'none',
+          chunkSize: null,
+          encryptionType: null,
           hash: uploadId,
           hashes: [],
-          key: '',
+          key: null,
           size: file.lengthSync(),
           ts: now,
           url: '',
@@ -1165,15 +1186,47 @@ class StorageService extends VupService {
       if (fileData.encryptionType == 'libsodium_secretbox') {
         final stream = await dac.downloadAndDecryptFileInChunks(fileData);
         decryptedFile.createSync(recursive: true);
-        await decryptedFile
-            .openWrite()
-            .addStream(stream.map((e) => e.toList()));
+        final sink = decryptedFile.openWrite();
+        await sink.addStream(stream.map((e) => e.toList()));
+
+        await sink.flush();
+        await sink.close();
+      } else if (fileData.encryptionType == null) {
+        decryptedFile.createSync(recursive: true);
+        final dc = await generateDownloadConfig(fileData);
+
+        await dioClient.download(
+          dc.url,
+          decryptedFile.path,
+          onReceiveProgress: (count, total) {
+            dac.setFileState(
+              fileData.hash,
+              FileState(
+                type: FileStateType.downloading,
+                progress: count / total,
+              ),
+            );
+          },
+          options: dio.Options(
+            headers: dc.headers,
+          ),
+        );
+        dac.setFileState(
+          fileData.hash,
+          FileState(
+            type: FileStateType.idle,
+            progress: null,
+          ),
+        );
       } else {
         final stream = await dac.downloadAndDecryptFile(fileData);
         decryptedFile.createSync(recursive: true);
-        await decryptedFile
-            .openWrite()
-            .addStream(stream.map((e) => e.toList()));
+        final sink = decryptedFile.openWrite();
+
+        await sink.addStream(stream.map((e) => e.toList()));
+
+        await sink.flush();
+        await sink.close();
       }
 
       localFiles.put(fileData.hash, {
@@ -1304,7 +1357,7 @@ class StorageService extends VupService {
       // await Future.delayed(Duration(seconds: 10));
       skylink = await mySky.skynetClient.upload.uploadLargeFile(
         XFileDart(outFile.path),
-        filename: 'fs-dac.hns',
+        filename: 'encrypted-file.skyfs',
         fingerprint: Uuid().v4(),
         onProgress: (value) {
           // print('onProgress $value');
@@ -1320,7 +1373,7 @@ class StorageService extends VupService {
       skylink = await mySky.skynetClient.upload.uploadFileWithStream(
         SkyFile(
           content: Uint8List(0),
-          filename: 'fs-dac.hns',
+          filename: 'encrypted-file.skyfs',
           type: 'application/octet-stream',
         ),
         outFile.lengthSync(),
@@ -1465,6 +1518,7 @@ class StorageService extends VupService {
 
     await completer.future;
 
+    await sink.flush();
     await sink.close();
 
     fileStateNotifier.updateFileState(
@@ -1487,11 +1541,11 @@ class StorageService extends VupService {
     final TUS_CHUNK_SIZE = (1 << 22) * 10; // ~ 41 MB
 
     if (false && (outFile.lengthSync() > TUS_CHUNK_SIZE)) {
-      final remote = customRemotes['unraid']!['config']! as Map;
+      final remote = dac.customRemotes['unraid']!['config']! as Map;
       var client = webdav.newClient(
         remote['url'] as String,
-        user: remote['username'] as String,
-        password: remote['password'] as String,
+        user: remote['user'] as String,
+        password: remote['pass'] as String,
         debug: true,
       );
 
@@ -1503,9 +1557,11 @@ class StorageService extends VupService {
       ).toLowerCase();
 
       final c = dio.CancelToken();
-      await client.writeFromFile(
-        outFile.path,
+      await client.c.wdWriteWithStream(
+        client,
         '/skyfs/$fileId',
+        outFile.openRead(),
+        outFile.lengthSync(),
         onProgress: (c, t) {
           fileStateNotifier!.updateFileState(
             FileState(
@@ -1521,7 +1577,7 @@ class StorageService extends VupService {
       if (outFile.lengthSync() > TUS_CHUNK_SIZE) {
         blobUrl = await mySky.skynetClient.upload.uploadLargeFile(
           XFileDart(outFile.path),
-          filename: 'fs-dac.hns',
+          filename: 'encrypted-file.skyfs',
           fingerprint: Uuid().v4(),
           onProgress: (value) {
             fileStateNotifier!.updateFileState(
@@ -1536,7 +1592,7 @@ class StorageService extends VupService {
         blobUrl = await mySky.skynetClient.upload.uploadFileWithStream(
           SkyFile(
             content: Uint8List(0),
-            filename: 'fs-dac.hns',
+            filename: 'encrypted-file.skyfs',
             type: 'application/octet-stream',
           ),
           outFile.lengthSync(),
@@ -1638,10 +1694,10 @@ class StorageService extends VupService {
     );
     return EncryptAndUploadResponse(
       blobUrl: 'sia://$skylink',
-      secretKey: Uint8List(0),
-      encryptionType: 'none',
-      maxChunkSize: 0,
-      padding: 0,
+      secretKey: null,
+      encryptionType: null,
+      maxChunkSize: null,
+      padding: null,
     );
   }
 }

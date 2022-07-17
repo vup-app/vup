@@ -8,6 +8,7 @@ import 'package:contextmenu/contextmenu.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:tray_manager/tray_manager.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -33,7 +34,7 @@ import 'package:uni_links/uni_links.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:vup/app.dart';
+import 'package:vup/app.dart' hide MenuItem;
 import 'package:vup/service/storage.dart';
 import 'package:vup/view/browse.dart';
 
@@ -157,6 +158,12 @@ Future<void> initApp() async {
   dataBox = await Hive.openBox('data');
   isAppWindowVisible = !isStartMinimizedEnabled;
 
+  if (Settings.securityIsBiometricAuthenticationEnabled) {
+    await localAuth.authenticate(
+      localizedReason: 'Open Vup Cloud Storage',
+    );
+  }
+
   if ((Platform.isLinux || Platform.isWindows || Platform.isMacOS) &&
       !dataBox.containsKey('double_click_enabled')) {
     dataBox.put('double_click_enabled', true);
@@ -258,6 +265,8 @@ void main(List<String> args) async {
     } catch (_) {}
     final vupServer = Alfred();
 
+    // vupServer.all('*', cors());
+
     vupServer.post('/launch', (req, res) async {
       try {
         if (!isAppWindowVisible) {
@@ -278,15 +287,30 @@ void main(List<String> args) async {
 
     vupServer.get('/vup-share-link', (req, res) async {
       try {
-        if (!isAppWindowVisible && (Platform.isLinux || Platform.isWindows)) {
-          appWindow.show();
-          isAppWindowVisible = true;
+        if (Platform.isLinux || Platform.isWindows) {
+          if (!isAppWindowVisible) {
+            appWindow.show();
+            isAppWindowVisible = true;
+          }
+
+          appWindow.restore();
         }
+
         final queryParameters = req.requestedUri.queryParameters;
 
-        appLayoutState.navigateToShareUri(
-          queryParameters['uri']!,
-        );
+        if (isMobile) {
+          appLayoutState.navigateToShareUri(
+            queryParameters['uri']!,
+          );
+        } else {
+          final newPathNotifier = PathNotifierState([]);
+
+          newPathNotifier.navigateToUri(queryParameters['uri']!);
+
+          appLayoutState.createTab(
+            initialState: AppLayoutViewState(newPathNotifier),
+          );
+        }
       } catch (_) {}
       res.headers.contentType = ContentType.html;
 
@@ -313,15 +337,17 @@ void main(List<String> args) async {
     List<MenuItem> items = [
       MenuItem(
         key: 'toggle_window_visibility',
-        title: 'Show/Hide Window',
+        label: 'Show/Hide Window',
       ),
-      MenuItem.separator,
+      MenuItem.separator(),
       MenuItem(
         key: 'exit_app',
-        title: 'Exit App',
+        label: 'Exit App',
       ),
     ];
-    await TrayManager.instance.setContextMenu(items);
+    await trayManager.setContextMenu(Menu(
+      items: items,
+    ));
   }
 
   await initApp();
@@ -369,7 +395,9 @@ void main(List<String> args) async {
       }
     }
 
-    /* apiServerService.start(
+    // skynetKernelServerService.start(42424, '127.0.0.1');
+
+/*     apiServerService.start(
       2121,
       '127.0.0.1',
       'TOKEN',
@@ -382,6 +410,8 @@ void main(List<String> args) async {
         logger.error('$e $st');
       }
     }
+
+    // identityDACServerService.start(43915, '127.0.0.1');
 
     if (Platform.isAndroid) {
       startAndroidBackgroundService();
@@ -403,6 +433,8 @@ void main(List<String> args) async {
     }
 
     packageInfo = await PackageInfo.fromPlatform();
+
+    await richStatusService.init();
 
     // await iconPackService.initCustomIconPack('candy-icons');
 
@@ -607,6 +639,9 @@ class _HomePageState extends State<HomePage> with TrayListener {
   @override
   Widget build(BuildContext context) {
     al = AppLocalizations.of(context)!;
+
+    isMobile = context.isMobile;
+
     buildContext = context;
 
     return WillPopScope(

@@ -1,5 +1,32 @@
 # Vup Changelog
 
+## Beta 0.11.0
+
+- Your seed phrase is now securely stored in Keychain/KeyStore/libsecret (depending on your operating system)
+- Added support for securing Vup with biometric authentication on Android, iOS and Windows
+- Added Discord Rich Presence Support for music and videos streamed using Jellyfin (including thumbnails!)
+- Multiple artists of a song are now detected and handled correctly
+- You can now set custom covers/thumbnails for your Jellyfin collections
+- Added "Open parent directory" action for files when searching
+- Added experimental support for custom WebDAV remotes, can be used with rclone to read-only browse any file storage service (requires dev mode)
+- Added support for streaming/downloading files stored on IPFS and Arweave (uses public gateways)
+- When renaming a file or directory, the existing name is now pre-selected in the text field
+- Added support for sharing files using streaming links with custom players (video, audio, Webamp) (requires dev mode)
+- Improved app window behaviour on Windows and Linux
+- Added button for viewing passwords in server settings
+- Portal authentication tokens are now refreshed automatically
+- Old versions of SkyDB entries are now automatically unpinned, this results in significantly reduced wasted storage space for directories with a lot of files
+- Updated notification icon for Android
+- Added experimental action to share a directory stored in Vup as a fully end-to-end-encrypted web app (requires dev mode)
+- Audio file thumbnails are now automatically cropped to a square on upload
+- Increased minimum Android version to Android 4.3 Jelly Bean
+- The Jellyfin server now has a new page with basic listening statistics: http://localhost:8096/statistics
+- Added support for downloading and streaminging unencrypted files
+- Added experimental "Active files" view that shows files that are being uploaded right now (requires dev mode)
+- SkyFS: Improve directory index cache format
+- SkyFS: Encrypted file blobs are now stored with the filename `encrypted-file.skyfs` in your portal account
+- Fixed some bugs
+
 ## Beta 0.10.1
 
 - Added experimental portal proxy server

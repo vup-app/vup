@@ -72,6 +72,17 @@ class _ScriptsSettingsPageState extends State<ScriptsSettingsPage> {
                               'Run script',
                             ),
                           ),
+                          if (!isRunning)
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  scripts.remove(script);
+                                });
+                              },
+                              child: Text(
+                                'Delete script',
+                              ),
+                            ),
                         ],
                       );
                     }),
@@ -117,7 +128,7 @@ class _ScriptsSettingsPageState extends State<ScriptsSettingsPage> {
                               ),
                             ),
                         ],
-                      )
+                      ),
                   ],
                 ),
               ),

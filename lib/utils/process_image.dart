@@ -56,15 +56,17 @@ Future<List> processImage(List list) async {
       final size = 384;
 
       // Resize the image to a 200x? thumbnail (maintaining the aspect ratio).
-      final thumbnail = image.width > image.height
-          ? img.copyResize(
-              image,
-              height: size,
-            )
-          : img.copyResize(
-              image,
-              width: size,
-            ); // TODO Adjust, maybe use boxFit: cover
+      final thumbnail = type == 'audio'
+          ? img.copyResizeCropSquare(image, size)
+          : image.width > image.height
+              ? img.copyResize(
+                  image,
+                  height: size,
+                )
+              : img.copyResize(
+                  image,
+                  width: size,
+                );
 
       final thumbnailBytes = img.encodeJpg(
         thumbnail,

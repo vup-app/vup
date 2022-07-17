@@ -22,8 +22,12 @@ class SidebarShortcutWidget extends StatelessWidget {
     final iconSize = 32.0;
     final name = basename(path);
     return InkWell(
-      onTap: () {
-        appLayoutState.navigateTo(path.split('/'));
+      onTap: () async {
+        if (path.startsWith('skyfs://')) {
+          appLayoutState.navigateToShareUri(path);
+        } else {
+          appLayoutState.navigateTo(path.split('/'));
+        }
 
         if (context.isMobile) {
           context.pop();

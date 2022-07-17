@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:filesystem_dac/dac.dart';
-import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
+import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:vup/app.dart';
 
 import 'base.dart';
@@ -42,7 +42,7 @@ class SaveLocallyVupAction extends VupFSAction {
         fileName: file.name,
       );
     } else {
-      path = await FileSelectorPlatform.instance.getSavePath(
+      path = await file_selector.getSavePath(
         suggestedName: file.name,
       );
     }

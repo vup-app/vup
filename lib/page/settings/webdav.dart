@@ -14,6 +14,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
   final bindIpCtrl = TextEditingController(text: webDavServerBindIp);
   final usernameCtrl = TextEditingController(text: webDavServerUsername);
   final passwordCtrl = TextEditingController(text: webDavServerPassword);
+  var isPasswordHidden = true;
 
   @override
   Widget build(BuildContext context) {
@@ -95,9 +96,19 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
             controller: passwordCtrl,
             decoration: InputDecoration(
               labelText: 'Password',
+              suffixIcon: IconButton(
+                onPressed: () {
+                  setState(() {
+                    isPasswordHidden = !isPasswordHidden;
+                  });
+                },
+                icon: Icon(
+                  isPasswordHidden ? UniconsLine.eye_slash : UniconsLine.eye,
+                ),
+              ),
             ),
             enabled: !isWebDavServerEnabled,
-            obscureText: true,
+            obscureText: isPasswordHidden,
             onChanged: (s) {
               dataBox.put('webdav_server_password', s);
             },

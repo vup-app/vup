@@ -10,6 +10,7 @@ import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart';
 import 'package:unicons/unicons.dart';
@@ -23,6 +24,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/icon_pack_service.dart';
+import 'package:vup/service/rich_status_service.dart';
 
 export 'package:hive_flutter/hive_flutter.dart';
 
@@ -51,12 +53,18 @@ bool get isIntegratedAudioPlayerEnabled =>
 bool get isColumnViewFeatureEnabled =>
     dataBox.get('column_view_enabled') ?? false;
 
+final localAuth = LocalAuthentication();
+
 class Settings {
   static bool get tabsTitleShowFullPath =>
       dataBox.get('tabs_title_show_full_path') ?? false;
+
+  static bool get securityIsBiometricAuthenticationEnabled =>
+      dataBox.get('security_biometric_authentication_enabled') ?? false;
 }
 
 late AppLocalizations al;
+bool isMobile = false;
 
 final globalThumbnailMemoryCache = <String, Uint8List>{};
 
@@ -70,6 +78,7 @@ bool? isUpdateAvailable;
 bool isInstallationAvailable = false;
 
 final iconPackService = IconPackService();
+final richStatusService = RichStatusService();
 
 FlutterLocalNotificationsPlugin? flutterLocalNotificationsPlugin;
 
@@ -423,10 +432,10 @@ Future<void> startAndroidBackgroundService({bool request = false}) async {
     notificationTitle: "Vup Service",
     notificationText: "Notification for keeping Vup running in the background",
     notificationImportance: AndroidNotificationImportance.Default,
-    /*  notificationIcon: AndroidResource(
-                  name: 'background_icon',
-                  defType:
-                      'drawable'),  */ // Default is ic_launcher from folder mipmap
+    notificationIcon: AndroidResource(
+      name: 'ic_logo_outline',
+      defType: 'drawable',
+    ),
   );
   // bool success =
   await FlutterBackground.initialize(androidConfig: androidConfig);

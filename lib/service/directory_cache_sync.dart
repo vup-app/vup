@@ -81,6 +81,7 @@ class DirectoryCacheSyncService extends VupService with CustomState {
                 CachedEntry(
                   revision: remoteCache[key]['r'],
                   data: remoteCache[key]['d'],
+                  skylink: remoteCache[key]['s'],
                 ),
               );
             }
@@ -148,20 +149,17 @@ class DirectoryCacheSyncService extends VupService with CustomState {
 
     data['devices'][deviceId] = DateTime.now().millisecondsSinceEpoch;
 
-    final res2 = await storageService.dac.mySkyProvider.setJSONEncrypted(
+    await storageService.dac.mySkyProvider.setJSONEncrypted(
       indexPath,
       data,
       indexRes.revision + 1,
     );
-    if (!res2) throw 'Upload failed';
 
     info('[upload] Done.');
 
-    if (res2) {
-      directoryCacheSyncServiceData.put(
-        'upload_last_compressed_length',
-        length,
-      );
-    }
+    directoryCacheSyncServiceData.put(
+      'upload_last_compressed_length',
+      length,
+    );
   }
 }
