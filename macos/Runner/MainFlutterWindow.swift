@@ -1,12 +1,12 @@
 import Cocoa
 import FlutterMacOS
-// import bitsdojo_window_macos // Add this line
+import bitsdojo_window_macos // Add this line
 
-class MainFlutterWindow: NSWindow {
-  
-  // override func bitsdojo_window_configure() -> UInt {
-  //   return BDW_CUSTOM_FRAME | BDW_HIDE_ON_STARTUP
-  // }
+class MainFlutterWindow: BitsdojoWindow {
+    
+  override func bitsdojo_window_configure() -> UInt {
+    return BDW_CUSTOM_FRAME | BDW_HIDE_ON_STARTUP
+  }
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController.init()

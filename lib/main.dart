@@ -456,7 +456,7 @@ void main(List<String> args) async {
       color: Color(0xCC222222),
     ); */
 
-    if (Platform.isLinux || Platform.isWindows /* || Platform.isMacOS */) {
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
       doWhenWindowReady(() {
         appWindow.minSize = Size(300, 440);
         appWindow.size = Size(1080, 640);

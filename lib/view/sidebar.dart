@@ -204,11 +204,11 @@ MimeType=x-scheme-handler/vup;
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // userWidget,
-        /*if (Platform.isMacOS)
+        if (Platform.isMacOS)
           SizedBox(
             height: appWindow.titleBarHeight,
             child: MoveWindow(),
-          ),*/
+          ),
         if (!context.isMobile)
           Padding(
             padding: const EdgeInsets.all(8.0),
