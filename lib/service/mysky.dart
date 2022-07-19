@@ -131,9 +131,11 @@ class MySkyService extends VupService {
 
     secureStorage = const FlutterSecureStorage();
 
-    if (dataBox.containsKey('seed')) {
-      await secureStorage.write(key: 'seed', value: dataBox.get('seed'));
-      await dataBox.delete('seed');
+    if (!Platform.isMacOS) {
+      if (dataBox.containsKey('seed')) {
+        await secureStorage.write(key: 'seed', value: dataBox.get('seed'));
+        await dataBox.delete('seed');
+      }
     }
 
     profileDAC = ProfileDAC(skynetClient);
@@ -142,11 +144,19 @@ class MySkyService extends VupService {
   }
 
   Future<void> storeSeedPhrase(String seed) async {
-    await secureStorage.write(key: 'seed', value: seed);
+    if (!Platform.isMacOS) {
+      await secureStorage.write(key: 'seed', value: seed);
+    } else {
+      await dataBox.put('seed', seed);
+    }
   }
 
   Future<String?> loadSeedPhrase() async {
-    return secureStorage.read(key: 'seed');
+    if (!Platform.isMacOS) {
+      return secureStorage.read(key: 'seed');
+    } else {
+      return dataBox.get('seed');
+    }
   }
 
   void dumpUsedMySkyPathsVault() {
