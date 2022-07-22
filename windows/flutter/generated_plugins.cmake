@@ -4,7 +4,6 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   bitsdojo_window_windows
-  connectivity_plus_windows
   dart_discord_rpc
   desktop_drop
   dynamic_color

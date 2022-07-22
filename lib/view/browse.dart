@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
-
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_state_notifier/flutter_state_notifier.dart';
@@ -302,41 +300,43 @@ class _BrowseViewState extends State<BrowseView> {
                         },
                         child: Column(
                           children: [
-                            StreamBuilder<ConnectivityResult>(
-                              stream: Connectivity().onConnectivityChanged,
-                              builder: (context, snapshot) {
-                                if (snapshot.data == ConnectivityResult.none) {
-                                  return Container(
-                                    width: double.infinity,
-                                    color: SkyColors.warning,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Offline mode enabled - no Internet access',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontWeight: FontWeight.bold,
+                            if (false)
+                              Builder(
+                                // stream: Stream.empty(),
+                                builder: (context) {
+                                  // TODO Re-add the offline check
+                                  if (false) {
+                                    return Container(
+                                      width: double.infinity,
+                                      color: SkyColors.warning,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Offline mode enabled - no Internet access',
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
-                                          ),
-                                          /*    ElevatedButton(
+                                            /*    ElevatedButton(
                                               onPressed: () {},
                                               child: Text(
                                                 'Add this shared directory to your sidebar',
                                               ),
                                             ) */
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                } else {
-                                  return SizedBox();
-                                }
-                              },
-                            ),
+                                    );
+                                  } else {
+                                    return SizedBox();
+                                  }
+                                },
+                              ),
                             if (!context.isMobile ||
                                 !widget.pathNotifier.isSearching)
                               LayoutBuilder(builder: (context, cons) {
