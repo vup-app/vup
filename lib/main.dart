@@ -105,7 +105,10 @@ Future<void> initApp() async {
       'vup',
     );
 
-    final tempDir = await getTemporaryDirectory();
+    Directory tempDir = await getTemporaryDirectory();
+    if(configHome.toString().contains('app.vup.Vup') && runtimeDir != null){
+      tempDir = Directory(join(runtimeDir!.path, 'app', 'app.vup.Vup'));
+    }
     vupTempDir = join(tempDir.path, 'vup');
 
     vupDataDir = join(dataHome.path, 'vup');

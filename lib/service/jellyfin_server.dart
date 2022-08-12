@@ -17,6 +17,7 @@ import 'package:vup/service/jellyfin_server/statistics.dart';
 import 'package:vup/service/rich_status_service.dart';
 import 'package:vup/service/web_server/serve_chunked_file.dart';
 import 'package:alfred/src/type_handlers/websocket_type_handler.dart';
+import 'package:xdg_directories/xdg_directories.dart';
 import 'package:subtitle/subtitle.dart';
 
 import 'package:archive2/archive_io.dart';
@@ -2098,7 +2099,11 @@ class JellyfinServerService extends VupService {
             });
 
     app.get('/playback/bitratetest', (req, res) async {
-      final file = File('/tmp/${Uuid().v4()}');
+      String tmpString = 'tmp';
+      if(configHome.toString().contains('app.vup.Vup') && runtimeDir != null){
+        tmpString = join(runtimeDir!.path, 'app', 'app.vup.Vup');
+      }
+      final file = File(join(tmpString, Uuid().v4()));
       file.createSync(recursive: true);
       file.writeAsBytesSync(
           Uint8List(int.parse(req.requestedUri.queryParameters['size']!)));

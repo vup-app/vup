@@ -829,7 +829,7 @@ MimeType=x-scheme-handler/vup;
               ],
             ),
           ),
-        if (isInstallationAvailable)
+        if (isInstallationAvailable && !configHome.toString().contains("app.vup.Vup"))
           Container(
             decoration: BoxDecoration(
               color: SkyColors.warning,
