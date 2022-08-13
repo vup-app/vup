@@ -16,6 +16,7 @@ import 'package:vup/page/settings.dart';
 import 'package:vup/utils/ffmpeg/base.dart';
 import 'package:vup/utils/ffmpeg_installer.dart';
 import 'package:vup/utils/show_portal_dialog.dart';
+import 'package:vup/utils/temp_dir.dart';
 import 'package:vup/view/setup_sync_dialog.dart';
 import 'package:vup/widget/sidebar_shortcut.dart';
 import 'package:vup/widget/user.dart';
@@ -829,7 +830,7 @@ MimeType=x-scheme-handler/vup;
               ],
             ),
           ),
-        if (isInstallationAvailable)
+        if (isInstallationAvailable && !isRunningAsFlatpak)
           Container(
             decoration: BoxDecoration(
               color: SkyColors.warning,
