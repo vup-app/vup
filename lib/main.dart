@@ -25,6 +25,7 @@ import 'package:vup/utils/ffmpeg/flutter.dart';
 import 'package:vup/utils/ffmpeg/io.dart';
 import 'package:vup/utils/special_titles.dart';
 import 'package:vup/utils/strings.dart';
+import 'package:vup/utils/temp_dir.dart';
 import 'package:vup/view/tab.dart';
 import 'package:vup/widget/app_bar_wrapper.dart';
 import 'package:vup/widget/vup_logo.dart';
@@ -105,10 +106,7 @@ Future<void> initApp() async {
       'vup',
     );
 
-    Directory tempDir = await getTemporaryDirectory();
-    if(configHome.toString().contains('app.vup.Vup') && runtimeDir != null){
-      tempDir = Directory(join(runtimeDir!.path, 'app', 'app.vup.Vup'));
-    }
+    final tempDir = await getTempDir();
     vupTempDir = join(tempDir.path, 'vup');
 
     vupDataDir = join(dataHome.path, 'vup');

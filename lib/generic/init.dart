@@ -12,10 +12,7 @@ import 'package:vup/utils/ffmpeg/io.dart';
 import 'package:xdg_directories/xdg_directories.dart';
 
 Future<void> initAppGeneric({required bool isRunningInFlutterMode}) async {
-  Directory tempDir = Directory('/tmp');
-  if(configHome.toString().contains('app.vup.Vup') && runtimeDir != null){
-    tempDir = Directory(join(runtimeDir!.path, 'app', 'app.vup.Vup'));
-  }
+  final tempDir = Directory('/tmp');
 
   vupTempDir = join(tempDir.path, 'vup');
 
