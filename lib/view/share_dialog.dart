@@ -196,6 +196,7 @@ class _ShareDialogState extends State<ShareDialog> {
                 children: [
                   for (final viewType in [
                     ['generic', 'Generic'],
+                    ['gallery', 'Gallery'],
                     ['audio', 'Audio'],
                     ['video', 'Video'],
                     ['webamp', 'Webamp'],
@@ -433,10 +434,14 @@ class _ShareDialogState extends State<ShareDialog> {
   }
 
   String _buildShareLink(String shareSeed) {
-    if (currentViewType == null) {
+    if (currentViewType == null || currentViewType == 'generic') {
       return 'https://share.vup.app/#${shareSeed}';
     } else {
-      return 'https://mstream.hns.${mySky.skynetClient.portalHost}/#${shareSeed}?viewType=$currentViewType';
+      if (currentViewType == 'gallery') {
+        return 'https://0406jckksspiqk11ivr641v1q09paul9bufdufl4svm50kjutvvjio8.${mySky.skynetClient.portalHost}/#${shareSeed}?viewType=$currentViewType';
+      } else {
+        return 'https://mstream.hns.${mySky.skynetClient.portalHost}/#${shareSeed}?viewType=$currentViewType';
+      }
     }
   }
 }

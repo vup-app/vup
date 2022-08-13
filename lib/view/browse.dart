@@ -14,6 +14,7 @@ import 'package:vup/utils/special_titles.dart';
 import 'package:vup/utils/strings.dart';
 import 'package:vup/view/directory.dart';
 import 'package:vup/view/metadata_assistant.dart';
+import 'package:vup/view/share_dialog.dart';
 import 'package:vup/widget/audio_player.dart';
 
 class BrowseView extends StatefulWidget {
@@ -163,6 +164,7 @@ class _BrowseViewState extends State<BrowseView> {
                               'vup.hns/.internal/shared-directories');
 
                       bool isDirectorySharedReadOnly = false;
+                      String? directoryShareUri;
 
                       if (sharedDirsIndex != null) {
                         for (final sharedUri
@@ -170,6 +172,7 @@ class _BrowseViewState extends State<BrowseView> {
                           if (uri == sharedUri ||
                               '$uri/'.startsWith(sharedUri)) {
                             isDirectorySharedReadOnly = true;
+                            directoryShareUri = sharedUri;
                             break;
                           }
                         }
@@ -187,6 +190,8 @@ class _BrowseViewState extends State<BrowseView> {
                         if (nonMountedUri == mountUri ||
                             nonMountedUri.startsWith('$mountUri/')) {
                           isDirectorySharedReadWrite = true;
+                          directoryShareUri =
+                              storageService.dac.mounts[mountUri]?['uri'];
                           break;
                         }
                       }
@@ -341,6 +346,8 @@ class _BrowseViewState extends State<BrowseView> {
                                 !widget.pathNotifier.isSearching)
                               LayoutBuilder(builder: (context, cons) {
                                 final actions = <Widget>[];
+
+                               
 
                                 for (final ai in generateActions(
                                   false,
@@ -864,12 +871,35 @@ class _BrowseViewState extends State<BrowseView> {
                                 color: Theme.of(context).primaryColor,
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    'This directory is shared (read-only)',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  child: Row(
+                                    children: [
+                                      const Expanded(
+                                        child: Text(
+                                          'This directory is shared (read-only)',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          showShareResultDialog(
+                                            context,
+                                            'https://share.vup.app/#${await storageService.dac.getShareUriReadOnly(directoryShareUri!)}',
+                                          );
+                                        },
+                                        style: ButtonStyle(
+                                          backgroundColor:
+                                              MaterialStateProperty.all(
+                                            Colors.black,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Show share link',
+                                        ),
+                                      )
+                                    ],
                                   ),
                                 ),
                               ),
@@ -879,12 +909,35 @@ class _BrowseViewState extends State<BrowseView> {
                                 color: Theme.of(context).primaryColor,
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    'This directory is shared (read and write)',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  child: Row(
+                                    children: [
+                                      const Expanded(
+                                        child: Text(
+                                          'This directory is shared (read and write)',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          showShareResultDialog(
+                                            context,
+                                            'https://share.vup.app/#$directoryShareUri',
+                                          );
+                                        },
+                                        style: ButtonStyle(
+                                          backgroundColor:
+                                              MaterialStateProperty.all(
+                                            Colors.black,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Show share link',
+                                        ),
+                                      )
+                                    ],
                                   ),
                                 ),
                               ),

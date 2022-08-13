@@ -13,6 +13,7 @@ import 'package:vup/actions/make_available_offline.dart';
 import 'package:vup/actions/move_to_trash.dart';
 import 'package:vup/actions/open_in_new_tab.dart';
 import 'package:vup/actions/open_parent_directory.dart';
+import 'package:vup/actions/permanent_delete.dart';
 import 'package:vup/actions/pin_all.dart';
 import 'package:vup/actions/previous_versions.dart';
 import 'package:vup/actions/regenerate_metadata.dart';
@@ -68,6 +69,7 @@ final allActions = <VupFSAction>[
   DeleteFromDeviceVupAction(),
 
   MoveToTrashVupAction(),
+  PermanentDeleteVupAction(),
   AddToQuickAccessVupAction(),
   RemoveSharedDirectoryVupAction(),
   PinAllVupAction(),

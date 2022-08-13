@@ -124,7 +124,7 @@ class _CustomThemesSettingsPageState extends State<CustomThemesSettingsPage> {
           style: titleTextStyle,
         ),
         if (revision == null) ...[
-          ListTile(
+          const ListTile(
             leading: CircularProgressIndicator(),
             title: Text('Loading custom themes...'),
           ),
@@ -142,6 +142,7 @@ class _CustomThemesSettingsPageState extends State<CustomThemesSettingsPage> {
                         'color_accent': '0xff1ed660',
                         'color_background': '0xcf000000',
                         'color_card': '0xcfff0000',
+                        'background_image_url': '',
                       };
                     });
                   },
@@ -235,6 +236,19 @@ class _CustomThemesSettingsPageState extends State<CustomThemesSettingsPage> {
               controller: TextEditingController(text: c['color_card']),
               onChanged: (val) {
                 c['color_card'] = val;
+              },
+            ),
+            const SizedBox(
+              height: 16,
+            ),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'background_image_url',
+              ),
+              controller:
+                  TextEditingController(text: c['background_image_url'] ?? ''),
+              onChanged: (val) {
+                c['background_image_url'] = val;
               },
             ),
           ],

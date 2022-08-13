@@ -1,5 +1,14 @@
 # Vup Changelog
 
+## main
+
+- Added "Delete permanently" action for files and directories in trash
+- Improved "Delete local copies" action
+- Added timeout to prevent sync operations from locking up
+- Added "Copy link" button for already shared directories
+- Added "Gallery" view type when sharing files
+- Custom themes: Added support for background images
+
 ## Beta 0.11.0
 
 - Your seed phrase is now securely stored in Keychain/KeyStore/libsecret (depending on your operating system)

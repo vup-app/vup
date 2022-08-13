@@ -685,12 +685,14 @@ class StorageService extends VupService {
         return fileData;
       }
       if (create) {
-        final res = await dac.createFile(
-          path,
-          name,
-          fileData,
-          customMimeType: customMimeType,
-        );
+        final res = await dac
+            .createFile(
+              path,
+              name,
+              fileData,
+              customMimeType: customMimeType,
+            )
+            .timeout(const Duration(seconds: 60 * 5));
         if (!res.success) {
           throw res.error!;
         }
@@ -866,9 +868,10 @@ class StorageService extends VupService {
           final dirName = basename(entity.path);
           if (mode != SyncMode.receiveOnly) {
             if (!index.directories.containsKey(dirName)) {
-              dac.createDirectory(remotePath, dirName);
+              await dac.createDirectory(remotePath, dirName);
             }
           }
+          //final future =
           await syncDirectory(
             entity,
             '$remotePath/$dirName',
@@ -877,6 +880,11 @@ class StorageService extends VupService {
             overwrite: overwrite,
             syncKey: syncKey,
           );
+          /* if (level != 0) {
+            await future;
+          } else {
+            futures.add(future);
+          } */
           syncedDirs.add(dirName);
         } else if (entity is File) {
           try {

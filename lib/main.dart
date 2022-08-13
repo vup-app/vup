@@ -644,7 +644,7 @@ class _HomePageState extends State<HomePage> with TrayListener {
 
     buildContext = context;
 
-    return WillPopScope(
+    final child = WillPopScope(
       onWillPop: () {
         appLayoutState.currentTab.first.state.pop();
 
@@ -943,6 +943,24 @@ class _HomePageState extends State<HomePage> with TrayListener {
         ),
       ),
       /*   ), */
+    );
+
+    final backgroundImageUrl =
+        Theme.of(context).extension<ThemeImages>()?.backgroundImageUrl;
+
+    if (backgroundImageUrl == null) {
+      return child;
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          backgroundImageUrl,
+          fit: BoxFit.cover,
+        ),
+        child,
+      ],
     );
   }
 

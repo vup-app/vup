@@ -21,14 +21,30 @@ class DeleteFromDeviceVupAction extends VupFSAction {
     if (!isFile) return null;
     if (entity == null) return null;
     if (fileState.type != FileStateType.idle) return null;
-    bool isAvailableOffline = localFiles.containsKey(entity.file.hash);
 
     if (isSelected) {
+      int availableOfflineCount = 0;
+
+      for (final uri in pathNotifier.selectedFiles) {
+        final path = storageService.dac.parseFilePath(uri);
+        final dirIndex = storageService.dac.getDirectoryIndexCached(
+          path.directoryPath,
+        );
+        final file = dirIndex?.files[path.fileName];
+        if (file == null) continue;
+
+        if (localFiles.containsKey(file.file.hash)) {
+          availableOfflineCount++;
+        }
+      }
+      if (availableOfflineCount == 0) return null;
       return VupFSActionInstance(
-        label: 'Delete ${pathNotifier.selectedFiles.length} local copies',
+        label:
+            'Delete $availableOfflineCount local ${availableOfflineCount == 1 ? 'copy' : 'copies'}',
         icon: UniconsLine.cloud_times,
       );
     } else {
+      bool isAvailableOffline = localFiles.containsKey(entity.file.hash);
       if (!isAvailableOffline) return null;
       return VupFSActionInstance(
         label: 'Delete local copy',

@@ -109,6 +109,11 @@ class AppThemeState extends State<AppTheme> {
     final cardColor = Color(
       int.tryParse(config['color_card'] ?? '') ?? errorColor,
     );
+    String? backgroundImageUrl = config['background_image_url'];
+    if (backgroundImageUrl?.isEmpty ?? false) {
+      backgroundImageUrl = null;
+    }
+
     return _buildCustomThemeData(
       accentColor: accentColor,
       backgroundColor: backgroundColor,
@@ -116,6 +121,7 @@ class AppThemeState extends State<AppTheme> {
       brightness: backgroundColor.computeLuminance() < 0.5
           ? Brightness.dark
           : Brightness.light,
+      backgroundImageUrl: backgroundImageUrl,
     );
   }
 
@@ -171,8 +177,12 @@ class AppThemeState extends State<AppTheme> {
     required Color backgroundColor,
     required Color cardColor,
     required Brightness brightness,
+    String? backgroundImageUrl,
   }) {
     var themeData = ThemeData(
+      extensions: [
+        ThemeImages(backgroundImageUrl: backgroundImageUrl),
+      ],
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: accentColor,
       ),
@@ -272,4 +282,29 @@ class AppThemeState extends State<AppTheme> {
 
     return themeData;
   }
+}
+
+@immutable
+class ThemeImages extends ThemeExtension<ThemeImages> {
+  const ThemeImages({
+    required this.backgroundImageUrl,
+  });
+
+  final String? backgroundImageUrl;
+
+  @override
+  ThemeImages copyWith({String? backgroundImageUrl, Color? danger}) {
+    return ThemeImages(
+      backgroundImageUrl: backgroundImageUrl ?? this.backgroundImageUrl,
+    );
+  }
+
+  @override
+  ThemeImages lerp(ThemeExtension<ThemeImages>? other, double t) {
+    return this;
+  }
+
+  // Optional
+  @override
+  String toString() => 'ThemeImages(backgroundImageUrl: $backgroundImageUrl)';
 }
