@@ -19,6 +19,8 @@ class MySkyService extends VupService {
 
   late final Vault<String> usedMySkyPathsVault;
 
+  final useSecureStorage = true;
+
   void setup(String cookie) {
     final dbDir = Directory(join(
       vupDataDir,
@@ -80,7 +82,7 @@ class MySkyService extends VupService {
 
       dataBox.put('deviceId', newDeviceId);
     }
-    Future.delayed(Duration(seconds: 50)).then((value) {
+    Future.delayed(const Duration(seconds: 50)).then((value) {
       updateDeviceList();
     });
   }
@@ -131,7 +133,7 @@ class MySkyService extends VupService {
 
     secureStorage = const FlutterSecureStorage();
 
-    if (!Platform.isMacOS) {
+    if (!Platform.isMacOS && useSecureStorage) {
       if (dataBox.containsKey('seed')) {
         await secureStorage.write(key: 'seed', value: dataBox.get('seed'));
         await dataBox.delete('seed');
@@ -144,7 +146,7 @@ class MySkyService extends VupService {
   }
 
   Future<void> storeSeedPhrase(String seed) async {
-    if (!Platform.isMacOS) {
+    if (!Platform.isMacOS && useSecureStorage) {
       await secureStorage.write(key: 'seed', value: seed);
     } else {
       await dataBox.put('seed', seed);
@@ -152,7 +154,7 @@ class MySkyService extends VupService {
   }
 
   Future<String?> loadSeedPhrase() async {
-    if (!Platform.isMacOS) {
+    if (!Platform.isMacOS && useSecureStorage) {
       return secureStorage.read(key: 'seed');
     } else {
       return dataBox.get('seed');

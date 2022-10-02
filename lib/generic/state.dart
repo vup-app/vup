@@ -109,7 +109,6 @@ const customThemesPath = 'vup.hns/config/custom_themes.json';
 final scriptsStatus = <String, Map>{};
 
 // Pools
-final uploadPool = Pool(3);
 final downloadPool = Pool(3);
 
 // Error handling

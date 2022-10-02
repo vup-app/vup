@@ -5,6 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:hive/hive.dart';
+import 'package:pool/pool.dart';
 import 'package:random_string/random_string.dart';
 import 'package:stash/stash_api.dart';
 import 'package:vup/generic/state.dart';
@@ -32,6 +33,7 @@ import 'package:skynet/src/encode_endian/base.dart';
 import 'package:skynet/src/mysky/encrypted_files.dart';
 import 'package:vup/utils/process_image.dart';
 import 'package:watcher/watcher.dart';
+import 'package:skynet/src/utils/base32.dart';
 
 import 'mysky.dart';
 
@@ -634,6 +636,7 @@ class StorageService extends VupService {
                 multihash,
                 encryptedCacheFile,
                 fileStateNotifier: fileStateNotifier,
+                customRemote: getCustomRemoteForPath(path),
               );
               return res;
             } catch (e, st) {
@@ -781,7 +784,13 @@ class StorageService extends VupService {
       ),
     );
 
-    return await uploadPool.withResource(
+    final customRemote = getCustomRemoteForPath(path);
+    if (!uploadPools.containsKey(customRemote)) {
+      uploadPools[customRemote] = Pool(customRemote == null ? 3 : 16);
+    }
+    final pool = uploadPools[customRemote]!;
+
+    return await pool.withResource(
       () => uploadOneFile(
         path,
         file,
@@ -795,6 +804,10 @@ class StorageService extends VupService {
       ),
     );
   }
+
+  final _webDavClientCache = <String, webdav.Client>{};
+
+  final uploadPools = <String?, Pool>{};
 
   Future<void> syncDirectory(
     Directory dir,
@@ -1082,7 +1095,10 @@ class StorageService extends VupService {
   Future<String> getMultiHashForFile(File file) async {
     if (Platform.isLinux) {
       final res = await Process.run('sha256sum', [file.path]);
-      final String hash = res.stdout.split(' ').first;
+      String hash = res.stdout.split(' ').first;
+      if (hash.startsWith('\\')) {
+        hash = hash.substring(1);
+      }
       if (hash.length != 64) {
         throw 'Hash function failed';
       }
@@ -1095,7 +1111,12 @@ class StorageService extends VupService {
   Future<String> getSHA1HashForFile(File file) async {
     if (Platform.isLinux) {
       final res = await Process.run('sha1sum', [file.path]);
-      final String hash = res.stdout.split(' ').first;
+      String hash = res.stdout.split(' ').first;
+
+      if (hash.startsWith('\\')) {
+        hash = hash.substring(1);
+      }
+
       if (hash.length != 40) {
         throw 'Hash function failed';
       }
@@ -1192,7 +1213,10 @@ class StorageService extends VupService {
 
     if (doDownload) {
       if (fileData.encryptionType == 'libsodium_secretbox') {
-        final stream = await dac.downloadAndDecryptFileInChunks(fileData);
+        final stream = await dac.downloadAndDecryptFileInChunks(fileData,
+            downloadConfig: fileData.url.startsWith('remote-')
+                ? (await generateDownloadConfig(fileData))
+                : null);
         decryptedFile.createSync(recursive: true);
         final sink = decryptedFile.openWrite();
         await sink.addStream(stream.map((e) => e.toList()));
@@ -1415,6 +1439,7 @@ class StorageService extends VupService {
     String fileMultiHash,
     File outFile, {
     FileStateNotifier? fileStateNotifier,
+    required String? customRemote,
   }) async {
     int padding = 0;
     const maxChunkSize = 1 * 1000 * 1000; // 1 MiB
@@ -1548,39 +1573,79 @@ class StorageService extends VupService {
 
     final TUS_CHUNK_SIZE = (1 << 22) * 10; // ~ 41 MB
 
-    if (false && (outFile.lengthSync() > TUS_CHUNK_SIZE)) {
-      final remote = dac.customRemotes['unraid']!['config']! as Map;
-      var client = webdav.newClient(
-        remote['url'] as String,
-        user: remote['user'] as String,
-        password: remote['pass'] as String,
-        debug: true,
-      );
+    if (customRemote != null) {
+      final rem = dac.customRemotes[customRemote]!;
+      final config = rem['config']! as Map;
+      final type = rem['type']!;
 
-      final fileId = randomAlphaNumeric(
-        32,
-        provider: CoreRandomProvider.from(
-          Random.secure(),
-        ),
-      ).toLowerCase();
-
-      final c = dio.CancelToken();
-      await client.c.wdWriteWithStream(
-        client,
-        '/skyfs/$fileId',
-        outFile.openRead(),
-        outFile.lengthSync(),
-        onProgress: (c, t) {
-          fileStateNotifier!.updateFileState(
-            FileState(
-              type: FileStateType.uploading,
-              progress: c / t,
-            ),
+      final fileId = base32.encode(dac.sodium.randombytes.buf(32)).replaceAll(
+            '=',
+            '',
           );
-        },
-        cancelToken: c,
-      );
-      blobUrl = 'remote-unraid://$fileId';
+
+      if (type == 'webdav') {
+        var path = '';
+
+        for (int i = 0; i < 8; i += 2) {
+          path += '/${fileId.substring(i, i + 2)}';
+        }
+
+        final filename = fileId.substring(8);
+
+        if (!_webDavClientCache.containsKey(customRemote)) {
+          _webDavClientCache[customRemote] = webdav.newClient(
+            config['url'] as String,
+            user: config['user'] as String,
+            password: config['pass'] as String,
+            debug: false,
+          );
+        }
+        final client = _webDavClientCache[customRemote]!;
+
+        final c = dio.CancelToken();
+        await client.c.wdWriteWithStream(
+          client,
+          '/skyfs$path/$filename',
+          outFile.openRead(),
+          outFile.lengthSync(),
+          onProgress: (c, t) {
+            fileStateNotifier!.updateFileState(
+              FileState(
+                type: FileStateType.uploading,
+                progress: c / t,
+              ),
+            );
+          },
+          cancelToken: c,
+        );
+        blobUrl = 'remote-$customRemote:/$path/$filename';
+      } else if (type == 's3') {
+        final client = dac.getS3Client(customRemote, config);
+
+        final bucket = config['bucket'] as String;
+
+        final totalBytes = outFile.lengthSync();
+
+        final res = await client.putObject(
+          bucket,
+          'skyfs/$fileId',
+          outFile.openRead().map((event) => Uint8List.fromList(event)),
+          onProgress: (bytes) {
+            fileStateNotifier!.updateFileState(
+              FileState(
+                type: FileStateType.uploading,
+                progress: bytes / totalBytes,
+              ),
+            );
+          },
+        );
+        if (res.isEmpty) {
+          throw 'S3: Empty upload response';
+        }
+        blobUrl = 'remote-$customRemote://$fileId';
+      } else {
+        throw 'Remote type "$type" not supported';
+      }
     } else {
       if (outFile.lengthSync() > TUS_CHUNK_SIZE) {
         blobUrl = await mySky.skynetClient.upload.uploadLargeFile(
@@ -1707,6 +1772,24 @@ class StorageService extends VupService {
       maxChunkSize: null,
       padding: null,
     );
+  }
+
+  String? getCustomRemoteForPath(String path) {
+    final uri = dac.parsePath(path).toString();
+
+    for (final remoteId in storageService.dac.customRemotes.keys) {
+      final List usedForUris =
+          storageService.dac.customRemotes[remoteId]!['used_for_uris'] ??
+              const <String>[];
+
+      for (final usedForUri in usedForUris) {
+        if (usedForUri == uri || uri.startsWith(usedForUri)) {
+          return remoteId;
+        }
+      }
+    }
+
+    return null;
   }
 }
 

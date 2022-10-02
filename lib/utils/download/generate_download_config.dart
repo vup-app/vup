@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:filesystem_dac/dac.dart';
 import 'package:vup/generic/state.dart';
 
 Future<DownloadConfig> generateDownloadConfig(FileData fileData) async {
@@ -24,11 +25,23 @@ Future<DownloadConfig> generateDownloadConfig(FileData fileData) async {
 
     if (remote['type'] == 'webdav') {
       return DownloadConfig(
-        '${remoteConfig['url']}/${fileData.url.substring(scheme.length + 3)}',
+        '${remoteConfig['url']}/skyfs/${fileData.url.substring(scheme.length + 3)}',
         {
           'Authorization':
               'Basic ${base64.encode(utf8.encode('${remoteConfig['user']}:${remoteConfig['pass']}'))}'
         },
+      );
+    } else if (remote['type'] == 's3') {
+      final client = storageService.dac.getS3Client(remoteId, remoteConfig);
+
+      final url = await client.presignedGetObject(
+        remoteConfig['bucket'],
+        'skyfs/${fileData.url.substring(scheme.length + 3)}',
+      );
+
+      return DownloadConfig(
+        url,
+        {},
       );
     } else {
       throw 'Remote type ${remote['type']} not supported.';
@@ -36,11 +49,4 @@ Future<DownloadConfig> generateDownloadConfig(FileData fileData) async {
   } else {
     return DownloadConfig(fileData.url, {});
   }
-}
-
-class DownloadConfig {
-  DownloadConfig(this.url, this.headers);
-
-  String url;
-  Map<String, String> headers;
 }

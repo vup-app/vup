@@ -186,7 +186,7 @@ class _JellyfinServerSettingsPageState
               ),
               if (isJellyfinServerEnabled)
                 SelectableText(
-                  '\nWarning: Authentication is not enforced because some players and API endpoints don\'t fully support it (yet). Please only run the server on localhost (this is the default) to prevent outside connections.\n\nJellyfin server running at ${jellyfinServerBindIp}:${jellyfinServerPort}\nStop the Jellyfin server if you want to change any settings.',
+                  '\nWarning: Authentication is not enforced because some players and API endpoints don\'t fully support it (yet). Please only run the server on localhost (this is the default) to prevent outside connections.\n\nJellyfin server running at http://${jellyfinServerBindIp}:${jellyfinServerPort}\nStop the Jellyfin server if you want to change any settings.',
                 ),
             ],
           ),

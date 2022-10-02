@@ -48,7 +48,7 @@ class _RemotesSettingsPageState extends State<RemotesSettingsPage> {
             await showInfoDialog(
               context,
               'Create remote manually',
-              'Warning: You can break quite a lot of things with this tool. Please only use it when you know what you\'re doing',
+              'Warning: You can break quite a lot of things with this tool. Please only use it if you know what you\'re doing',
             );
             final res = await showTextInputDialog(
               context: context,
@@ -63,6 +63,7 @@ class _RemotesSettingsPageState extends State<RemotesSettingsPage> {
                 storageService.dac.customRemotes[res[0]] = json.decode(res[1]);
 
                 await storageService.dac.saveRemotes();
+                storageService.dac.loadRemotes();
                 context.pop();
                 setState(() {});
               } catch (e, st) {
@@ -94,6 +95,77 @@ class _RemotesSettingsPageState extends State<RemotesSettingsPage> {
                   SelectableText(
                     '${json.encode(storageService.dac.customRemotes[id])}',
                   ),
+                  SizedBox(
+                    height: 8,
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final res = await showTextInputDialog(
+                        context: context,
+                        textFields: [
+                          DialogTextField(hintText: 'uri'),
+                        ],
+                      );
+                      try {
+                        showLoadingDialog(context, 'updating...');
+                        final String uri = res![0];
+                        final map = storageService.dac.customRemotes[id]!;
+                        map['used_for_uris'] ??= [];
+
+                        map['used_for_uris'].add(uri);
+
+                        storageService.dac.customRemotes[id] = map;
+
+                        await storageService.dac.saveRemotes();
+                        storageService.dac.loadRemotes();
+                        context.pop();
+                        setState(() {});
+                      } catch (e, st) {
+                        context.pop();
+                        setState(() {});
+                        showErrorDialog(context, e, st);
+                      }
+                    },
+                    child: Text(
+                      'Add SkyFS path',
+                    ),
+                  ),
+                  for (final uri in storageService
+                          .dac.customRemotes[id]!['used_for_uris'] ??
+                      [])
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: SelectableText(uri),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            try {
+                              showLoadingDialog(context, 'removing uri...');
+
+                              final map = storageService.dac.customRemotes[id]!;
+                              map['used_for_uris'].remove(uri);
+                              storageService.dac.customRemotes[id] = map;
+
+                              await storageService.dac.saveRemotes();
+                              storageService.dac.loadRemotes();
+                              context.pop();
+                              setState(() {});
+                            } catch (e, st) {
+                              context.pop();
+                              setState(() {});
+                              showErrorDialog(context, e, st);
+                            }
+                          },
+                          child: Text(
+                            'Remove',
+                          ),
+                        )
+                      ],
+                    ),
                 ],
               ),
             ),

@@ -1,6 +1,7 @@
 import 'package:filesize/filesize.dart';
 import 'package:vup/app.dart';
 import 'package:vup/utils/date_format.dart';
+import 'package:vup/widget/skylink_health.dart';
 
 class FileDetailsDialog extends StatefulWidget {
   final DirectoryFile file;
@@ -110,6 +111,12 @@ class FileDetailsDialogState extends State<FileDetailsDialog> {
                 '${filesize(file.file.padding ?? 0)} (${file.file.padding} bytes)',
               ),
               _buildRow('Blob URI', file.file.url),
+              if (file.file.url.startsWith('sia://'))
+                Center(
+                    child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: SkylinkHealthWidget(file.file.url.substring(6)),
+                )),
               _buildRow(
                 'Chunk Size',
                 '${filesize(file.file.chunkSize ?? 0)} (${file.file.chunkSize} bytes)',

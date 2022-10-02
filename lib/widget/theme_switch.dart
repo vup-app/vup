@@ -40,7 +40,7 @@ class _ThemeSwitchState extends State<ThemeSwitch> {
               'dark': 'Dark',
             },
             activeStyle: TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontWeight: FontWeight.w600,
             ),
             backgroundColor:

@@ -1,13 +1,17 @@
 # Vup Changelog
 
-## main
+## Beta 0.12.0
 
 - Added "Delete permanently" action for files and directories in trash
+- Added experimental support for storing encrypted file data on custom remotes (S3 and WebDAV)
+- Added skylink health indicator and pin tool to file details view
 - Improved "Delete local copies" action
 - Added timeout to prevent sync operations from locking up
 - Added "Copy link" button for already shared directories
 - Added "Gallery" view type when sharing files
 - Custom themes: Added support for background images
+- Improved button label readability
+- Fixed some bugs
 
 ## Beta 0.11.0
 

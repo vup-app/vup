@@ -88,7 +88,7 @@ class _SettingsPageState extends State<SettingsPage> {
     ),
     if (devModeEnabled && isYTDlIntegrationEnabled)
       SettingsPane(
-        title: 'Hooks/tasks/workflows/scripts (Advanced)',
+        title: 'Scripts (Advanced)',
         build: () => ScriptsSettingsPage(),
       ),
     /* SettingsPane(
@@ -158,7 +158,7 @@ class _SettingsPageState extends State<SettingsPage> {
           onTap: () {
             showAboutDialog(
               applicationLegalese:
-                  'Copyright © 2022 redsolver. All rights reserved.',
+                  'Copyright © 2022 redsolver. Licensed under the terms of the EUPL-1.2 license.',
               applicationName: 'Vup',
               applicationVersion: packageInfo.version,
               context: context,

@@ -118,7 +118,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: SelectableText(
-              'WebDav server running at ${webDavServerBindIp}:${webDavServerPort}\nStop the WebDav server if you want to change any settings.',
+              'WebDav server running at http://${webDavServerBindIp}:${webDavServerPort}\nStop the WebDav server if you want to change any settings.',
             ),
           ),
       ],

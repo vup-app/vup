@@ -69,7 +69,7 @@ IDI_APP_ICON            ICON                    "resources\\app_icon.ico"
 #ifdef FLUTTER_BUILD_NAME
 #define VERSION_AS_STRING #FLUTTER_BUILD_NAME
 #else
-#define VERSION_AS_STRING "0.11.0"
+#define VERSION_AS_STRING "0.12.0"
 #endif
 
 VS_VERSION_INFO VERSIONINFO
@@ -93,7 +93,7 @@ BEGIN
             VALUE "FileDescription", "Vup Cloud Storage" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "vup" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2022 redsolver. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2022 redsolver. Licensed under the terms of the EUPL-1.2 license." "\0"
             VALUE "OriginalFilename", "vup.exe" "\0"
             VALUE "ProductName", "vup" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

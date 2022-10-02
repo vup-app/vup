@@ -330,6 +330,7 @@ class _ShareDialogState extends State<ShareDialog> {
                                 storageService.dac.copyFile(
                                   fileUri,
                                   shareUri.toString(),
+                                  generatePresignedUrls: true,
                                 ),
                               );
                             }

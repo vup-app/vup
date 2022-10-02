@@ -14,6 +14,7 @@ import 'package:skynet/src/encode_endian/encode_endian.dart';
 import 'package:skynet/src/encode_endian/base.dart';
 
 import 'package:http/http.dart' as http;
+import 'package:vup/utils/download/generate_download_config.dart';
 
 Future handleChunkedFile(
   HttpRequest req,
@@ -169,22 +170,10 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
   Map<String, String>? customHeaders;
 
   if (df.file.url.startsWith('remote-')) {
-    final uri = Uri.parse(df.file.url);
-    final remoteId = uri.scheme.substring(7);
-    print('remote "$remoteId" "${uri.host}"');
+    final dc = await generateDownloadConfig(df.file);
 
-    final remote = storageService.dac.customRemotes[remoteId]!;
-
-    final Map remoteConfig = remote['config'] as Map;
-
-    if (remote['type'] == 'webdav') {
-      url = Uri.parse('${remoteConfig['url']}/skyfs/${uri.host}');
-
-      customHeaders = {
-        'Authorization':
-            'Basic ${base64.encode(utf8.encode('${remoteConfig['user']}:${remoteConfig['pass']}'))}'
-      };
-    }
+    url = Uri.parse(dc.url);
+    customHeaders = dc.headers;
   } else {
     url = Uri.parse(
       storageService.mySky.skynetClient.resolveSkylink(

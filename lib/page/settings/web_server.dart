@@ -73,7 +73,7 @@ class _WebServerSettingsPageState extends State<WebServerSettingsPage> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: SelectableText(
-              'Web server running at ${webServerBindIp}:${webServerPort}/home/\nStop the web server if you want to change any settings.',
+              'Web server running at http://${webServerBindIp}:${webServerPort}/home/\nStop the web server if you want to change any settings.',
             ),
           ),
       ],

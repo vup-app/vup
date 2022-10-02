@@ -131,7 +131,8 @@ Future<void> initApp() async {
   await logger.init(vupTempDir);
 
   vupConfigDir = join(
-    vupConfigDir, 'default',
+    vupConfigDir,
+    'default',
     // 'debug',
   );
 

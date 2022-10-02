@@ -11,4 +11,4 @@ PRODUCT_NAME = Vup Cloud Storage
 PRODUCT_BUNDLE_IDENTIFIER = app.vup
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2022 redsolver. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2022 redsolver. Licensed under the terms of the EUPL-1.2 license.

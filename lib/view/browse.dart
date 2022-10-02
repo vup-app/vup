@@ -214,6 +214,9 @@ class _BrowseViewState extends State<BrowseView> {
                           }
                         }
                       }
+                      final customRemote =
+                          storageService.getCustomRemoteForPath(uri);
+
                       return DropTarget(
                         onDragDone: (detail) async {
                           logger.verbose(
@@ -346,8 +349,6 @@ class _BrowseViewState extends State<BrowseView> {
                                 !widget.pathNotifier.isSearching)
                               LayoutBuilder(builder: (context, cons) {
                                 final actions = <Widget>[];
-
-                               
 
                                 for (final ai in generateActions(
                                   false,
@@ -663,7 +664,7 @@ class _BrowseViewState extends State<BrowseView> {
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
                                     child: Text(
-                                      'This MySky directory is synchronized with "${activeSyncTask!.localPath}"',
+                                      'This SkyFS directory is synchronized with "${activeSyncTask!.localPath}"',
                                       style: TextStyle(
                                         color: Colors.black,
                                         fontWeight: FontWeight.bold,
@@ -858,6 +859,21 @@ class _BrowseViewState extends State<BrowseView> {
                                   padding: const EdgeInsets.all(8.0),
                                   child: Text(
                                     'This directory is read-only',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (customRemote != null)
+                              Container(
+                                width: double.infinity,
+                                color: Theme.of(context).primaryColor,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    'New files uploaded to this directory are stored on the "$customRemote" remote',
                                     style: TextStyle(
                                       color: Colors.black,
                                       fontWeight: FontWeight.bold,

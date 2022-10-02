@@ -136,7 +136,7 @@ class AppThemeState extends State<AppTheme> {
   }
 
   ThemeData _buildThemeData(String theme) {
-    var _accentColor = Color(0xff1ed660);
+    final _accentColor = Color(0xff1ed660);
     /* = RainbowColorTween([
       Colors.orange,
       Colors.red,
@@ -208,6 +208,16 @@ class AppThemeState extends State<AppTheme> {
           brightness == Brightness.dark ? Colors.grey[500] : Colors.grey[500],
 
       primaryColor: accentColor,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: MaterialStateProperty.all(
+            accentColor,
+          ),
+          foregroundColor: MaterialStateProperty.all(
+            accentColor.computeLuminance() < 0.48 ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
 
       visualDensity: VisualDensity.adaptivePlatformDensity,
       toggleableActiveColor: accentColor,
