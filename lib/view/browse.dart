@@ -759,6 +759,10 @@ class _BrowseViewState extends State<BrowseView> {
                                                       MaterialStateProperty.all(
                                                     Colors.black,
                                                   ),
+                                                  foregroundColor:
+                                                      MaterialStateProperty.all(
+                                                    Colors.white,
+                                                  ),
                                                 ),
                                                 child: Text(
                                                   'Run metadata assistant',
@@ -841,6 +845,10 @@ class _BrowseViewState extends State<BrowseView> {
                                                 MaterialStateProperty.all(
                                               Colors.black,
                                             ),
+                                            foregroundColor:
+                                                MaterialStateProperty.all(
+                                              Colors.white,
+                                            ),
                                           ),
                                           child: Text(
                                             'Add to your SkyFS',
@@ -910,6 +918,10 @@ class _BrowseViewState extends State<BrowseView> {
                                               MaterialStateProperty.all(
                                             Colors.black,
                                           ),
+                                          foregroundColor:
+                                              MaterialStateProperty.all(
+                                            Colors.white,
+                                          ),
                                         ),
                                         child: Text(
                                           'Show share link',
@@ -947,6 +959,10 @@ class _BrowseViewState extends State<BrowseView> {
                                           backgroundColor:
                                               MaterialStateProperty.all(
                                             Colors.black,
+                                          ),
+                                          foregroundColor:
+                                              MaterialStateProperty.all(
+                                            Colors.white,
                                           ),
                                         ),
                                         child: Text(

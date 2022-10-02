@@ -524,6 +524,9 @@ MimeType=x-scheme-handler/vup;
                               backgroundColor: MaterialStateProperty.all(
                                 Colors.black,
                               ),
+                              foregroundColor: MaterialStateProperty.all(
+                                Colors.white,
+                              ),
                             ),
                             child: Text(
                               'Choose a portal',
@@ -803,6 +806,9 @@ MimeType=x-scheme-handler/vup;
                       backgroundColor: MaterialStateProperty.all(
                         Colors.black,
                       ),
+                      foregroundColor: MaterialStateProperty.all(
+                        Colors.white,
+                      ),
                     ),
                     onPressed: () async {
                       showLoadingDialog(
@@ -856,6 +862,9 @@ MimeType=x-scheme-handler/vup;
                     backgroundColor: MaterialStateProperty.all(
                       Colors.black,
                     ),
+                    foregroundColor: MaterialStateProperty.all(
+                      Colors.white,
+                    ),
                   ),
                   onPressed: () async {
                     showLoadingDialog(
@@ -903,6 +912,9 @@ MimeType=x-scheme-handler/vup;
                         style: ButtonStyle(
                           backgroundColor: MaterialStateProperty.all(
                             Colors.black,
+                          ),
+                          foregroundColor: MaterialStateProperty.all(
+                            Colors.white,
                           ),
                         ),
                         onPressed: () async {
