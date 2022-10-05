@@ -5,8 +5,8 @@
 -->
 <component type="desktop-application">
   <id>app.vup.Vup</id>
-  <name>Vup</name>
-  <summary>Vup is an open-source native E2EE cloud storage app for Skynet</summary>
+  <name>Vup Cloud Storage</name>
+  <summary>Open-source end-to-end-encrypted cloud storage app with integrated media server</summary>
   <developer_name>redsolver</developer_name>
   <url type="homepage">https://github.com/redsolver/vup</url>
   <metadata_license>CC0-1.0</metadata_license>
