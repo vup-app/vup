@@ -1,0 +1,69 @@
+app-id: app.vup.Vup
+runtime: org.freedesktop.Platform
+runtime-version: '22.08'
+sdk: org.freedesktop.Sdk
+add-extensions:
+  org.freedesktop.Platform.ffmpeg-full:
+    directory : "lib/ffmpeg"
+    version: "22.08"
+    add-ld-path: .  
+command: vup
+separate-locales: false
+finish-args:
+- "--share=ipc"
+- "--socket=fallback-x11"
+- "--socket=wayland"
+- "--device=dri"
+- "--socket=pulseaudio"
+- "--share=network"
+- "--filesystem=home"
+- "--talk-name=org.kde.StatusNotifierWatcher"
+- "--talk-name=org.freedesktop.Notifications"
+- "--filesystem=xdg-run/app/com.discordapp.Discord:create"
+modules:
+- name: libjsoncpp
+  buildsystem: cmake-ninja
+  config_opts:
+  - -DCMAKE_BUILD_TYPE=Release
+  - -DBUILD_SHARED_LIBS=ON
+  sources:
+  - type: archive
+    url: https://github.com/open-source-parsers/jsoncpp/archive/refs/tags/1.7.5.tar.gz
+    sha256: 4338c6cab8af8dee6cdfd54e6218bd0533785f552c6162bb083f8dd28bf8fbbe
+- name: libsodium
+  buildsystem: autotools
+  sources:
+  - type: archive
+    url: https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.18-RELEASE.tar.gz
+    sha256: b7292dd1da67a049c8e78415cd498ec138d194cfdb302e716b08d26b80fecc10
+- shared-modules/intltool/intltool-0.51.json 
+- shared-modules/libappindicator/libappindicator-gtk3-introspection-12.10.json
+- shared-modules/libsecret/libsecret.json
+- name: vup
+  buildsystem: simple
+  build-commands:
+  - unzip Vup-0.12.0-BETA-Linux.zip -d build
+  - install -d /app/Vup
+  - cp -r build/* /app/Vup
+  - chmod +x /app/Vup/vup
+  - mkdir -p /app/bin
+  - ln -s /app/Vup/vup /app/bin/vup
+  - install -Dm644 icon.svg /app/share/icons/hicolor/scalable/apps/app.vup.Vup.svg
+  - install -Dm644 app.vup.Vup.desktop -t /app/share/applications/
+  - install -Dm644 app.vup.Vup.metainfo.xml -t /app/share/metainfo/
+  post-install:
+  - "mkdir -p ${FLATPAK_DEST}/lib/ffmpeg"
+  sources:
+  - type: file
+    path: icon.svg
+  - type: file
+    path: app.vup.Vup.metainfo.xml
+  - type: file
+    path: app.vup.Vup.desktop
+  - type: file
+    only-arches:
+          - x86_64
+    url: https://github.com/redsolver/vup/releases/download/v0.12.0/Vup-0.12.0-BETA-Linux.zip
+    sha256: db6bae656ec34a62bced238d4769ea9d6d5fbe97594ea24022f466606aabe8f8
+
+
