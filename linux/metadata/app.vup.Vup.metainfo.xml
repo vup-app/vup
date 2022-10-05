@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+    Generator for metainfo & .desktop files: 
+    https://www.freedesktop.org/software/appstream/metainfocreator/#/
+-->
+<component type="desktop-application">
+  <id>app.vup.Vup</id>
+  <name>Vup Cloud Storage</name>
+  <summary>Open-source end-to-end-encrypted cloud storage app with integrated media server</summary>
+  <developer_name>redsolver</developer_name>
+  <url type="homepage">https://github.com/redsolver/vup</url>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>EUPL-1.2-or-later</project_license>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <description>
+    <p>Check out https://vup.app for an overview of what Vup can do.</p>
+  </description>
+  <launchable type="desktop-id">app.vup.Vup.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/vup-app/app.vup.Vup/main/screenshots/computer.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.12.0 BETA" date="2022-10-2" />
+  </releases>
+</component>
