@@ -18,7 +18,7 @@ class ShareDirectoryVupAction extends VupFSAction {
     if (!isDirectoryView) return null;
 
     if (pathNotifier.value.length < 2) {
-      if (pathNotifier.toUriString().startsWith('skyfs://local/')) {
+      if (pathNotifier.toUriString().startsWith('skyfs://root/')) {
         return null;
       }
     }

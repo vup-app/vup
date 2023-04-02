@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:vup/jelly/id_hash.dart';
 import 'package:vup/service/jellyfin_server.dart';
 import 'base.dart';
 
@@ -94,7 +95,7 @@ class OMDbMetadataProvider extends JellyMetadataProvider {
 
   // Media field
   Map generateJellyMetadata(String type, String id, Map data) {
-    final itemId = createIdHash(utf8.encode('${type}-Imdb-${id}'));
+    final itemId = calculateIdHash(utf8.encode('${type}-Imdb-${id}'));
 
     final items = [];
 
@@ -134,7 +135,7 @@ class OMDbMetadataProvider extends JellyMetadataProvider {
       final name = p.trim();
       final person = {
         "Name": name,
-        "Id": createIdHash(
+        "Id": calculateIdHash(
           utf8.encode(
             'Actor-${providerId}-${name}',
           ),
@@ -158,7 +159,7 @@ class OMDbMetadataProvider extends JellyMetadataProvider {
 
       item['Genres'].add(genre);
 
-      final genreId = createIdHash(utf8.encode('genre_' + genre)).toString();
+      final genreId = calculateIdHash(utf8.encode('genre_' + genre)).toString();
 
       final genreItem = {
         "Name": genre,

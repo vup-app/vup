@@ -42,9 +42,9 @@ class _ShareDialogState extends State<ShareDialog> {
   String renderUri(String uri) {
     final segments = List.from(Uri.parse(uri).pathSegments);
 
-    if (segments.length > 0 && segments.first == 'fs-dac.hns') {
+    /* if (segments.length > 0 && segments.first == 'fs-dac.hns') {
       segments.removeAt(0);
-    }
+    } */
     return segments.join('/');
   }
 
@@ -299,11 +299,11 @@ class _ShareDialogState extends State<ShareDialog> {
                                 .verbose('Preparing static share operation...');
                             final uuid = Uuid().v4();
                             await storageService.dac.createDirectory(
-                              'vup.hns/.internal/shared-static-directories',
+                              'vup.hns/shared-static-directories',
                               uuid,
                             );
                             final shareUri = storageService.dac.parsePath(
-                                'vup.hns/.internal/shared-static-directories/$uuid');
+                                'vup.hns/shared-static-directories/$uuid');
 
                             final futures = <Future>[];
                             for (final dirUri in directoryUris) {
@@ -375,12 +375,16 @@ class _ShareDialogState extends State<ShareDialog> {
 
                               final dirUri = storageService.dac
                                   .parsePath(directoryUris.first);
-
+/* 
                               final sharedDirectoriesUri = storageService.dac
                                   .parsePath(
-                                      'vup.hns/.internal/shared-directories');
+                                      'vup.hns/.internal/shared-directories'); */
 
-                              final res = await storageService.dac
+                              // TODO Use Links
+
+                              throw 'Not implemented';
+
+                              /*   final res = await storageService.dac
                                   .doOperationOnDirectory(
                                 sharedDirectoriesUri,
                                 (directoryIndex) async {
@@ -396,7 +400,7 @@ class _ShareDialogState extends State<ShareDialog> {
                                 },
                               );
 
-                              if (!res.success) throw res.error.toString();
+                              if (!res.success) throw res.error.toString(); */
 
                               final shareSeed =
                                   await storageService.dac.getShareUriReadOnly(
@@ -438,11 +442,12 @@ class _ShareDialogState extends State<ShareDialog> {
     if (currentViewType == null || currentViewType == 'generic') {
       return 'https://share.vup.app/#${shareSeed}';
     } else {
-      if (currentViewType == 'gallery') {
+      return 'https://share.vup.app/#${shareSeed}?viewType=$currentViewType';
+      /*  if (currentViewType == 'gallery') {
         return 'https://0406jckksspiqk11ivr641v1q09paul9bufdufl4svm50kjutvvjio8.${mySky.skynetClient.portalHost}/#${shareSeed}?viewType=$currentViewType';
       } else {
         return 'https://mstream.hns.${mySky.skynetClient.portalHost}/#${shareSeed}?viewType=$currentViewType';
-      }
+      } */
     }
   }
 }

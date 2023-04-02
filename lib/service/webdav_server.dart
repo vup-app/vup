@@ -7,6 +7,7 @@ import 'package:alfred/alfred.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/web_server/serve_chunked_file.dart';
@@ -35,16 +36,16 @@ class WebDavServerService extends VupService {
 
     app = Alfred();
 
-    Map<String, Completer<String>> downloadCompleters = {};
-
-    Map<String, String> getHeadersForFile(DirectoryFile file) {
+    Map<String, String> getHeadersForFile(FileReference file) {
       final df = DateFormat('EEE, dd MMM yyyy HH:mm:ss');
       final dt = DateTime.fromMillisecondsSinceEpoch(file.modified).toUtc();
+      final fileVersion = file.file;
+
       return {
         'Accept-Ranges': 'bytes',
-        'Content-Length': file.file.size.toString(),
         'Content-Type': file.mimeType ?? 'application/octet-stream',
-        'Etag': '"${file.file.hash}"',
+        'Content-Length': fileVersion.cid.size.toString(),
+        'Etag': '"${fileVersion.cid.hash.toBase64Url()}"',
         'Last-Modified': df.format(dt) + ' GMT',
       };
     }
@@ -88,7 +89,7 @@ class WebDavServerService extends VupService {
         if (body is Uint8List) {
           body = (utf8.decode(body as Uint8List));
         }
-        // print(body);
+        // logger.verbose(body);
 
         final props = RegExp(r'<d:prop>(.+)<\/d:prop>')
             .firstMatch(body.replaceAll('\n', ''))
@@ -130,11 +131,11 @@ class WebDavServerService extends VupService {
 
         String? filename;
 
-        DirectoryIndex? dirIndex;
+        DirectoryMetadata? dirIndex;
 
         if (!req.requestedUri.path.endsWith('/')) {
           final p = storageService.dac.parseFilePath(path);
-          dirIndex = await storageService.dac.getDirectoryIndex(
+          dirIndex = await storageService.dac.getDirectoryMetadata(
             p.directoryPath,
           );
           if (!dirIndex.directories.containsKey(p.fileName)) {
@@ -145,10 +146,10 @@ class WebDavServerService extends VupService {
           }
         }
 
-        dirIndex ??= /* storageService.dac.getDirectoryIndexCached(
+        dirIndex ??= /* storageService.dac.getDirectoryMetadataCached(
               path,
             ) ?? */
-            (await storageService.dac.getDirectoryIndex(
+            (await storageService.dac.getDirectoryMetadata(
           path,
         ));
 
@@ -160,7 +161,7 @@ class WebDavServerService extends VupService {
 ''';
 
         /*   if (path == '') {
-          print('[webdav] detected empty path');
+          logger.verbose('[webdav] detected empty path');
           str += '''  <d:response>
     <d:href>/</d:href>
     <d:propstat>
@@ -256,8 +257,12 @@ class WebDavServerService extends VupService {
 
             final uri = Uri(pathSegments: href);
             final file = dirIndex.files[fileName]!;
+
+            final fileVersion = file.file;
+
             String checksum = '';
-            for (final String h in [
+            // TODO Support checksums
+            /*   for (final Multihash h in [
               file.file.hash,
               ...(file.file.hashes ?? [])
             ]) {
@@ -267,7 +272,7 @@ class WebDavServerService extends VupService {
                 checksum += ' SHA1:${h.substring(4)}';
               }
             }
-            checksum = checksum.trimLeft();
+            checksum = checksum.trimLeft(); */
 
             str += '''
             <d:response>
@@ -275,9 +280,9 @@ class WebDavServerService extends VupService {
     <d:propstat>
       <d:prop>
         <d:getlastmodified>${df.format(DateTime.fromMillisecondsSinceEpoch(file.modified).toUtc()) + ' GMT'}</d:getlastmodified>
-        <d:getcontentlength>${file.file.size}</d:getcontentlength>
+        <d:getcontentlength>${fileVersion.cid.size}</d:getcontentlength>
         <d:resourcetype/>
-        <d:getetag>&quot;${file.file.hash}&quot;</d:getetag>
+        <d:getetag>&quot;${fileVersion.cid.hash.toBase64Url()}&quot;</d:getetag>
         <d:getcontenttype>${file.mimeType ?? 'application/octet-stream'}</d:getcontenttype>
         <oc:checksums><oc:checksum>$checksum</oc:checksum></oc:checksums>
       </d:prop>
@@ -310,10 +315,10 @@ class WebDavServerService extends VupService {
 
         final parsed = storageService.dac.parseFilePath(pathSegments.join('/'));
 
-        final dirIndex = storageService.dac.getDirectoryIndexCached(
+        final dirIndex = storageService.dac.getDirectoryMetadataCached(
               parsed.directoryPath,
             ) ??
-            await storageService.dac.getDirectoryIndex(
+            await storageService.dac.getDirectoryMetadata(
               parsed.directoryPath,
             );
 
@@ -331,32 +336,15 @@ class WebDavServerService extends VupService {
         final localFile = storageService.getLocalFile(file);
         if (localFile != null) return localFile;
 
-        if (file.file.encryptionType == 'libsodium_secretbox') {
-          await handleChunkedFile(req, res, file, file.file.size);
-          return null;
-        } else if (file.file.encryptionType == null) {
+        if (file.file.encryptedCID == null) {
           return await handlePlaintextFile(req, res, file);
-        }
-
-        if (downloadCompleters.containsKey(file.file.hash)) {
-          if (!downloadCompleters[file.file.hash]!.isCompleted) {
-            return File(await downloadCompleters[file.file.hash]!.future);
-          }
+        } else if (file.file.encryptedCID?.encryptionAlgorithm ==
+            encryptionAlgorithmXChaCha20Poly1305) {
+          await handleChunkedFile(req, res, file, file.file.cid.size!);
+          return null;
         } else {
-          downloadCompleters[file.file.hash] = Completer<String>();
+          throw 'Encryption type not supported';
         }
-        final link = await downloadPool.withResource(
-          () => storageService.downloadAndDecryptFile(
-            fileData: file.file,
-            name: file.name,
-            outFile: null,
-          ),
-        );
-
-        if (!downloadCompleters[file.file.hash]!.isCompleted) {
-          downloadCompleters[file.file.hash]!.complete(link);
-        }
-        return File(link);
       } else if (method == 'PUT') {
         final pathSegments = req.requestedUri.pathSegments
             .where((element) => element.isNotEmpty)
@@ -396,11 +384,11 @@ class WebDavServerService extends VupService {
         await sink.flush();
         await sink.close();
 
-        final dirIndex = storageService.dac.getDirectoryIndexCached(
+        final dirIndex = storageService.dac.getDirectoryMetadataCached(
               // TODO Check if this is ok
               parsed.directoryPath,
             ) ??
-            (await storageService.dac.getDirectoryIndex(
+            (await storageService.dac.getDirectoryMetadata(
               parsed.directoryPath,
             ));
 

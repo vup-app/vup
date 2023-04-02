@@ -34,7 +34,7 @@ class SaveLocallyVupAction extends VupFSAction {
     BuildContext context,
     VupFSActionInstance instance,
   ) async {
-    final file = instance.entity as DirectoryFile;
+    final file = instance.entity as FileReference;
 
     String? path;
     if (Platform.isAndroid || Platform.isIOS) {

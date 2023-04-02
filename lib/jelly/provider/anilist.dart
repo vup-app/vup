@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:vup/jelly/id_hash.dart';
 import 'package:vup/service/jellyfin_server.dart';
 
 import 'base.dart';
@@ -101,7 +102,7 @@ class AnilistMetadataProvider extends JellyMetadataProvider {
 
   // Media field
   Map generateJellyMetadata(String type, String id, Map data) {
-    final itemId = createIdHash(utf8.encode('${type}-${providerId}-${id}'));
+    final itemId = calculateIdHash(utf8.encode('${type}-${providerId}-${id}'));
     final items = [];
     final item = {
       'Id': itemId,
@@ -163,7 +164,7 @@ class AnilistMetadataProvider extends JellyMetadataProvider {
       for (final studio in data['studios']?['nodes'] ?? [])
         {
           "Name": studio['name'],
-          "Id": createIdHash(
+          "Id": calculateIdHash(
             utf8.encode(
               'Studio-${providerId}-${studio['id']}',
             ),
@@ -180,7 +181,7 @@ class AnilistMetadataProvider extends JellyMetadataProvider {
         // TODO Setting for language preference
         final person = {
           "Name": va['name']['full'],
-          "Id": createIdHash(
+          "Id": calculateIdHash(
             utf8.encode(
               'Actor-${providerId}-${edge['node']['id']}',
             ),
@@ -223,7 +224,7 @@ class AnilistMetadataProvider extends JellyMetadataProvider {
     item['GenreItems'] = [];
     for (final genre in ['Anime', ...data['genres']]) {
       item['Genres'].add(genre);
-      final genreId = createIdHash(utf8.encode('genre_' + genre)).toString();
+      final genreId = calculateIdHash(utf8.encode('genre_' + genre)).toString();
       final genreItem = {
         "Name": genre,
         "Id": genreId,

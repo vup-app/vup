@@ -12,7 +12,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   local_auth_windows
   network_info_plus_windows
   permission_handler_windows
-  sodium_libs
   tray_manager
   url_launcher_windows
 )

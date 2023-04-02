@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:alfred/alfred.dart';
 import 'package:intl/intl.dart';
 import 'package:random_string/random_string.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/web_server/serve_chunked_file.dart';
@@ -20,9 +21,9 @@ class TemporaryStreamingServerService extends VupService {
     info('stopped server.');
   }
 
-  final availableFiles = <String, DirectoryFile>{};
+  final availableFiles = <String, FileReference>{};
 
-  Future<String> makeFileAvailable(DirectoryFile file) async {
+  Future<String> makeFileAvailable(FileReference file) async {
     start(43913, '0.0.0.0');
     final streamingKey = randomAlphaNumeric(
       32,
@@ -45,14 +46,14 @@ class TemporaryStreamingServerService extends VupService {
 
     app = Alfred();
 
-    Map<String, String> getHeadersForFile(DirectoryFile file) {
+    Map<String, String> getHeadersForFile(FileReference file) {
       final df = DateFormat('EEE, dd MMM yyyy HH:mm:ss');
       final dt = DateTime.fromMillisecondsSinceEpoch(file.modified).toUtc();
       return {
         'Accept-Ranges': 'bytes',
-        'Content-Length': file.file.size.toString(),
+        'Content-Length': file.file.cid.size.toString(),
         'Content-Type': file.mimeType ?? 'application/octet-stream',
-        'Etag': '"${file.file.hash}"',
+        'Etag': '"${file.file.cid.hash.toBase64Url()}"',
         'Last-Modified': df.format(dt) + ' GMT',
       };
     }
@@ -73,11 +74,14 @@ class TemporaryStreamingServerService extends VupService {
       final localFile = storageService.getLocalFile(file);
       if (localFile != null) return localFile;
 
-      if (file.file.encryptionType == 'libsodium_secretbox') {
-        await handleChunkedFile(req, res, file, file.file.size);
-        return null;
-      } else if (file.file.encryptionType == null) {
+      if (file.file.encryptedCID == null) {
         return await handlePlaintextFile(req, res, file);
+      } else if (file.file.encryptedCID?.encryptionAlgorithm ==
+          encryptionAlgorithmXChaCha20Poly1305) {
+        await handleChunkedFile(req, res, file, file.file.cid.size!);
+        return null;
+      } else {
+        throw 'Encryption type not supported';
       }
     });
 

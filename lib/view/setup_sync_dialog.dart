@@ -103,8 +103,7 @@ class _SetupSyncDialogState extends State<SetupSyncDialog> {
               if (Platform.isAndroid) {
                 filePath = await FilePicker.platform.getDirectoryPath();
               } else {
-                filePath =
-                    await file_selector.getDirectoryPath();
+                filePath = await file_selector.getDirectoryPath();
                 //
               }
 
@@ -203,7 +202,7 @@ class _SetupSyncDialogState extends State<SetupSyncDialog> {
                   height: 16,
                 )
               : */
-          CheckboxListTile(
+          /* CheckboxListTile(
             title: Text('Watch for changes'),
             subtitle: Text('Warning: Very experimental and inefficient'),
             value: task.watch,
@@ -213,7 +212,7 @@ class _SetupSyncDialogState extends State<SetupSyncDialog> {
                 task.watch = val!;
               });
             },
-          ),
+          ), */
           SizedBox(
             height: 8,
           ),

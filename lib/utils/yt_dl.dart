@@ -99,8 +99,8 @@ class YTDLUtils {
         .transform(const LineSplitter())
         .listen((event) {
       if (event.isNotEmpty) {
-        // print('$event');
-        // print(event.toString());
+        // logger.verbose('$event');
+        // logger.verbose(event.toString());
         // logOutput.add(event.toString());
         final match = percentRegExp.firstMatch(event.toString());
         if (match != null) {
@@ -156,7 +156,7 @@ class YTDLUtils {
     await Future.wait(futures);
 
     for (final file in files) {
-      print('[yt-dlp] delete $file from cache');
+      logger.verbose('[yt-dlp] delete $file from cache');
       await file.delete();
     }
 

@@ -1,4 +1,4 @@
-import 'dart:convert';
+/* import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -36,6 +36,8 @@ class ShareWebAppVupAction extends VupFSAction {
     BuildContext context,
     VupFSActionInstance instance,
   ) async {
+    throw 'Not implemented';
+
     final availableDirectoryFiles = {};
     final baseUri = instance.pathNotifier.toCleanUri();
     final baseUriLength = baseUri.toString().length;
@@ -160,3 +162,4 @@ class ShareWebAppVupAction extends VupFSAction {
     );
   }
 }
+ */

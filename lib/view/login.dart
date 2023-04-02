@@ -2,7 +2,9 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:vup/app.dart';
 import 'package:vup/widget/hint_card.dart';
 import 'package:vup/widget/sky_button.dart';
-import 'package:skynet/src/mysky_seed/derivation.dart';
+
+import 'package:lib5/src/seed/seed.dart';
+import 'package:lib5/util.dart';
 
 class LoginView extends StatefulWidget {
   final TabController tabCtrl;
@@ -31,7 +33,7 @@ class _LoginViewState extends State<LoginView> {
             height: 12,
           ),
           Text(
-            'Securely sign in using MySky',
+            'Securely sign in using your S5 identity',
             style: titleTextStyle,
           ),
           SizedBox(
@@ -58,7 +60,7 @@ class _LoginViewState extends State<LoginView> {
                   showInfoDialog(
                     context,
                     'Your word seed passphrase',
-                    'This passphrase is the key to your MySky identity. Keep it secure, anyone who knows it can access and modify all of your files.',
+                    'This passphrase is the key to your S5 identity. Keep it secure, anyone who knows it can access and modify all of your files.',
                   );
                 },
               ),
@@ -159,24 +161,38 @@ class _LoginViewState extends State<LoginView> {
                     // _formKey.currentState.validate();
                     //await Future.delayed(Duration(seconds: 5));
                     try {
-                      final seed = validatePhrase(passphraseCtrl.text);
+                      final seed = validatePhrase(
+                        passphraseCtrl.text,
+                        crypto: mySky.crypto,
+                      );
 
-                      /* print(await authStorage.read());
+                      /* logger.verbose(await authStorage.read());
                       return; */
 
-                      await mySky
-                          .storeSeedPhrase(sanitizePhrase(passphraseCtrl.text));
+                      final identity = await S5UserIdentity.fromSeedPhrase(
+                        passphraseCtrl.text,
+                        api: mySky.api,
+                      );
 
-                      /* await authStorage
-                          .write(sanitizePhrase(passphraseCtrl.text)); */
+                      await mySky.storeAuthPayload(
+                        base64UrlNoPaddingEncode(
+                          identity.pack(),
+                        ),
+                      );
 
                       await mySky.autoLogin();
+
+                      await Future.delayed(Duration(seconds: 2));
+
+                      await mySky.loadPortalAccounts();
 
                       context.beamToNamed(
                         '/browse',
                         replaceCurrent: true,
                       );
-                    } catch (e) {
+                    } catch (e, st) {
+                      logger.verbose(e);
+                      logger.verbose(st);
                       _error = e.toString();
                     }
 

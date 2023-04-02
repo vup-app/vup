@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:alfred/alfred.dart';
 import 'package:filesize/filesize.dart';
 import 'package:intl/intl.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/web_server/serve_chunked_file.dart';
@@ -28,16 +29,16 @@ class WebServerService extends VupService {
 
     app = Alfred();
 
-    Map<String, Completer<String>> downloadCompleters = {};
-
-    Map<String, String> getHeadersForFile(DirectoryFile file) {
+    Map<String, String> getHeadersForFile(FileReference file) {
       final df = DateFormat('EEE, dd MMM yyyy HH:mm:ss');
       final dt = DateTime.fromMillisecondsSinceEpoch(file.modified).toUtc();
+      final fileVersion = file.file;
+
       return {
         'Accept-Ranges': 'bytes',
-        'Content-Length': file.file.size.toString(),
         'Content-Type': file.mimeType ?? 'application/octet-stream',
-        'Etag': '"${file.file.hash}"',
+        'Content-Length': fileVersion.cid.size.toString(),
+        'Etag': '"${fileVersion.cid.hash.toBase64Url()}"',
         'Last-Modified': df.format(dt) + ' GMT',
       };
     }
@@ -48,10 +49,10 @@ class WebServerService extends VupService {
       );
 
       if (path.endsWith('/')) {
-        final di = /* storageService.dac.getDirectoryIndexCached(
+        final di = /* storageService.dac.getDirectoryMetadataCached(
               path,
             ) ?? */
-            (await storageService.dac.getDirectoryIndex(
+            (await storageService.dac.getDirectoryMetadata(
           path,
         ));
         /*  var html = "";
@@ -99,7 +100,7 @@ class WebServerService extends VupService {
         files.sort((a, b) => a.name.compareTo(b.name));
 
         for (final file in files) {
-          final size = filesize(file.file.size);
+          final size = filesize(file.file.cid.size);
 
           html +=
               '<a href="./${Uri.encodeComponent(file.key!)}">${file.name}</a>${doPadding(maxLength - file.name.length)}${formatDate(file.created)}${doPadding(12 - size.length)}${size}<br/>';
@@ -114,7 +115,7 @@ class WebServerService extends VupService {
       } else {
         final parsed = storageService.dac.parseFilePath(path);
 
-        final dirIndex = storageService.dac.getDirectoryIndexCached(
+        final dirIndex = storageService.dac.getDirectoryMetadataCached(
           parsed.directoryPath,
         )!;
 
@@ -130,32 +131,15 @@ class WebServerService extends VupService {
 
         final localFile = storageService.getLocalFile(file);
         if (localFile != null) return localFile;
-
-        if (file.file.encryptionType == 'libsodium_secretbox') {
-          await handleChunkedFile(req, res, file, file.file.size);
-          return null;
-        } else if (file.file.encryptionType == null) {
+        if (file.file.encryptedCID == null) {
           return await handlePlaintextFile(req, res, file);
-        }
-
-        if (downloadCompleters.containsKey(file.file.hash)) {
-          if (!downloadCompleters[file.file.hash]!.isCompleted) {
-            return File(await downloadCompleters[file.file.hash]!.future);
-          }
+        } else if (file.file.encryptedCID?.encryptionAlgorithm ==
+            encryptionAlgorithmXChaCha20Poly1305) {
+          await handleChunkedFile(req, res, file, file.file.cid.size!);
+          return null;
         } else {
-          downloadCompleters[file.file.hash] = Completer<String>();
+          throw 'Encryption type not supported';
         }
-        final link = await downloadPool.withResource(
-          () => storageService.downloadAndDecryptFile(
-            fileData: file.file,
-            name: file.name,
-            outFile: null,
-          ),
-        );
-        if (!downloadCompleters[file.file.hash]!.isCompleted) {
-          downloadCompleters[file.file.hash]!.complete(link);
-        }
-        return File(link);
       }
     });
 
@@ -165,7 +149,7 @@ class WebServerService extends VupService {
       } else {
         final parsed = storageService.dac.parseFilePath(path);
 
-        final dirIndex = storageService.dac.getDirectoryIndexCached(
+        final dirIndex = storageService.dac.getDirectoryMetadataCached(
           parsed.directoryPath,
         )!;
 

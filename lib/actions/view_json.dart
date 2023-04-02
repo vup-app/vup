@@ -41,6 +41,7 @@ class ViewJSONVupAction extends VupFSAction {
           child: SingleChildScrollView(
             reverse: true,
             child: SelectableText(
+              // TODO Include full JSON fields
               const JsonEncoder.withIndent('  ').convert(
                 instance.entity,
               ),

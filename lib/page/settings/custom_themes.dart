@@ -22,7 +22,7 @@ class _CustomThemesSettingsPageState extends State<CustomThemesSettingsPage> {
   }
 
   void _loadCustomThemes() async {
-    final res = await storageService.dac.mySkyProvider.getJSONEncrypted(
+    final res = await storageService.dac.hiddenDB.getJSON(
       customThemesPath,
     );
 
@@ -156,10 +156,10 @@ class _CustomThemesSettingsPageState extends State<CustomThemesSettingsPage> {
                   onPressed: () async {
                     showLoadingDialog(context, 'Saving...');
                     try {
-                      await storageService.dac.mySkyProvider.setJSONEncrypted(
+                      await storageService.dac.hiddenDB.setJSON(
                         customThemesPath,
                         customThemes,
-                        revision! + 1,
+                        revision: revision! + 1,
                       );
                       revision = revision! + 1;
                       dataBox.put('custom_themes', customThemes);

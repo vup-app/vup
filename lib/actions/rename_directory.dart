@@ -59,7 +59,7 @@ class RenameDirectoryVupAction extends VupFSAction {
     if (name != null) {
       showLoadingDialog(context, 'Renaming directory...');
       try {
-        final res = await storageService.dac.moveDirectory(
+        await storageService.dac.moveDirectory(
           instance.entity.uri,
           storageService.dac
               .getChildUri(
@@ -69,7 +69,6 @@ class RenameDirectoryVupAction extends VupFSAction {
               )
               .toString(),
         );
-        if (!res.success) throw res.error!;
         context.pop();
       } catch (e, st) {
         context.pop();

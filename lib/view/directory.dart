@@ -26,8 +26,8 @@ class DirectoryView extends StatefulWidget {
 }
 
 class _DirectoryViewState extends State<DirectoryView> {
-  DirectoryIndex? index;
-  Map<String, DirectoryFile> uploadingFiles = {};
+  DirectoryMetadata? index;
+  Map<String, FileReference> uploadingFiles = {};
 
   ZoomLevel get zoomLevel => widget.viewState.zoomLevel;
 
@@ -74,14 +74,14 @@ class _DirectoryViewState extends State<DirectoryView> {
     final uri = widget.pathNotifier.toUriString();
 
     if (widget.pathNotifier.queryParamaters.isEmpty) {
-      index = storageService.dac.getDirectoryIndexCached(
+      index = storageService.dac.getDirectoryMetadataCached(
         uri,
       );
     }
     _calculateSizes();
 
     sub = storageService.dac
-        .getDirectoryIndexChangeNotifier(
+        .getDirectoryMetadataChangeNotifier(
           storageService.dac.convertUriToHashForCache(
             storageService.dac.parsePath(
               widget.pathNotifier.value.join('/'),
@@ -92,7 +92,7 @@ class _DirectoryViewState extends State<DirectoryView> {
         .listen((_) {
       if (mounted) {
         setState(() {
-          index = storageService.dac.getDirectoryIndexCached(
+          index = storageService.dac.getDirectoryMetadataCached(
             uri,
           );
           sort();
@@ -101,7 +101,7 @@ class _DirectoryViewState extends State<DirectoryView> {
       }
     });
 
-    if (uri == 'skyfs://local/fs-dac.hns/vup.hns/.internal/active-files') {
+    if (uri == 'skyfs://root/vup.hns/.internal/active-files') {
       // TODO This doesn't really work yet
       void update(bool shouldSetState) {
         final notifs = storageService.dac.getAllUploadingFilesChangeNotifiers();
@@ -140,7 +140,7 @@ class _DirectoryViewState extends State<DirectoryView> {
       sort();
       if (mounted) setState(() {});
     }
-    storageService.dac.getDirectoryIndex(uri).then((value) {
+    storageService.dac.getDirectoryMetadata(uri).then((value) {
       if (mounted) {
         // TODO Detect offline errors instead
         if (value.files.isEmpty && value.directories.isEmpty) {
@@ -231,7 +231,7 @@ class _DirectoryViewState extends State<DirectoryView> {
   bool showLoadingIndicator = false;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext buildContext) {
     if (index == null) {
       return Align(
         child: AnimatedOpacity(
@@ -344,7 +344,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                                     globalClipboardState.clearSelection();
                                   } catch (e, st) {
                                     context.pop();
-                                    showErrorDialog(context, e, st);
+                                    showErrorDialog(buildContext, e, st);
                                   }
                                 },
                               )
@@ -390,11 +390,11 @@ class _DirectoryViewState extends State<DirectoryView> {
                                       );
                                     }
                                     await Future.wait(futures);
-                                    context.pop();
+                                    buildContext.pop();
                                     globalClipboardState.clearSelection();
                                   } catch (e, st) {
-                                    context.pop();
-                                    showErrorDialog(context, e, st);
+                                    buildContext.pop();
+                                    showErrorDialog(buildContext, e, st);
                                   }
                                 },
                               ),
@@ -416,7 +416,7 @@ class _DirectoryViewState extends State<DirectoryView> {
       },
     );
 
-    final stateNotifier = storageService.dac.getFileStateChangeNotifier(
+    final stateNotifier = storageService.dac.getDirectoryStateChangeNotifier(
       widget.pathNotifier.value.join('/'),
     );
 
@@ -519,6 +519,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                                   'Creating common directories...',
                                 );
                                 final dirs = [
+                                  '.trash',
                                   'Books',
                                   'Documents',
                                   'Music',
@@ -570,7 +571,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                           }
                           final sharedSeed = result[0].trim();
                           final uri = Uri.parse(sharedSeed);
-                          print(sharedSeed);
+                          logger.verbose(sharedSeed);
                           await storageService.dac.mountUri(
                             widget.path.join('/'),
                             uri,
@@ -596,7 +597,8 @@ class _DirectoryViewState extends State<DirectoryView> {
 
       final int totalFileSize = index!.files.values.fold<int>(
         0,
-        (previousValue, element) => previousValue + element.file.size,
+        (previousValue, element) =>
+            previousValue + (element.file.cid.size ?? 0),
       );
       final BoxScrollView contentView;
       if (zoomLevel.type == ZoomLevelType.list) {

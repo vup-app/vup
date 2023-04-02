@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:filesystem_dac/dac.dart';
 import 'package:vup/generic/state.dart';
-
+/* 
 Future<DownloadConfig> generateDownloadConfig(FileData fileData) async {
   final scheme = fileData.url.split(':').first;
   if (scheme == 'sia') {
@@ -50,3 +50,4 @@ Future<DownloadConfig> generateDownloadConfig(FileData fileData) async {
     return DownloadConfig(fileData.url, {});
   }
 }
+ */

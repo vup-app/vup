@@ -14,7 +14,7 @@ class SidebarService extends VupService with CustomState {
   }
 
   Future<void> update() async {
-    final res = await storageService.dac.mySkyProvider.getJSONEncrypted(
+    final res = await storageService.dac.hiddenDB.getJSON(
       sidebarConfigPath,
     );
     sidebarConfig =
@@ -38,10 +38,10 @@ class SidebarService extends VupService with CustomState {
 
   Future<void> pinDirectory(String path) async {
     sidebarConfig['locations'].add({'path': path});
-    await storageService.dac.mySkyProvider.setJSONEncrypted(
+    await storageService.dac.hiddenDB.setJSON(
       sidebarConfigPath,
       sidebarConfig,
-      revision! + 1,
+      revision: revision! + 1,
     );
     revision = revision! + 1;
     dataBox.put('sidebar_config', sidebarConfig);
@@ -50,10 +50,10 @@ class SidebarService extends VupService with CustomState {
 
   Future<void> unpinDirectory(dynamic entry) async {
     sidebarConfig['locations'].remove(entry);
-    await storageService.dac.mySkyProvider.setJSONEncrypted(
+    await storageService.dac.hiddenDB.setJSON(
       sidebarConfigPath,
       sidebarConfig,
-      revision! + 1,
+      revision: revision! + 1,
     );
     revision = revision! + 1;
     dataBox.put('sidebar_config', sidebarConfig);

@@ -31,7 +31,7 @@ class SelectVupAction extends VupFSAction {
     VupFSActionInstance instance,
   ) async {
     final uri = instance.entity.uri;
-    if (instance.entity is DirectoryDirectory) {
+    if (instance.entity is DirectoryReference) {
       if (instance.isSelected) {
         instance.pathNotifier.selectedDirectories.remove(uri);
         instance.pathNotifier.$();

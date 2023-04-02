@@ -25,7 +25,7 @@ class PermanentDeleteVupAction extends VupFSAction {
     }
 
     for (final uri in uris) {
-      if (!uri.startsWith('skyfs://local/fs-dac.hns/home/.trash/')) {
+      if (!uri.startsWith('skyfs://root/home/.trash/')) {
         return null;
       }
     }
@@ -69,7 +69,7 @@ class PermanentDeleteVupAction extends VupFSAction {
           content: const Text(
             'Warning: If you ever copied these files, this operation could delete the copies too. So make sure that this is not the case and always have additional external backups of important data while Vup is still in beta!\n'
             'Another thing to keep in mind is that people you shared these files with might still have access to them because they made a copy.\n'
-            'Also your file is not deleted from the Sia network instantly, but this doesn\'t really matter in practice because after you delete the metadata the keys are lost and nobody can decrypt the file anymore.',
+            'Also your file is not deleted from the network instantly, but this doesn\'t really matter in practice because after you delete the metadata the keys are lost and nobody can decrypt the file anymore.',
           ),
           actions: [
             TextButton(

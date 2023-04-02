@@ -1,10 +1,11 @@
+import 'package:convert/convert.dart';
 import 'package:filesize/filesize.dart';
 import 'package:vup/app.dart';
 import 'package:vup/utils/date_format.dart';
 import 'package:vup/widget/skylink_health.dart';
 
 class FileDetailsDialog extends StatefulWidget {
-  final DirectoryFile file;
+  final FileReference file;
   final bool hasWriteAccess;
   const FileDetailsDialog(this.file, {required this.hasWriteAccess, Key? key})
       : super(key: key);
@@ -14,7 +15,7 @@ class FileDetailsDialog extends StatefulWidget {
 }
 
 class FileDetailsDialogState extends State<FileDetailsDialog> {
-  DirectoryFile get file => widget.file;
+  FileReference get file => widget.file;
 
   bool hasChanges = false;
 
@@ -58,6 +59,7 @@ class FileDetailsDialogState extends State<FileDetailsDialog> {
           );
       }
     }
+    final fileVersion = file.file;
     return Column(
       children: [
         Expanded(
@@ -67,7 +69,7 @@ class FileDetailsDialogState extends State<FileDetailsDialog> {
               _buildRow('MIME Type', file.mimeType.toString()),
               _buildRow(
                 'Size',
-                '${filesize(file.file.size)} (${file.file.size} bytes)',
+                '${filesize(fileVersion.cid.size)} (${fileVersion.cid.size} bytes)',
               ),
               _buildRow(
                   'Created',
@@ -88,14 +90,12 @@ class FileDetailsDialogState extends State<FileDetailsDialog> {
                   ),
                 ),
               ),
-              for (final hash in [file.file.hash, ...(file.file.hashes ?? [])])
-                _buildRow(
-                    {
-                          '1220': 'SHA256',
-                          '1114': 'SHA1',
-                        }[hash.substring(0, 4)] ??
-                        hash.substring(0, 4),
-                    hash.substring(4)),
+              for (final hash in [
+                fileVersion.cid.hash,
+                ...(fileVersion.hashes ?? [])
+              ])
+                _buildHashRow(hash),
+              _buildRow('Original CID', fileVersion.cid.toBase58()),
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
@@ -105,21 +105,32 @@ class FileDetailsDialogState extends State<FileDetailsDialog> {
                   ),
                 ),
               ),
-              _buildRow('Type', file.file.encryptionType ?? 'None'),
+              _buildRow(
+                'Type',
+                {
+                      null: 'None',
+                      encryptionAlgorithmXChaCha20Poly1305: 'XChaCha20Poly1305',
+                    }[fileVersion.encryptedCID?.encryptionAlgorithm] ??
+                    'Unknown',
+              ),
               _buildRow(
                 'Padding',
-                '${filesize(file.file.padding ?? 0)} (${file.file.padding} bytes)',
+                '${filesize(fileVersion.encryptedCID?.padding ?? 0)} (${fileVersion.encryptedCID?.padding} bytes)',
               ),
-              _buildRow('Blob URI', file.file.url),
-              if (file.file.url.startsWith('sia://'))
+              _buildRow(
+                  'Encrypted blob hash',
+                  fileVersion.encryptedCID?.encryptedBlobHash.toBase64Url() ??
+                      'None'),
+
+              /*  if (fileVersion.url.startsWith('sia://'))
                 Center(
                     child: Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
-                  child: SkylinkHealthWidget(file.file.url.substring(6)),
-                )),
+                  child: SkylinkHealthWidget(fileVersion.url.substring(6)),
+                )), */
               _buildRow(
                 'Chunk Size',
-                '${filesize(file.file.chunkSize ?? 0)} (${file.file.chunkSize} bytes)',
+                '${filesize(fileVersion.encryptedCID?.chunkSize ?? 0)} (${fileVersion.encryptedCID?.chunkSize} bytes)',
               ),
               Center(
                 child: Padding(
@@ -153,6 +164,20 @@ class FileDetailsDialogState extends State<FileDetailsDialog> {
           ),
       ],
     );
+  }
+
+  Widget _buildHashRow(Multihash hash) {
+    /* if (!(hash.startsWith('1220') || hash.startsWith('1114'))) {
+      hash = hex.encode(base64UrlNoPaddingDecode(hash));
+    } */
+    return _buildRow(
+        {
+              /* '1220': 'SHA256',
+              '1114': 'SHA1', */
+              mhashBlake3Default: 'BLAKE3',
+            }[hash.functionType] ??
+            '???',
+        hex.encode(hash.hashBytes));
   }
 
   Widget _buildRow(String label, String value, {Function? onEdit}) {

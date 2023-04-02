@@ -25,10 +25,17 @@ class CacheService extends VupService {
 
     allCacheFiles.removeWhere((element) => element is! File);
 
+    // TODO Delete empty directories
+
     int totalSize = allCacheFiles.fold(
       0,
-      (previousValue, element) =>
-          previousValue + (element as File).lengthSync(),
+      (previousValue, element) {
+        if (element.path.contains('encrypted_files')) {
+          return previousValue;
+        } else {
+          return previousValue + (element as File).lengthSync();
+        }
+      },
     );
     verbose('total used cache size: ${filesize(totalSize)}');
 

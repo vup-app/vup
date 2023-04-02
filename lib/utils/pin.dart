@@ -1,7 +1,8 @@
 import 'package:vup/app.dart';
 
 Future<void> pinAll(BuildContext context, String uri) async {
-  showLoadingDialog(context, 'Aggregating skylinks...');
+  throw UnimplementedError();
+/*   showLoadingDialog(context, 'Aggregating skylinks...');
   try {
     logger.info('aggregateAllSkylinks'); // TODO Ignore non-Skylinks
     final map = await storageService.dac.aggregateAllSkylinks(
@@ -49,5 +50,5 @@ Future<void> pinAll(BuildContext context, String uri) async {
   } catch (e, st) {
     context.pop();
     showErrorDialog(context, e, st);
-  }
+  } */
 }

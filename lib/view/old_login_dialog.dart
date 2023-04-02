@@ -1,4 +1,4 @@
-import 'package:vup/app.dart';
+/* import 'package:vup/app.dart';
 import 'package:skynet/src/portal_accounts/old.dart';
 
 class OldLoginDialog extends StatefulWidget {
@@ -78,3 +78,4 @@ class _OldLoginDialogState extends State<OldLoginDialog> {
     );
   }
 }
+ */

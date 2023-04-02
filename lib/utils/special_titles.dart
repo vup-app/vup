@@ -1,6 +1,6 @@
 const _specialTitlesMap = {
-  'skyfs://local/fs-dac.hns/vup.hns/.internal/shared-with-me': 'Shared with me',
-  'skyfs://local/fs-dac.hns/home/.trash': 'Trash',
+  'skyfs://root/vup.hns/shared-with-me': 'Shared with me',
+  'skyfs://root/home/.trash': 'Trash',
 };
 
 String? getSpecialTitle(String uri) {

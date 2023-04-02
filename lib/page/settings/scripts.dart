@@ -174,7 +174,7 @@ class _ScriptsSettingsPageState extends State<ScriptsSettingsPage> {
                     "url":
                         "https://www.youtube.com/playlist?list=PLPv00ttW4uXPFBidbogIAVe0HdOBDqZeB",
                     "format": "mp4",
-                    "targetURI": "skyfs://local/fs-dac.hns/home/Videos/Skynet"
+                    "targetURI": "skyfs://root/home/Videos/Skynet"
                   }
                 }
               ]

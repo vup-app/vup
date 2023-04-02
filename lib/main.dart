@@ -2,13 +2,20 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:alfred/alfred.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:contextmenu/contextmenu.dart';
+import 'package:filesystem_dac/cache/hive.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:s5_server/logger/console.dart';
+import 'package:cryptography/helpers.dart';
+import 'package:s5_server/node.dart';
+import 'package:lib5/util.dart';
+import 'package:s5_server/crypto/implementation.dart';
 
 import 'package:tray_manager/tray_manager.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -16,7 +23,6 @@ import 'package:universal_platform/universal_platform.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:vup/model/sync_task.dart';
-import 'package:sodium_libs/sodium_libs.dart' hide Box;
 import 'package:vup/service/notification/provider/flutter.dart';
 import 'package:vup/theme.dart';
 import 'package:vup/utils/device_info/flutter.dart';
@@ -45,6 +51,7 @@ import 'package:xdg_directories/xdg_directories.dart';
 import 'package:selectable_autolink_text/selectable_autolink_text.dart';
 
 import 'package:http/http.dart' as http;
+import 'rust/ffi.dart' as ffi;
 
 final appLayoutState = AppLayoutState();
 
@@ -106,8 +113,7 @@ Future<void> initApp() async {
       'vup',
     );
 
-    final tempDir = await getTempDir();
-    vupTempDir = join(tempDir.path, 'vup');
+    vupTempDir = join(cacheHome.path, 'vup');
 
     vupDataDir = join(dataHome.path, 'vup');
   } else if (Platform.isMacOS) {
@@ -133,7 +139,9 @@ Future<void> initApp() async {
 
   vupConfigDir = join(
     vupConfigDir,
-    'default',
+    // 'default',
+    's5-alpha-13',
+    // 'debug-2023-2',
     // 'debug',
   );
 
@@ -171,7 +179,69 @@ Future<void> initApp() async {
     dataBox.put('double_click_enabled', true);
   }
 
-  mySky.setup(dataBox.get('cookie') ?? '');
+  logger.verbose('Setting up local S5 node...');
+
+  if (!dataBox.containsKey('s5_node_seed')) {
+    final seed = Uint8List(32);
+
+    fillBytesWithSecureRandom(seed);
+    dataBox.put('s5_node_seed', base64Url.encode(seed));
+  }
+
+  if (!dataBox.containsKey('s5_auth_token')) {
+    final seed = Uint8List(32);
+
+    fillBytesWithSecureRandom(seed);
+    dataBox.put('s5_auth_token', base64UrlNoPaddingEncode(seed));
+  }
+
+  nativeRustApi = ffi.api;
+
+  mySky.crypto = RustCryptoImplementation(nativeRustApi);
+
+  s5Node = S5Node(
+    {
+      "name": "vup",
+      "keypair": {"seed": dataBox.get('s5_node_seed')},
+      "cache": {"path": join(vupTempDir, 's5')},
+      "http": {
+        "api": {
+          "port": 5050,
+          /* "authorization": {
+            "bearer_tokens": [dataBox.get('s5_auth_token')]
+          }, */
+          "delete": {"enabled": false}
+        }
+      },
+      "p2p": {
+        "peers": {
+          "initial": [
+            'tcp://z2DWuWNZcdSyZLpXFK2uCU3haaWMXrDAgxzv17sDEMHstZb@199.247.20.119:4444',
+            'tcp://z2DWuPbL5pweybXnEB618pMnV58ECj2VPDNfVGm3tFqBvjF@116.203.139.40:4444',
+          ]
+        }
+      }
+    },
+    logger: ConsoleLogger(
+      prefix: '[S5] ',
+      format: false,
+    ),
+    rust: nativeRustApi,
+    crypto: mySky.crypto,
+  );
+
+  runZonedGuarded(
+    s5Node.start,
+    (e, st) {
+      s5Node.logger.catched(e, st);
+    },
+  );
+
+  Future.delayed(Duration(seconds: 10)).then((value) {
+    logger.info('S5 Node ID: ${s5Node.p2p.localNodeId}');
+  });
+
+  await mySky.setup();
 
   syncTasks = await Hive.openBox('syncTasks');
 
@@ -180,7 +250,7 @@ Future<void> initApp() async {
   syncTasksTimestamps = await Hive.openBox('syncTasksTimestamps');
   syncTasksLock = await Hive.openBox('syncTasksLock');
 
-  localFiles = await Hive.openBox('localFiles');
+  localFiles = HiveKeyValueDB(await Hive.openBox('localFiles'));
 
   logger.verbose('Creating storage service...');
 
@@ -195,11 +265,13 @@ Future<void> initApp() async {
 
   logger.verbose('Init storage service...');
 
-  await storageService.init(await SodiumInit.init());
+  await storageService.init();
 
   logger.verbose('init MySky...');
 
   await mySky.init();
+
+  mySky.registerDeviceId();
 
   logger.verbose('Setting up cache service...');
 
@@ -385,7 +457,7 @@ void main(List<String> args) async {
     }
 
     if (isJellyfinServerEnabled) {
-      try {
+      /*  try {
         jellyfinServerService.start(
           jellyfinServerPort,
           jellyfinServerBindIp,
@@ -394,7 +466,7 @@ void main(List<String> args) async {
         );
       } catch (e, st) {
         logger.error('$e $st');
-      }
+      } */
     }
 
     // skynetKernelServerService.start(42424, '127.0.0.1');
@@ -405,13 +477,13 @@ void main(List<String> args) async {
       'TOKEN',
     ); */
 
-    if (isPortalProxyServerEnabled) {
+/*     if (isPortalProxyServerEnabled) {
       try {
         portalProxyServerService.start(4444, '0.0.0.0');
       } catch (e, st) {
         logger.error('$e $st');
       }
-    }
+    } */
 
     // identityDACServerService.start(43915, '127.0.0.1');
 
@@ -594,12 +666,6 @@ class _HomePageState extends State<HomePage> with TrayListener {
   void initState() {
     initSplitCtrl();
 
-    quotaService.update();
-
-    Stream.periodic(Duration(minutes: 1)).listen((event) {
-      quotaService.update();
-    });
-
     if (Platform.isAndroid || Platform.isIOS) {
       getInitialLink().then(handleSharedLink);
       linkStream.listen((event) {
@@ -689,7 +755,7 @@ class _HomePageState extends State<HomePage> with TrayListener {
                       bottom: 4.0,
                     ),
                     child: Text(
-                      'Dropped $entityStr in ${targetUri.pathSegments.isEmpty ? '' : targetUri.pathSegments.sublist(1).join('/')}',
+                      'Dropped $entityStr in ${targetUri.pathSegments.isEmpty ? '' : targetUri.pathSegments.join('/')}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                       ),
@@ -1081,7 +1147,7 @@ class _AuthPageState extends State<AuthPage> {
             barrierDismissible: false,
             context: context,
             builder: (context) => AlertDialog(
-              title: Text('Things to know'),
+              title: Text('Welcome to the Vup Beta!'),
               content: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: 400),
                 child: Column(
@@ -1096,10 +1162,10 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                     SelectableAutoLinkText(
                       [
-                        'You can submit feedback or report bugs here: https://github.com/redsolver/vup/issues\n',
+                        'You can submit feedback or report bugs here: https://github.com/redsolver/vup/issues\n\n',
                         'Vup is open-source and licensed under the EUPL-1.2-or-later.\nSource code: https://github.com/redsolver/vup\n',
                         if (!Platform.isIOS)
-                          'You can support this project on GitHub Sponsors: https://github.com/sponsors/redsolver'
+                          '\nYou can support this project on GitHub Sponsors: https://github.com/sponsors/redsolver'
                       ].join(),
                       onTap: (url) {
                         launch(url);

@@ -1,9 +1,8 @@
-import 'dart:convert';
+/* import 'dart:convert';
 
 import 'package:selectable_autolink_text/selectable_autolink_text.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vup/app.dart';
-import 'package:skynet/src/portal_accounts/index.dart';
 
 Future<void> showPortalDialog(BuildContext context) async {
   final portalList = [
@@ -19,8 +18,7 @@ Future<void> showPortalDialog(BuildContext context) async {
   Map portalAccounts = {};
 
   try {
-    final portalAccountsRes =
-        await storageService.mySkyProvider.getJSONEncrypted(
+    final portalAccountsRes = await hiddenDB.getJSON(
       mySky.portalAccountsPath,
     );
     if (portalAccountsRes.data != null) {
@@ -41,7 +39,7 @@ Future<void> showPortalDialog(BuildContext context) async {
     );
     late String cookie;
     try {
-      final res = await mySky.skynetClient.httpClient.post(
+      final res = await mySky.httpClient.post(
         Uri.https(portalAccountHost, '/api/login'),
         headers: {'content-type': 'application/json'},
         body: json.encode(
@@ -62,11 +60,11 @@ Future<void> showPortalDialog(BuildContext context) async {
       return;
     }
 
-    mySky.skynetClient.portalHost = portalHost;
-    mySky.skynetClient.headers = {
-      'cookie': cookie,
+    // mySky.skynetClient.portalHost = portalHost;
+/*     mySky.skynetClient.headers = {
+      // 'cookie': cookie,
       'user-agent': vupUserAgent,
-    };
+    }; */
 
     dataBox.put(
       'cookie',
@@ -346,3 +344,4 @@ Future<void> showPortalDialog(BuildContext context) async {
     ),
   );
 }
+ */

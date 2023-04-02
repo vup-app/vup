@@ -10,6 +10,7 @@ import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:lib5/constants.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart';
@@ -25,6 +26,11 @@ import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/icon_pack_service.dart';
 import 'package:vup/service/rich_status_service.dart';
+
+import 'package:lib5/lib5.dart';
+
+export 'package:lib5/lib5.dart';
+export 'package:lib5/constants.dart';
 
 export 'package:hive_flutter/hive_flutter.dart';
 
@@ -166,7 +172,7 @@ enum SearchType {
   currentDir,
 }
 
-typedef dynamic ExtractFunction(DirectoryFile f);
+typedef dynamic ExtractFunction(FileReference f);
 
 abstract class SortStep {
   String get name;
@@ -221,13 +227,13 @@ class ExtensionSortStep extends SortStep {
 class SizeSortStep extends SortStep {
   final id = 'size';
   final name = 'Size';
-  final f = (f) => f.file.size;
+  final f = (f) => f.file.cid.size ?? 0;
 }
 
 class AvailableOfflineSortStep extends SortStep {
   final id = 'availableOffline';
   final name = 'Offline';
-  final f = (f) => localFiles.containsKey(f.file.hash).toString();
+  final f = (f) => localFiles.contains(f.file.cid.hash.fullBytes).toString();
 }
 
 final allSortSteps = {
@@ -258,11 +264,13 @@ class DirectoryViewState with CustomState, VupService {
     });
   }
 
+  String _getDirectoryViewStateCache(Uri uri) {
+    return storageService.dac.convertUriToHashForCache(uri).toBase64Url();
+  }
+
   void load() {
     verbose('load ${pathNotifier.toCleanUri()}');
-    final key = sha1
-        .convert(utf8.encode(pathNotifier.toCleanUri().toString()))
-        .toString();
+    final key = _getDirectoryViewStateCache(pathNotifier.toCleanUri());
     final state = directoryViewStates.get(key) ??
         {
           'zoomLevelType': 'list',
@@ -293,9 +301,7 @@ class DirectoryViewState with CustomState, VupService {
       'firstSortStep': firstSortStep.id,
     };
 
-    final key = sha1
-        .convert(utf8.encode(pathNotifier.toCleanUri().toString()))
-        .toString();
+    final key = _getDirectoryViewStateCache(pathNotifier.toCleanUri());
 
     directoryViewStates.put(key, state);
 
@@ -335,7 +341,7 @@ class DirectoryViewState with CustomState, VupService {
     save();
   }
 
-  int sortDirectory(DirectoryDirectory a, DirectoryDirectory b) {
+  int sortDirectory(DirectoryReference a, DirectoryReference b) {
     if (firstSortStep is CreatedSortStep || firstSortStep is ModifiedSortStep) {
       final val = a.created.compareTo(b.created);
       if (!ascending) return -val;
@@ -533,9 +539,9 @@ class PathNotifierState with CustomState {
     }
 
     return Uri(
-      host: 'local',
+      host: 'root',
       scheme: 'skyfs',
-      pathSegments: [DATA_DOMAIN] + path,
+      pathSegments: /* [DATA_DOMAIN] + */ path,
       queryParameters: queryParamaters.isEmpty ? null : queryParamaters,
     );
   }
@@ -548,16 +554,16 @@ class PathNotifierState with CustomState {
     }
 
     return Uri(
-      host: 'local',
+      host: 'root',
       scheme: 'skyfs',
-      pathSegments: [DATA_DOMAIN] + path,
+      pathSegments: /* [DATA_DOMAIN] + */ path,
       // queryParameters: queryParamaters.isEmpty ? null : queryParamaters,
     );
   }
 
 /*   String getChildUri(String name) {
     return Uri(
-      host: 'local',
+      host: 'root',
       scheme: 'skyfs',
       pathSegments: [DATA_DOMAIN] + path + [name],
       queryParameters: queryParamaters.isEmpty ? null : queryParamaters,
@@ -618,8 +624,8 @@ class PathNotifierState with CustomState {
       uri.queryParameters,
     );
 
-    if (uri.host == 'local') {
-      path = uri.pathSegments.sublist(1);
+    if (uri.host == 'root') {
+      path = uri.pathSegments;
 
       $();
     } else {

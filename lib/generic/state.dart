@@ -1,7 +1,11 @@
 import 'package:hive/hive.dart';
 import 'package:pool/pool.dart';
+import 'package:s5_server/node.dart';
 import 'package:state_notifier/state_notifier.dart';
+import 'package:vup/app.dart';
+import 'package:vup/rust/bridge_definitions.dart';
 import 'package:vup/model/sync_task.dart';
+import 'package:vup/queue/queue_service.dart';
 import 'package:vup/service/activity_service.dart';
 import 'package:vup/service/api_server.dart';
 import 'package:vup/service/cache.dart';
@@ -11,6 +15,7 @@ import 'package:vup/service/jellyfin_server.dart';
 import 'package:vup/service/logger.dart';
 import 'package:vup/service/mysky.dart';
 import 'package:vup/service/notification/provider/base.dart';
+import 'package:vup/service/pinning_service.dart';
 import 'package:vup/service/playlist_service.dart';
 import 'package:vup/service/portal_proxy_server.dart';
 import 'package:vup/service/quota_service.dart';
@@ -24,37 +29,43 @@ import 'package:vup/utils/device_info/base.dart';
 import 'package:vup/utils/external_ip/base.dart';
 import 'package:vup/utils/ffmpeg/base.dart';
 
-export 'package:skynet/src/skystandards/fs.dart';
+export 'package:vup/utils/expect_status_code.dart';
 
 // Storage
 late Box<SyncTask> syncTasks;
 late Box<int> syncTasksTimestamps;
 late Box<int> syncTasksLock;
 late Box dataBox;
-late Box localFiles;
+late KeyValueDB localFiles;
 
 late String vupConfigDir;
 late String vupTempDir;
 late String vupDataDir;
 
 // Global Services
+final queue = QueueService();
 late StorageService storageService;
+late final S5Node s5Node;
+late final HiddenDBProvider hiddenDB;
+
 late FFmpegProvider ffMpegProvider;
 late NotificationProvider notificationProvider;
 late ExternalIpAddressProvider externalIpAddressProvider;
 late DeviceInfoProvider deviceInfoProvider;
+late Rust nativeRustApi;
 final mySky = MySkyService();
 final webServerService = WebServerService();
 final temporaryStreamingServerService = TemporaryStreamingServerService();
 final webDavServerService = WebDavServerService();
 final apiServerService = APIServerService();
-final portalProxyServerService = PortalProxyServerService();
+// final portalProxyServerService = PortalProxyServerService();
 // TODO final identityDACServerService = IdentityDACServerService();
 // TODO final skynetKernelServerService = SkynetKernelServerService();
 final sidebarService = SidebarService();
-var jellyfinServerService = JellyfinServerService();
+// TODO var jellyfinServerService = JellyfinServerService();
 // final koelServerService = KoelServerService();
 final quotaService = QuotaService();
+final pinningService = PinningService();
 final activityService = ActivityService();
 final playlistService = PlaylistService();
 final directoryCacheSyncService = DirectoryCacheSyncService();
@@ -66,8 +77,6 @@ bool isYTDlIntegrationEnabled = false;
 String ytDlPath = 'yt-dlp';
 
 final logger = Global();
-
-String get currentPortalHost => dataBox.get('portal_host') ?? 'siasky.net';
 
 // Preferences
 bool get isWebServerEnabled => dataBox.get('web_server_enabled') ?? false;
@@ -83,8 +92,8 @@ String get webDavServerUsername =>
 String get webDavServerPassword =>
     dataBox.get('webdav_server_password') ?? 'password';
 
-bool get isPortalProxyServerEnabled =>
-    dataBox.get('portal_proxy_server_enabled') ?? false;
+/* bool get isPortalProxyServerEnabled =>
+    dataBox.get('portal_proxy_server_enabled') ?? false; */
 
 /* bool get isKoelServerEnabled => dataBox.get('koel_server_enabled') ?? false;
 int get koelServerPort => dataBox.get('koel_server_port') ?? 6060;
@@ -109,7 +118,7 @@ const customThemesPath = 'vup.hns/config/custom_themes.json';
 final scriptsStatus = <String, Map>{};
 
 // Pools
-final downloadPool = Pool(3);
+final downloadPool = Pool(8);
 
 // Error handling
 final globalErrorsState = GlobalErrorStateNotifier();

@@ -87,8 +87,8 @@ class _MediaPlayerWidgetState extends State<MediaPlayerWidget> {
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
           child: IconButton(
             onPressed: () {
-              /*  print(audioPlayer.volume);
-              print(audioPlayer.speed); */
+              /*  logger.verbose(audioPlayer.volume);
+              logger.verbose(audioPlayer.speed); */
               if (audioPlayer.playing) {
                 audioPlayer.pause();
               } else {

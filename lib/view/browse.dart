@@ -66,7 +66,7 @@ class _BrowseViewState extends State<BrowseView> {
 
 /*   void onPathChange() {
     setState(() {
-      // print('pathNotifier event');
+      // logger.verbose('pathNotifier event');
     });
   } */
 
@@ -101,7 +101,7 @@ class _BrowseViewState extends State<BrowseView> {
     return Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
         LogicalKeySet(LogicalKeyboardKey.escape): NavigateUpIntent(),
-        LogicalKeySet(LogicalKeyboardKey.backspace): NavigateUpIntent(),
+        // LogicalKeySet(LogicalKeyboardKey.backspace): NavigateUpIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA):
             SelectAllIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyN):
@@ -124,19 +124,19 @@ class _BrowseViewState extends State<BrowseView> {
             // autofocus: true,
             focusNode: focusNode,
             onKey: (node, event) {
-              // print(event);
+              // logger.verbose(event);
               isShiftPressed = event.isShiftPressed;
               isControlPressed = event.isControlPressed;
 
-              // print(FocusManager.instance.primaryFocus);
+              // logger.verbose(FocusManager.instance.primaryFocus);
               return KeyEventResult.ignored;
             },
             /*  onKeyEvent: (node, event) {
-              print(event);
+              logger.verbose(event);
               return KeyEventResult.ignored;
             }, */
             onFocusChange: (value) {
-              // print('onFocusChange $value');
+              // logger.verbose('onFocusChange $value');
             },
             child: Builder(builder: (context) {
               final FocusNode focusNode = Focus.of(context);
@@ -159,14 +159,14 @@ class _BrowseViewState extends State<BrowseView> {
                       final hasWriteAccess =
                           storageService.dac.checkAccess(uri.toString());
 
-                      final sharedDirsIndex = storageService.dac
-                          .getDirectoryIndexCached(
-                              'vup.hns/.internal/shared-directories');
+                      /*         final sharedDirsIndex = storageService.dac
+                          .getDirectoryMetadataCached(
+                              'vup.hns/.internal/shared-directories'); */
 
                       bool isDirectorySharedReadOnly = false;
                       String? directoryShareUri;
 
-                      if (sharedDirsIndex != null) {
+                      /*    if (sharedDirsIndex != null) {
                         for (final sharedUri
                             in sharedDirsIndex.directories.keys) {
                           if (uri == sharedUri ||
@@ -176,7 +176,7 @@ class _BrowseViewState extends State<BrowseView> {
                             break;
                           }
                         }
-                      }
+                      } */
                       final nonMountedUri = storageService.dac
                           .parsePath(
                             path.join('/'),
@@ -205,8 +205,9 @@ class _BrowseViewState extends State<BrowseView> {
                         if (widget.pathNotifier.toCleanUri().host == 'remote') {
                           isDirectoryShared = false;
                         } else {
-                          final di = storageService.dac.getDirectoryIndexCached(
-                            'vup.hns/.internal/shared-with-me',
+                          final di =
+                              storageService.dac.getDirectoryMetadataCached(
+                            'vup.hns/shared-with-me',
                           );
                           if (di?.directories.containsKey(path.first) ??
                               false) {
@@ -266,8 +267,8 @@ class _BrowseViewState extends State<BrowseView> {
                               }
                             }
                           }
-                          /* print('files $files');
-                          print('directories $directories');
+                          /* logger.verbose('files $files');
+                          logger.verbose('directories $directories');
                           return; */
                           final currentUri = globalIsHoveringDirectoryUri ??
                               pathNotifier.toCleanUri().toString();
@@ -286,7 +287,7 @@ class _BrowseViewState extends State<BrowseView> {
                             for (final dir in directories) {
                               final name = basename(dir.path);
                               final di = storageService.dac
-                                  .getDirectoryIndexCached(currentUri)!;
+                                  .getDirectoryMetadataCached(currentUri)!;
                               if (!di.directories.containsKey(name)) {
                                 await storageService.dac.createDirectory(
                                   currentUri,
@@ -294,7 +295,7 @@ class _BrowseViewState extends State<BrowseView> {
                                 );
                               }
 
-                              await storageService.syncDirectory(
+                              storageService.startSyncTask(
                                 dir,
                                 (currentPath + [name]).join('/'),
                                 SyncMode.sendOnly,
@@ -358,7 +359,7 @@ class _BrowseViewState extends State<BrowseView> {
                                   true,
                                   widget.pathNotifier.hasWriteAccess(),
                                   storageService.dac
-                                      .getFileStateChangeNotifier(
+                                      .getDirectoryStateChangeNotifier(
                                         widget.pathNotifier.value.join('/'),
                                       )
                                       .state,
@@ -804,14 +805,18 @@ class _BrowseViewState extends State<BrowseView> {
 
                                             final index = await storageService
                                                 .dac
-                                                .getDirectoryIndex(uri);
+                                                .getDirectoryMetadata(uri);
 
-                                            await storageService.dac
+                                            // TODO Use Links
+
+                                            throw 'Not implemented';
+
+                                            /*     await storageService.dac
                                                 .doOperationOnDirectory(
                                                     storageService.dac
                                                         .parsePath(
-                                                      'vup.hns/.internal/shared-with-me',
-                                                    ), (di) async {
+                                                      'vup.hns/shared-with-me',
+                                                    ), (di, writeKey) async {
                                               di.directories[uri] =
                                                   DirectoryDirectory(
                                                 name:
@@ -830,7 +835,7 @@ class _BrowseViewState extends State<BrowseView> {
                                                 created: DateTime.now()
                                                     .millisecondsSinceEpoch,
                                               );
-                                            });
+                                            }); */
 
                                             context.pop();
 
@@ -1226,5 +1231,4 @@ class _BrowseViewState extends State<BrowseView> {
 
     return;
   } */
-
 }

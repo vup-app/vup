@@ -1,25 +1,21 @@
-import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:filesize/filesize.dart';
-import 'package:filesystem_dac/model/cached_entry.dart';
+import 'package:filesystem_dac/cache/base.dart';
 import 'package:hive/hive.dart';
-import 'package:lzma/lzma.dart';
-import 'package:vup/generic/state.dart';
-import 'package:vup/library/compute.dart';
 import 'package:vup/library/state.dart';
 import 'package:vup/service/base.dart';
 
+// TODO Implement, but without compression
+
 class DirectoryCacheSyncService extends VupService with CustomState {
-  late final Box<CachedEntry> directoryIndexCache;
+  late final DirectoryMetadataCache directoryIndexCache;
   late final String deviceId;
   late final Box<dynamic> directoryCacheSyncServiceData;
 
   final indexPath = 'vup.hns/cache/directory_sync/devices.json';
 
   Future<void> init(String deviceId) async {
-    this.deviceId = deviceId;
-    directoryIndexCache = storageService.dac.directoryIndexCache;
+    /*  this.deviceId = deviceId;
+    directoryIndexCache = storageService.dac.dirCache;
     directoryCacheSyncServiceData =
         await Hive.openBox('directoryCacheSyncServiceData');
 
@@ -37,12 +33,12 @@ class DirectoryCacheSyncService extends VupService with CustomState {
 
     Stream.periodic(Duration(minutes: 30)).listen((event) {
       syncCache();
-    });
+    }); */
   }
-
+/* 
   void syncCache() async {
     info('[sync] cache');
-    final indexRes = await storageService.dac.mySkyProvider.getJSONEncrypted(
+    final indexRes = await hiddenDB.getJSON(
       indexPath,
     );
 
@@ -57,7 +53,7 @@ class DirectoryCacheSyncService extends VupService with CustomState {
       final ts = data['devices'][devId];
       if (ts > localTs) {
         info('[sync] downloading from ${devId}');
-        final res = await storageService.dac.mySkyProvider.getRawDataEncrypted(
+        final res = await hiddenDB.getRawData(
           'vup.hns/cache/directory_sync/device_${devId}.json',
         );
 
@@ -130,14 +126,12 @@ class DirectoryCacheSyncService extends VupService with CustomState {
 
     info('[upload] Uploading compressed data...');
 
-    final res = await storageService.dac.mySkyProvider.setRawDataEncrypted(
+    await storageService.dac.mySkyProvider.setRawDataEncrypted(
       path,
       Uint8List.fromList(compressed),
       (DateTime.now().millisecondsSinceEpoch / 1000).round(),
     );
-    info('[upload] Done! (success: $res)');
-
-    if (!res) throw 'Upload failed';
+    info('[upload] Done!');
 
     info('[upload] Updating device index...');
 
@@ -161,5 +155,5 @@ class DirectoryCacheSyncService extends VupService with CustomState {
       'upload_last_compressed_length',
       length,
     );
-  }
+  } */
 }

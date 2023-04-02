@@ -18,7 +18,8 @@ class MakeAvailableOfflineVupAction extends VupFSAction {
     if (!isFile) return null;
     if (entity == null) return null;
     if (fileState.type != FileStateType.idle) return null;
-    bool isAvailableOffline = localFiles.containsKey(entity.file.hash);
+    bool isAvailableOffline =
+        localFiles.contains(entity.file.cid.hash.fullBytes);
 
     if (isSelected) {
       return VupFSActionInstance(
@@ -40,12 +41,12 @@ class MakeAvailableOfflineVupAction extends VupFSAction {
     BuildContext context,
     VupFSActionInstance instance,
   ) async {
-    final files = <DirectoryFile>[];
+    final files = <FileReference>[];
     if (instance.isSelected) {
       for (final uri in instance.pathNotifier.selectedFiles) {
         final path = storageService.dac.parseFilePath(uri);
         final di =
-            storageService.dac.getDirectoryIndexCached(path.directoryPath);
+            storageService.dac.getDirectoryMetadataCached(path.directoryPath);
         files.add(di!.files[path.fileName]!);
       }
     } else {
@@ -59,6 +60,7 @@ class MakeAvailableOfflineVupAction extends VupFSAction {
             fileData: file.file,
             name: file.name,
             outFile: null,
+            isTemporary: false,
           ),
         ),
     ]);

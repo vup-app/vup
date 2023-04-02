@@ -47,7 +47,7 @@ class _YTDLDialogState extends State<YTDLDialog> {
   // final _maxDLCountCtrl = TextEditingController(text: '8');
 
   final downloadProgress = <String, double?>{};
-  final uploadFileIds = <String, String>{};
+  final uploadFileIds = <String, Multihash>{};
 
   int downloadedCount = 0;
 
@@ -305,7 +305,7 @@ mp3: better compatibility''', // mkv: more features
                           .transform(const LineSplitter())
                           .listen((event) {
                         if (event.isNotEmpty) {
-                          // print('$event');
+                          // logger.verbose('$event');
                           videos.add(json.decode(event.toString()));
                         }
                       });
@@ -483,7 +483,7 @@ mp3: better compatibility''', // mkv: more features
                         ? null
                         : () async {
                             final dirIndex = await storageService.dac
-                                .getDirectoryIndexCached(
+                                .getDirectoryMetadataCached(
                               widget.path,
                             )!;
                             final existingUrls = [];
@@ -689,10 +689,10 @@ mp3: better compatibility''', // mkv: more features
       );
       if (advancedYtDlModeEnabled) {
         if (splitByChapters) {
-          final dirIndex = await storageService.dac.getDirectoryIndexCached(
+          final dirIndex = storageService.dac.getDirectoryMetadataCached(
             widget.path,
           )!;
-          final files = <DirectoryFile>[];
+          final files = <FileReference>[];
           for (final file in dirIndex.files.values) {
             if ((file.ext?['audio']?['comment'] ??
                     file.ext?['video']?['comment']) ==

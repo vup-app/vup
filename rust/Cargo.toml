@@ -1,0 +1,20 @@
+[package]
+name = "rust"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+anyhow = "1.0.66"
+bao = {git = "https://github.com/redsolver/bao", branch = "chunk_groups"}
+blake3 = {git = "https://github.com/BLAKE3-team/BLAKE3", branch = "more_guts"}
+chacha20poly1305 = "0.10.1"
+error-chain = "0.12.4"
+flutter_rust_bridge = "1.62.0"
+image = {version = "0.24.4", features = ["webp-encoder"]}
+sha1 = "0.10.5"
+

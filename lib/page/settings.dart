@@ -48,10 +48,6 @@ class _SettingsPageState extends State<SettingsPage> {
       title: 'Devices',
       build: () => DevicesSettingsPage(),
     ),
-    /*  SettingsPane(
-      title: 'Manage file system index',
-      build: () => ManageFSIndexPage(),
-    ), */
     SettingsPane(
       title: 'Custom themes',
       build: () => CustomThemesSettingsPage(),
@@ -60,10 +56,10 @@ class _SettingsPageState extends State<SettingsPage> {
       title: 'Web Server',
       build: () => WebServerSettingsPage(),
     ),
-    SettingsPane(
+    /* SettingsPane(
       title: 'Jellyfin Server',
       build: () => JellyfinServerSettingsPage(),
-    ),
+    ), */
     SettingsPane(
       title: 'WebDav Server',
       build: () => WebDavSettingsPage(),
@@ -193,11 +189,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     final uuid = Uuid().v4();
 
                     await storageService.dac.createDirectory(
-                      'vup.hns/.internal/shared-static-directories',
+                      'vup.hns/shared-static-directories',
                       uuid,
                     );
-                    final shareUri = storageService.dac.parsePath(
-                        'vup.hns/.internal/shared-static-directories/$uuid');
+                    final shareUri = storageService.dac
+                        .parsePath('vup.hns/shared-static-directories/$uuid');
 
                     await storageService.startFileUploadingTask(
                       shareUri.toString(),

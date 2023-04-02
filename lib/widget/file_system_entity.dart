@@ -7,6 +7,8 @@ import 'package:filesystem_dac/dac.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:flutter_state_notifier/flutter_state_notifier.dart';
 import 'package:path/path.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:vup/actions/base.dart';
 import 'package:vup/app.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -34,11 +36,11 @@ class FileSystemEntityWidget extends StatefulWidget {
 }
 
 class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
-  bool get isDirectory => widget._entity is DirectoryDirectory;
+  bool get isDirectory => widget._entity is DirectoryReference;
 
-  DirectoryDirectory get dir => widget._entity;
+  DirectoryReference get dir => widget._entity;
 
-  DirectoryFile get file => widget._entity;
+  FileReference get file => widget._entity;
 
   StreamSubscription? sub;
 
@@ -52,7 +54,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
   bool enabled = true;
 
-  bool get isUploading => (!isDirectory && file.file.url.isEmpty);
+  bool get isUploading => (!isDirectory && file.version == -1);
   bool get isInTrash =>
       (widget.pathNotifier.path.length >= 2) &&
       widget.pathNotifier.path[1] == '.trash';
@@ -67,7 +69,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
     final uri = widget._entity.uri;
 
-    // print('uri $uri');
+    // logger.verbose('uri $uri');
 
     final isSelected = isDirectory
         ? widget.pathNotifier.selectedDirectories.contains(uri)
@@ -75,21 +77,22 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
     bool isTreeSelected = false;
     if (columnViewActive && isDirectory) {
-      final customURI = /* widget.pathNotifier.getChildUri( */ widget
-          ._entity.uri /* ) */;
-      /* print(appLayoutState.currentTab.last.state.toUri());
-      print(customURI); */
+      final customURI = /* widget.pathNotifier.getChildUri( */
+          widget._entity.uri /* ) */;
+      /* logger.verbose(appLayoutState.currentTab.last.state.toUri());
+      logger.verbose(customURI); */
       if (appLayoutState.currentTab.last.state
           .toUriString()
           .startsWith(customURI)) {
         isTreeSelected = true;
       }
     }
-    final stateNotifier = storageService.dac.getFileStateChangeNotifier(
-      isDirectory
-          ? [...widget.pathNotifier.value, dir.name].join('/')
-          : file.file.hash,
-    );
+    final stateNotifier = isDirectory
+        ? storageService.dac.getDirectoryStateChangeNotifier(
+            [...widget.pathNotifier.value, dir.name].join('/'))
+        : storageService.dac.getFileStateChangeNotifier(
+            file.file.cid.hash,
+          );
 
     return ContextMenuArea(
       builder: (ctx) {
@@ -142,7 +145,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
    */
       child: InkWell(
         /*  onDoubleTap: () {
-            print('onDoubleTap');
+            logger.verbose('onDoubleTap');
           }, */
         focusNode: focusNode,
         onHover: (value) {
@@ -208,7 +211,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                   final now = DateTime.now();
 
                   if (now.difference(lastClickTime).inMilliseconds < 500) {
-                    // print('detected double-click');
+                    // logger.verbose('detected double-click');
                     skipAllowed = false;
                     if (widget.pathNotifier.isInSelectionMode) {
                       widget.pathNotifier.selectedDirectories.clear();
@@ -254,8 +257,8 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                           [...widget.pathNotifier.value, dir.name].join('/');
                       for (final path
                           in widget.pathNotifier.selectedDirectories) {
-                        /* print(path);
-                        print(ownPath); */
+                        /* logger.verbose(path);
+                        logger.verbose(ownPath); */
                         if (path.startsWith(ownPath)) {
                           changed = false;
                           break;
@@ -282,6 +285,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                 } else if (skipAllowed && isDoubleClickToOpenEnabled) {
                   return;
                 }
+
                 if (isDirectory) {
                   if (columnViewActive) {
                     final newPath = widget.pathNotifier.path +
@@ -315,6 +319,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
                     return;
                   }
+
                   if (dir.uri?.startsWith('skyfs://') ?? false) {
                     widget.pathNotifier.navigateToUri(dir.uri!);
                   } else {
@@ -329,64 +334,74 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                     enabled = false;
                   });
                   try {
-                    // print(json.encode(file.file));
-                    final link = await downloadPool.withResource(
-                      () => storageService.downloadAndDecryptFile(
-                        fileData: file.file,
-                        name: file.name,
-                        outFile: null,
-                      ),
-                    );
-                    if (mounted) {
-                      setState(() {});
-                    }
-                    // print(link);
-
-                    final ext = extension(file.name).toLowerCase();
-
-                    if (isIntegratedAudioPlayerEnabled &&
-                        supportedAudioExtensionsForPlayback.contains(ext) &&
-                        !(Platform.isWindows || Platform.isLinux)) {
-                      logger.info('use audioPlayer');
-                      audioPlayer.pause();
-
-                      audioPlayer.setFilePath(link);
-                      audioPlayer.play();
-                    } else {
-                      OpenFile.open(
-                        link,
-                        type: file.mimeType,
+                    final openStreamingUrlInWebBrowser =
+                        file.ext!.containsKey('video');
+                    if (openStreamingUrlInWebBrowser) {
+                      final url = await temporaryStreamingServerService
+                          .makeFileAvailable(
+                        file,
                       );
-                      if (isWatchOpenedFilesEnabled &&
-                          sub == null &&
-                          file.file.size < (16 * 1000 * 1000)) {
-                        final localFile = File(link);
-                        var lastModified = localFile.lastModifiedSync();
+                      launchUrlString(url);
+                    } else {
+                      // logger.verbose(json.encode(file.file));
+                      final link = await downloadPool.withResource(
+                        () => storageService.downloadAndDecryptFile(
+                          fileData: file.file,
+                          name: file.name,
+                          outFile: null,
+                        ),
+                      );
+                      if (mounted) {
+                        setState(() {});
+                      }
+                      // logger.verbose(link);
 
-                        sub = Stream.periodic(Duration(seconds: 5))
-                            .listen((event) {
-                          if (!isWatchOpenedFilesEnabled ||
-                              !localFile.existsSync()) {
-                            sub?.cancel();
-                            sub = null;
-                            return;
-                          }
-                          if (localFile.lastModifiedSync() != lastModified) {
-                            lastModified = localFile.lastModifiedSync();
+                      final ext = extension(file.name).toLowerCase();
 
-                            storageService.startFileUploadingTask(
-                              widget.pathNotifier.value.join('/'),
-                              localFile,
-                              create: false,
-                              modified: lastModified.millisecondsSinceEpoch,
-                            );
-                          }
-                        });
+                      if (isIntegratedAudioPlayerEnabled &&
+                          supportedAudioExtensionsForPlayback.contains(ext) &&
+                          !(Platform.isWindows || Platform.isLinux)) {
+                        logger.info('use audioPlayer');
+                        audioPlayer.pause();
+
+                        audioPlayer.setFilePath(link);
+                        audioPlayer.play();
+                      } else {
+                        OpenFile.open(
+                          link,
+                          type: file.mimeType,
+                        );
+                        if (isWatchOpenedFilesEnabled &&
+                            sub == null &&
+                            file.file.cid.size! < (16 * 1000 * 1000)) {
+                          final localFile = File(link);
+                          var lastModified = localFile.lastModifiedSync();
+
+                          sub = Stream.periodic(Duration(seconds: 5))
+                              .listen((event) {
+                            if (!isWatchOpenedFilesEnabled ||
+                                !localFile.existsSync()) {
+                              sub?.cancel();
+                              sub = null;
+                              return;
+                            }
+                            if (localFile.lastModifiedSync() != lastModified) {
+                              lastModified = localFile.lastModifiedSync();
+
+                              storageService.startFileUploadingTask(
+                                widget.pathNotifier.value.join('/'),
+                                localFile,
+                                create: false,
+                                modified: lastModified.millisecondsSinceEpoch,
+                              );
+                            }
+                          });
+                        }
                       }
                     }
                   } catch (e, st) {
-                    print(e);
-                    print(st);
+                    logger.verbose(e);
+                    logger.verbose(st);
                     showErrorDialog(context, e, st);
                   }
                   if (mounted) {
@@ -418,11 +433,12 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
   }
 
   Widget _buildContent(Color? textColor) {
-    final stateNotifier = storageService.dac.getFileStateChangeNotifier(
-      isDirectory
-          ? [...widget.pathNotifier.value, dir.name].join('/')
-          : file.file.hash,
-    );
+    final stateNotifier = isDirectory
+        ? storageService.dac.getDirectoryStateChangeNotifier(
+            [...widget.pathNotifier.value, dir.name].join('/'))
+        : storageService.dac.getFileStateChangeNotifier(
+            file.file.cid.hash,
+          );
 
     if (widget.zoomLevel.type != ZoomLevelType.list) {
       final fileStateWidget = StateNotifierBuilder<FileState>(
@@ -446,25 +462,21 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                       value: state.progress,
                     ),
                   ),
-                  /* 
-                        SizedBox(
-                          width: 8,
-                        ), */
-                  if (false)
-                    InkWell(
-                      onTap: () {
-                        // TODO stateNotifier.cancel();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(
-                          UniconsLine.times,
-                          size: 16,
-                        ),
+                  InkWell(
+                    onTap: () {
+                      stateNotifier.cancel();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Icon(
+                        UniconsLine.times,
+                        size: 16,
                       ),
-                    )
+                    ),
+                  ),
                 ],
-                if (!isDirectory && localFiles.containsKey(file.file.hash)) ...[
+                if (!isDirectory &&
+                    localFiles.contains(file.file.cid.hash.fullBytes)) ...[
                   Icon(
                     UniconsLine.check_circle,
                     size: widget.zoomLevel.size * 0.23,
@@ -648,27 +660,18 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                             SizedBox(
                               width: 2,
                             ),
-                            if (false)
-                              InkWell(
-                                onTap: () {
-                                  // TODO stateNotifier.cancel();
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(2.0),
-                                  child: Icon(
-                                    UniconsLine.times,
-                                    size: 16,
-                                  ),
+                            InkWell(
+                              onTap: () {
+                                stateNotifier.cancel();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Icon(
+                                  UniconsLine.times,
+                                  size: 16,
                                 ),
                               ),
-                            /*  Expanded(
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(maxWidth: 10),
-                                child: LinearProgressIndicator(
-                                  value: state.progress,
-                                ),
-                              ),
-                            ), */
+                            ),
                           ],
                         );
                       },
@@ -863,7 +866,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
         builder: (context, state, _) {
           return */
         Text(
-      filesize(file.file.size),
+      filesize(file.file.cid.size),
       style: TextStyle(
         color: textColor,
       ),
@@ -874,10 +877,10 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
     final isAvailableOfflineWidget = StateNotifierBuilder<FileState>(
         stateNotifier: storageService.dac.getFileStateChangeNotifier(
-          file.file.hash,
+          file.file.cid.hash,
         ),
         builder: (context, state, _) {
-          if (localFiles.containsKey(file.file.hash))
+          if (localFiles.contains(file.file.cid.hash.fullBytes))
             return Padding(
               padding: const EdgeInsets.only(right: 4.0),
               child: Icon(
@@ -889,6 +892,27 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
           return SizedBox();
         });
+
+    final pins = pinningService
+        .getPinsForHash(file.file.encryptedCID!.encryptedBlobHash);
+
+    final pinWidget = Tooltip(
+      message: 'Pinned on ' + pins.join(', '),
+      child: Padding(
+        padding: const EdgeInsets.only(right: 4.0),
+        child: CircleAvatar(
+          radius: 8,
+          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.8),
+          child: Text(
+            pins.length.toString(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
     if (fullSize) {
       return [
         /*    if ((file.ext ?? {}).isNotEmpty)
@@ -917,7 +941,16 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
         Container(
           width: sortFilter.columnWidthFilesize,
           alignment: Alignment.centerRight,
-          child: filesizeWidget,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (pins.isNotEmpty) ...[
+                pinWidget,
+                SizedBox(width: 2),
+              ],
+              filesizeWidget,
+            ],
+          ),
         ),
         Container(
           width: sortFilter.columnWidthModified,
@@ -938,6 +971,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
             Row(
               children: [
                 isAvailableOfflineWidget,
+                if (pins.isNotEmpty) pinWidget,
                 filesizeWidget,
               ],
             ),
@@ -1250,12 +1284,12 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 }
 
 class ThumbnailCoverWidget extends StatefulWidget {
-  final DirectoryFile file;
+  final FileReference file;
 
   ThumbnailCoverWidget({
     Key? key,
     required this.file,
-  }) : super(key: ValueKey(file.ext!['thumbnail']['key']));
+  }) : super(key: ValueKey(file.ext!['thumbnail']['cid']));
 
   @override
   State<ThumbnailCoverWidget> createState() => _ThumbnailCoverWidgetState();
@@ -1267,7 +1301,7 @@ class _ThumbnailCoverWidgetState extends State<ThumbnailCoverWidget> {
   @override
   void initState() {
     thumbnail = widget.file.ext!['thumbnail'];
-    thumbnailKey = thumbnail['key'];
+    thumbnailKey = thumbnail['cid'];
 
     if (!globalThumbnailMemoryCache.containsKey(thumbnailKey)) {
       _fetchData();
@@ -1348,9 +1382,9 @@ class ThumbnailWidget extends StatefulWidget {
     required this.file,
     required this.width,
     required this.height,
-  }) : super(key: ValueKey(file.ext!['thumbnail']['key']));
+  }) : super(key: ValueKey(file.ext!['thumbnail']['cid']));
 
-  final DirectoryFile file;
+  final FileReference file;
 
   @override
   State<ThumbnailWidget> createState() => _ThumbnailWidgetState();
@@ -1362,7 +1396,7 @@ class _ThumbnailWidgetState extends State<ThumbnailWidget> {
   @override
   void initState() {
     thumbnail = widget.file.ext!['thumbnail'];
-    thumbnailKey = thumbnail['key'];
+    thumbnailKey = thumbnail['cid'];
 
     if (!globalThumbnailMemoryCache.containsKey(thumbnailKey)) {
       _fetchData();
@@ -1379,7 +1413,7 @@ class _ThumbnailWidgetState extends State<ThumbnailWidget> {
           (await storageService.dac.loadThumbnail(
         thumbnailKey ?? 'none',
       ))!;
-      /*   print(
+      /*   logger.verbose(
         'tempImageCache ${globalThumbnailMemoryCache.values.fold<int>(0, (previousValue, el) => previousValue + el.length)}',
       ); */
       if (mounted) setState(() {});

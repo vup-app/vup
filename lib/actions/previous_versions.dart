@@ -49,7 +49,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
                   context,
                   version,
                   instance.hasWriteAccess,
-                  instance.entity as DirectoryFile,
+                  instance.entity as FileReference,
                   instance.pathNotifier,
                 ),
             ],
@@ -71,7 +71,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
     BuildContext context,
     String version,
     bool hasWriteAccess,
-    DirectoryFile file,
+    FileReference file,
     PathNotifierState pathNotifier,
   ) {
     final fileData = file.history![version]!;
@@ -90,7 +90,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
             ),
           ),
         ),
-        title: Text('${timeago.format(dt)} (${filesize(fileData.size)})'),
+        title: Text('${timeago.format(dt)} (${filesize(fileData.cid.size)})'),
         subtitle: Text(formatDateTime(dt)),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -102,8 +102,10 @@ class PreviousFileVersionsVupAction extends VupFSAction {
                   onPressed: () async {
                     try {
                       showLoadingDialog(context, 'Unpinning version...');
-                      await mySky.skynetClient.portalAccount.unpinSkylink(
-                        fileData.url.substring(6),
+                      mySky.api.deleteCID(
+                        CID(cidTypeRaw,
+                            fileData.encryptedCID!.encryptedBlobHash,
+                            size: 0),
                       );
                       context.pop();
                     } catch (e, st) {

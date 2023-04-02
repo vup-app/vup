@@ -62,7 +62,7 @@ class SidebarShortcutWidget extends StatelessWidget {
                 ),
               ),
             ),
-            if (storageService.dac.getPathHost(path) != 'local')
+            if (storageService.dac.getPathHost(path) != 'root')
               UserWidget(
                 storageService.dac.getPathHost(path),
                 profilePictureOnly: true,

@@ -33,7 +33,7 @@ class PlaylistService extends VupService with CustomState {
 
   Future<void> syncPlaylists() async {
     info('> syncPlaylists');
-    final res = await storageService.dac.mySkyProvider.getJSONEncrypted(
+    final res = await hiddenDB.getJSON(
       playlistsPath,
     );
     bool hasLocalChanges = false;
@@ -76,10 +76,10 @@ class PlaylistService extends VupService with CustomState {
       remoteData['ts'] = DateTime.now().millisecondsSinceEpoch;
       remoteData['deviceId'] = dataBox.get('deviceId');
 
-      await storageService.dac.mySkyProvider.setJSONEncrypted(
+      await hiddenDB.setJSON(
         playlistsPath,
         remoteData,
-        res.revision + 1,
+        revision: res.revision + 1,
       );
     }
 

@@ -54,11 +54,10 @@ class CreateDirectoryVupAction extends VupFSAction {
     if (name != null) {
       showLoadingDialog(context, 'Creating directory...');
       try {
-        final res = await storageService.dac.createDirectory(
+        await storageService.dac.createDirectory(
           instance.pathNotifier.toCleanUri().toString(),
           name.trim(),
         );
-        if (!res.success) throw res.error!;
         context.pop();
         instance.pathNotifier.path = instance.pathNotifier.path + [name];
         globalIsHoveringDirectoryUri = null;

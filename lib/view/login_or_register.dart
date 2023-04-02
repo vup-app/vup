@@ -44,7 +44,7 @@ class _LoginOrRegisterPageState extends State<LoginOrRegisterPage>
             labelColor: Theme.of(context).textTheme.bodyText1?.color,
             tabs: [
               Tab(
-                text: 'Sign in with MySky',
+                text: 'Sign in with S5 Identity',
               ),
               Tab(
                 text: 'Register',

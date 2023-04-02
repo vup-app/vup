@@ -1,4 +1,4 @@
-import 'dart:io';
+/* import 'dart:io';
 
 import 'package:simple_observable/simple_observable.dart';
 import 'package:uuid/uuid.dart';
@@ -42,7 +42,7 @@ class _JellyfinServerSettingsPageState
 
   void _loadCollections() async {
     // jellyfinCollectionsPath
-    final res = await storageService.dac.mySkyProvider.getJSONEncrypted(
+    final res = await storageService.dac.hiddenDB.getJSON(
       jellyfinCollectionsPath,
     );
 
@@ -372,11 +372,10 @@ class _JellyfinServerSettingsPageState
                             : () async {
                                 showLoadingDialog(context, 'Saving...');
                                 try {
-                                  await storageService.dac.mySkyProvider
-                                      .setJSONEncrypted(
+                                  await storageService.dac.hiddenDB.setJSON(
                                     jellyfinCollectionsPath,
                                     list,
-                                    revision! + 1,
+                                    revision: revision! + 1,
                                   );
                                   revision = revision! + 1;
 
@@ -539,3 +538,4 @@ class _JellyfinServerSettingsPageState
     );
   }
 }
+ */

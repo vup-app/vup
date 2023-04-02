@@ -50,7 +50,7 @@ final allActions = <VupFSAction>[
   YTDLVupAction(),
   SetupSyncVupAction(),
   ShareDirectoryVupAction(),
-  ShareWebAppVupAction(),
+  // ShareWebAppVupAction(),
   // ! FileSystemEntity Actions
   SelectVupAction(),
   OpenInNewTabVupAction(),
@@ -72,7 +72,7 @@ final allActions = <VupFSAction>[
   PermanentDeleteVupAction(),
   AddToQuickAccessVupAction(),
   RemoveSharedDirectoryVupAction(),
-  PinAllVupAction(),
+  // PinAllVupAction(),
   PreviousFileVersionsVupAction(),
 
   OpenParentDirectoryVupAction(),
@@ -100,8 +100,7 @@ List<VupFSActionInstance> generateActions(
           ? pathNotifier.selectedFiles.contains(entity.uri)
           : pathNotifier.selectedDirectories.contains(entity.uri);
 
-  if (pathNotifier.toUriString() ==
-      'skyfs://local/fs-dac.hns/vup.hns/.internal/shared-with-me') {
+  if (pathNotifier.toUriString() == 'skyfs://root/vup.hns/shared-with-me') {
     hasWriteAccess = false;
   }
 

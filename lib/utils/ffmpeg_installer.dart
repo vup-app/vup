@@ -6,7 +6,7 @@ import 'package:path/path.dart';
 import 'package:vup/app.dart';
 
 Future<void> downloadAndInstallFFmpeg() async {
-  final res = await mySky.skynetClient.httpClient.get(
+  final res = await mySky.httpClient.get(
     Uri.parse(
       'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest',
     ),
@@ -24,14 +24,14 @@ Future<void> downloadAndInstallFFmpeg() async {
     if (name.contains('lgpl')) continue;
     if (Platform.isLinux) {
       if (name.contains('linux64')) {
-        print(name);
+        logger.verbose(name);
         dlAsset = asset;
         break;
       }
     }
     if (Platform.isWindows) {
       if (name.contains('win64')) {
-        print(name);
+        logger.verbose(name);
         dlAsset = asset;
         break;
       }
@@ -48,7 +48,7 @@ Future<void> downloadAndInstallFFmpeg() async {
   logger.info('[ffmpeg installer] selected $dlAsset');
 
   if (Directory(ffmpegDir).listSync().isEmpty) {
-    final dlRes = await mySky.skynetClient.httpClient.get(
+    final dlRes = await mySky.httpClient.get(
       Uri.parse(
         dlAsset['browser_download_url'],
       ),
@@ -78,7 +78,7 @@ Future<void> downloadAndInstallFFmpeg() async {
   }
 
   final binPath = join(Directory(ffmpegDir).listSync().first.path, 'bin');
-  print(binPath);
+  logger.verbose(binPath);
 
   if (Platform.isWindows) {
     dataBox.put('ffmpeg_path', join(binPath, 'ffmpeg.exe'));

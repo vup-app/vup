@@ -74,14 +74,14 @@ class _MetadataAssistantState extends State<MetadataAssistant> {
 
     final imageFiles = provider.extractImageFiles(data);
 
-    final index = storageService.dac.getDirectoryIndexCached(widget.uri) ??
-        await storageService.dac.getDirectoryIndex(widget.uri);
+    final index = storageService.dac.getDirectoryMetadataCached(widget.uri) ??
+        await storageService.dac.getDirectoryMetadata(widget.uri);
 
     for (final file in imageFiles) {
       if (index.files.containsKey(file.name)) {
         continue;
       }
-      final res = await mySky.skynetClient.httpClient.get(Uri.parse(file.url));
+      final res = await mySky.httpClient.get(Uri.parse(file.url));
       if (res.statusCode != 200) {
         // TODO handle error
         continue;

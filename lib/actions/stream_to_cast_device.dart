@@ -40,14 +40,14 @@ class StreamToCastDeviceVupAction extends VupFSAction {
     }
     showLoadingDialog(
         context, 'Seaching for Cast devices in your local network...');
-    final file = instance.entity as DirectoryFile;
+    final file = instance.entity as FileReference;
 
     final streamUrl =
         await temporaryStreamingServerService.makeFileAvailable(file);
 
     List<find_chromecast.CastDevice> devices =
         await find_chromecast.find_chromecasts();
-    print(devices);
+    logger.verbose(devices);
     context.pop();
     if (devices.length == 0) {
       showInfoDialog(
@@ -98,7 +98,7 @@ class StreamToCastDeviceVupAction extends VupFSAction {
       castSender.castSessionController.stream
           .listen((CastSession? castSession) async {
         if (castSession!.isConnected) {
-          print('cast state ${castSession.toMap()}');
+          logger.verbose('cast state ${castSession.toMap()}');
         }
       });
 
@@ -112,11 +112,11 @@ class StreamToCastDeviceVupAction extends VupFSAction {
         }
         if (null != prevMediaStatus &&
             mediaStatus.volume != prevMediaStatus!.volume) {
-          print('Volume just updated to ${mediaStatus.volume}');
+          logger.verbose('Volume just updated to ${mediaStatus.volume}');
         }
         if (null == prevMediaStatus ||
             mediaStatus.position != prevMediaStatus?.position) {
-          print('Media Position is ${mediaStatus.position}');
+          logger.verbose('Media Position is ${mediaStatus.position}');
         }
         prevMediaStatus = mediaStatus;
       });
@@ -138,10 +138,10 @@ class StreamToCastDeviceVupAction extends VupFSAction {
       }
 
       if (!connected) {
-        print('COULD NOT CONNECT!');
+        logger.verbose('COULD NOT CONNECT!');
         return;
       }
-      print("Connected with device");
+      logger.verbose("Connected with device");
 
       if (!didReconnect) {
         castSender.launch();
@@ -217,13 +217,13 @@ class StreamToCastDeviceVupAction extends VupFSAction {
                     } */
 
     /*    final results = await CastDiscoveryService().search();
-                  print('results $results');
+                  logger.verbose('results $results');
                   
                   final session =
                       await CastSessionManager().startSession(results[0]);
 
                   session.stateStream.listen((state) {
-                    print('state $state');
+                    logger.verbose('state $state');
                     if (state == CastSessionState.connected) {
                       session.sendMessage(CastSession.kNamespaceMedia, {
                         'type': 'LOAD',
@@ -240,7 +240,7 @@ class StreamToCastDeviceVupAction extends VupFSAction {
                   });
 
                   session.messageStream.listen((message) {
-                    print('receive message: $message');
+                    logger.verbose('receive message: $message');
                   });
 
                   session.sendMessage(CastSession.kNamespaceReceiver, {

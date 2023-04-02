@@ -32,7 +32,7 @@ class ActivityService extends VupService {
     /* playPositions = await Hive.openBox('play_positions');
     playCounts = await Hive.openBox('play_counts');
     lastPlayedDates = await Hive.openBox('last_played_dates'); */
-    // print(lastPlayedDates.toMap());
+    // logger.verbose(lastPlayedDates.toMap());
     syncPool.withResource(() => syncAll());
 
     Stream.periodic(Duration(hours: 1)).listen((event) {
@@ -81,7 +81,7 @@ class ActivityService extends VupService {
     crdt.put('c', 3); */
     final path = 'vup.hns/activity/crdt/$key.json';
 
-    final res = await storageService.dac.mySkyProvider.getRawDataEncrypted(
+    final res = await hiddenDB.getRawData(
       path,
     );
     final remoteString = res.data == null ? null : utf8.decode(res.data!);
@@ -100,10 +100,10 @@ class ActivityService extends VupService {
     }
     // verbose('set $jsonString');
 
-    await storageService.dac.mySkyProvider.setRawDataEncrypted(
+    await hiddenDB.setRawData(
       path,
       Uint8List.fromList(utf8.encode(jsonString)),
-      res.revision + 1,
+      revision: res.revision + 1,
     );
     info('< syncCrdt $key');
   }
@@ -128,7 +128,7 @@ class ActivityService extends VupService {
   }
 
   int getPlayPosition(String hash) {
-    // print('getPlayPosition $hash ${playPositions.get(hash) ?? 0}');
+    // logger.verbose('getPlayPosition $hash ${playPositions.get(hash) ?? 0}');
     return playPositions.get(hash) ?? 0;
   }
 

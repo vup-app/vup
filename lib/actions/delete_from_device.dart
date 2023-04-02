@@ -27,13 +27,13 @@ class DeleteFromDeviceVupAction extends VupFSAction {
 
       for (final uri in pathNotifier.selectedFiles) {
         final path = storageService.dac.parseFilePath(uri);
-        final dirIndex = storageService.dac.getDirectoryIndexCached(
+        final dirIndex = storageService.dac.getDirectoryMetadataCached(
           path.directoryPath,
         );
         final file = dirIndex?.files[path.fileName];
         if (file == null) continue;
 
-        if (localFiles.containsKey(file.file.hash)) {
+        if (localFiles.contains(file.file.cid.hash.fullBytes)) {
           availableOfflineCount++;
         }
       }
@@ -44,7 +44,8 @@ class DeleteFromDeviceVupAction extends VupFSAction {
         icon: UniconsLine.cloud_times,
       );
     } else {
-      bool isAvailableOffline = localFiles.containsKey(entity.file.hash);
+      bool isAvailableOffline =
+          localFiles.contains(entity.file.cid.hash.fullBytes);
       if (!isAvailableOffline) return null;
       return VupFSActionInstance(
         label: 'Delete local copy',
@@ -58,29 +59,29 @@ class DeleteFromDeviceVupAction extends VupFSAction {
     BuildContext context,
     VupFSActionInstance instance,
   ) async {
-    final files = <DirectoryFile>[];
+    final files = <FileReference>[];
     if (instance.isSelected) {
       for (final uri in instance.pathNotifier.selectedFiles) {
         final path = storageService.dac.parseFilePath(uri);
         final di =
-            storageService.dac.getDirectoryIndexCached(path.directoryPath);
+            storageService.dac.getDirectoryMetadataCached(path.directoryPath);
         files.add(di!.files[path.fileName]!);
       }
     } else {
       files.add(instance.entity);
     }
     for (final file in files) {
-      final hash = file.file.hash;
+      final hash = file.file.cid.hash;
       try {
         final decryptedFile = File(join(
           storageService.dataDirectory,
           'local_files',
-          hash,
+          hash.toBase32(),
           file.name,
         ));
         await decryptedFile.delete();
       } catch (_) {}
-      localFiles.delete(hash);
+      localFiles.delete(hash.fullBytes);
       storageService.dac.getFileStateChangeNotifier(hash).updateFileState(
             FileState(
               type: FileStateType.idle,

@@ -1,6 +1,5 @@
 import 'package:dart_discord_rpc/dart_discord_rpc.dart';
 import 'package:hive/hive.dart';
-import 'package:skynet/skynet.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 
@@ -89,13 +88,9 @@ class RichStatusService extends VupService {
           final bytes = await storageService.dac.loadThumbnail(
             thumbnailKey,
           );
-          final skylink = await mySky.skynetClient.upload.uploadFile(SkyFile(
-            content: bytes!,
-            filename: 'thumbnail.jpg',
-            type: 'image/jpeg',
-          ));
-          info('SKYLINK $skylink');
-          audioCovers.put(thumbnailKey, skylink!);
+          final cid = await mySky.api.uploadRawFile(bytes!);
+
+          audioCovers.put(thumbnailKey, cid.toBase64Url());
         } catch (e, st) {
           error('$e: $st');
         }
@@ -118,7 +113,7 @@ class RichStatusService extends VupService {
                 .millisecondsSinceEpoch,
         largeImageKey: thumbnailSkylink == null
             ? 'large-vup-logo-single'
-            : 'https://siasky.net/$thumbnailSkylink',
+            : 'https://s5.garden/s5/blob/$thumbnailSkylink',
         largeImageText: 'Using Vup Cloud Storage',
         smallImageText:
             type == RichStatusType.music ? 'Listening to music' : 'Watching',

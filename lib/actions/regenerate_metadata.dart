@@ -42,12 +42,12 @@ class RegenerateMetadataVupAction extends VupFSAction {
     BuildContext context,
     VupFSActionInstance instance,
   ) async {
-    final files = <DirectoryFile>[];
+    final files = <FileReference>[];
     if (instance.isSelected) {
       for (final uri in instance.pathNotifier.selectedFiles) {
         final path = storageService.dac.parseFilePath(uri);
         final di =
-            storageService.dac.getDirectoryIndexCached(path.directoryPath);
+            storageService.dac.getDirectoryMetadataCached(path.directoryPath);
         files.add(di!.files[path.fileName]!);
       }
     } else {
@@ -74,14 +74,14 @@ class RegenerateMetadataVupAction extends VupFSAction {
           fileData!.ext,
         );
 
-        storageService.dac
-            .getFileStateChangeNotifier(fileData.hash)
+        /*   storageService.dac
+            .getFileStateChangeNotifier(fileData.cid.hash)
             .updateFileState(
               FileState(
                 type: FileStateType.idle,
                 progress: 0,
               ),
-            );
+            ); */
       } catch (e, st) {
         showErrorDialog(context, e, st);
       }

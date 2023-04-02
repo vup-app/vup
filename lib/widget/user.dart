@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:shimmer/shimmer.dart';
-import 'package:skynet/dacs.dart' hide Image;
+// import 'package:skynet/dacs.dart' hide Image;
 import 'package:vup/app.dart';
 
 class UserWidget extends StatefulWidget {
@@ -17,13 +17,13 @@ class UserWidget extends StatefulWidget {
 class _UserWidgetState extends State<UserWidget> {
   @override
   void initState() {
-    _loadProfile();
+    // _loadProfile();
     super.initState();
   }
 
-  static Profile? profile;
+  // static Profile? profile;
 
-  void _loadProfile() async {
+/*   void _loadProfile() async {
     // await Future.delayed(Duration(seconds: 10));
     try {
       profile = await mySky.profileDAC.getProfile(widget.userId).timeout(
@@ -38,7 +38,7 @@ class _UserWidgetState extends State<UserWidget> {
       );
     }
     final avatarUri = profile?.getAvatarUrl() ??
-        'sia://CABdyKgcVLkjdsa0HIjBfNicRv0pqU7YL-tgrfCo23DmWw';
+        's5://z5W7Boqg54Ux3FwsNsGgnN6cw3g3XczeKCZ5ateSyA7ZmCarD';
     final avatarUrl = mySky.skynetClient.resolveSkylink(
       avatarUri,
     );
@@ -61,7 +61,7 @@ class _UserWidgetState extends State<UserWidget> {
     globalThumbnailMemoryCache[avatarUri] = imageBytes!;
   }
 
-  Uint8List? imageBytes;
+  Uint8List? imageBytes; */
 
   @override
   Widget build(BuildContext context) {
@@ -69,34 +69,41 @@ class _UserWidgetState extends State<UserWidget> {
     return Row(
       children: [
         buildProfilePicture(),
-        if (profile != null)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    profile!.username,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+        // if (profile != null)
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Vup (S5)',
+                  // profile!.username,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
                   ),
-                  Text(
-                    profile!.location ?? '',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Alpha 0.13.2',
+                  // profile!.location ?? '',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          )
+          ),
+        )
       ],
     );
   }
 
   Widget buildProfilePicture() {
-    if (imageBytes == null) {
+    return Image.asset(
+      'assets/icon/large-vup-logo-single.png',
+      height: 32,
+      width: 32,
+    );
+    /*    if (imageBytes == null) {
       return SizedBox(
         width: 32,
         height: 32,
@@ -111,7 +118,7 @@ class _UserWidgetState extends State<UserWidget> {
           ),
         ),
       );
-    }
+    } */
 /*     if (imageBytes!.isEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(4),
@@ -122,13 +129,13 @@ class _UserWidgetState extends State<UserWidget> {
         ),
       );
     } */
-    return ClipRRect(
+    /*   return ClipRRect(
       borderRadius: BorderRadius.circular(4),
       child: SizedBox(
         height: 32,
         width: 32,
         child: Image.memory(imageBytes!),
       ),
-    );
+    ); */
   }
 }

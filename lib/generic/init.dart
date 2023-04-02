@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:filesystem_dac/cache/hive.dart';
 import 'package:hive/hive.dart';
 import 'package:path/path.dart';
 import 'package:vup/generic/state.dart';
@@ -37,14 +38,14 @@ Future<void> initAppGeneric({required bool isRunningInFlutterMode}) async {
 
   dataBox = await Hive.openBox('data');
 
-  mySky.setup(dataBox.get('cookie') ?? '');
+  await mySky.setup();
 
   syncTasks = await Hive.openBox('syncTasks');
 
   syncTasksTimestamps = await Hive.openBox('syncTasksTimestamps');
   syncTasksLock = await Hive.openBox('syncTasksLock');
 
-  localFiles = await Hive.openBox('localFiles');
+  localFiles = HiveKeyValueDB(await Hive.openBox('localFiles'));
 
   cacheService.init(tempDirPath: vupTempDir);
 

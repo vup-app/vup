@@ -36,7 +36,7 @@ class CopyWebServerLinkVupAction extends VupFSAction {
         scheme: 'http',
         host: '127.0.0.1',
         port: webServerPort,
-        pathSegments: Uri.parse(instance.entity.uri!).pathSegments.sublist(1),
+        pathSegments: Uri.parse(instance.entity.uri!).pathSegments,
       ).toString(),
     );
   }

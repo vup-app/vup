@@ -27,9 +27,7 @@ class SetupSyncVupAction extends VupFSAction {
       }
     }();
 
-    final isSyncEnabled = (activeSyncTask == null) &&
-        !(Platform.isIOS) &&
-        !storageService.dac.isIndexPath(pathNotifier.value.join('/'));
+    final isSyncEnabled = (activeSyncTask == null) && !(Platform.isIOS);
 
     if (isSyncEnabled) {
       return VupFSActionInstance(

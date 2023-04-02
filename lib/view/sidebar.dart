@@ -17,6 +17,7 @@ import 'package:vup/utils/ffmpeg/base.dart';
 import 'package:vup/utils/ffmpeg_installer.dart';
 import 'package:vup/utils/show_portal_dialog.dart';
 import 'package:vup/utils/temp_dir.dart';
+import 'package:vup/view/queue_task_manager.dart';
 import 'package:vup/view/setup_sync_dialog.dart';
 import 'package:vup/widget/sidebar_shortcut.dart';
 import 'package:vup/widget/user.dart';
@@ -53,7 +54,7 @@ class SidebarViewState extends State<SidebarView>
         final session = await FFmpegKit.executeWithArgumentsAsync(['-version']);
 
         final returnCode = await session.getReturnCode();
-        print(returnCode);
+        logger.verbose(returnCode);
 
         if (ReturnCode.isSuccess(returnCode)) {
           return true;
@@ -73,12 +74,13 @@ class SidebarViewState extends State<SidebarView>
 
   Future<void> checkForUpdates() async {
     if (isUpdateAvailable != null) return;
-    try {
-      final res = await mySky.skynetClient.httpClient.get(
+    // TODO Implement
+/*     try {
+      final res = await mySky.httpClient.get(
         Uri.parse(
           'https://040d88hlnnklrnsbsu3ptvpqep8970bst7v3ancobqk8h881k3239u8.${mySky.skynetClient.portalHost}',
         ),
-        headers: mySky.skynetClient.headers,
+        headers: mySky.headers,
       );
 
       final status = json.decode(res.body);
@@ -101,13 +103,14 @@ class SidebarViewState extends State<SidebarView>
         isUpdateAvailable = false;
       }
       setState(() {});
-    } catch (e) {}
+    } catch (e) {} */
   }
 
   Future<void> downloadAndInstallLatestVersion() async {
+    // TODO Implement
     // if (isUpdateAvailable != null) return;
 
-    final res = await mySky.skynetClient.httpClient.get(
+/*     final res = await mySky.httpClient.get(
       Uri.parse(
         'https://040d88hlnnklrnsbsu3ptvpqep8970bst7v3ancobqk8h881k3239u8.${mySky.skynetClient.portalHost}',
       ),
@@ -164,7 +167,7 @@ MimeType=x-scheme-handler/vup;
     setState(() {
       isUpdateAvailable = false;
       isInstallationAvailable = false;
-    });
+    }); */
   }
 
   late final Widget userWidget;
@@ -181,9 +184,9 @@ MimeType=x-scheme-handler/vup;
       curve: Curves.easeInOutCubic,
     );
     userWidget = UserWidget(
-      mySky.user.id,
+      'default',
       profilePictureOnly: false,
-      key: ValueKey('user-${mySky.user.id}'),
+      key: ValueKey('user-default'),
     );
     if (isFFmpegInstalled != true) {
       checkForFFmpeg().then((value) {
@@ -286,7 +289,7 @@ MimeType=x-scheme-handler/vup;
                     if (widget.appLayoutState.currentTab.length == 4)
                       return SizedBox();
                     return InkWell(
-                      onTap: () {
+                      onTap: () async {
                         if (widget.appLayoutState.currentTab.length > 1) {
                           widget.appLayoutState.currentTab.removeLast();
                         } else {
@@ -508,7 +511,7 @@ MimeType=x-scheme-handler/vup;
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'You are currently not logged in to a Skynet portal. Choose a portal and log in to ensure your files stay available.',
+                            'You are currently not logged in to a S5 portal. Choose a portal and log in to ensure your files stay available.',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.onSecondary,
                             ),
@@ -518,7 +521,8 @@ MimeType=x-scheme-handler/vup;
                           ),
                           ElevatedButton(
                             onPressed: () async {
-                              showPortalDialog(context);
+                              throw UnimplementedError();
+                              // showPortalDialog(context);
                             },
                             style: ButtonStyle(
                               backgroundColor: MaterialStateProperty.all(
@@ -593,7 +597,8 @@ MimeType=x-scheme-handler/vup;
                               ),
                             ),
                           ),
-                          if (quotaService.usedBytes / quotaService.totalBytes >
+                          // TODO Implement this button
+                          /*  if (quotaService.usedBytes / quotaService.totalBytes >
                               0.2)
                             InkWell(
                               onTap: () {
@@ -611,7 +616,7 @@ MimeType=x-scheme-handler/vup;
                                   ),
                                 ),
                               ),
-                            )
+                            ) */
                         ],
                       ),
                     ],
@@ -634,10 +639,34 @@ MimeType=x-scheme-handler/vup;
               right: 4,
             ),
             children: [
+              StreamBuilder<void>(
+                stream: Stream.periodic(Duration(seconds: 1)),
+                builder: (context, snapshot) {
+                  return ElevatedButton(
+                    child: Text(
+                      'Queue Task Manager (${queue.runningTasks.length}+${queue.tasks.length})',
+                    ),
+                    onPressed: () {
+                      context.push(
+                        MaterialPageRoute(
+                          builder: (context) => QueueTaskManager(),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+              SizedBox(
+                height: 8,
+              ),
               Text(
                 'Quick Access',
                 style: shortcutGroupTitleStyle,
               ),
+              /* SidebarShortcutWidget(
+                path: '',
+                appLayoutState: widget.appLayoutState,
+              ), */
               SidebarShortcutWidget(
                 path: 'home',
                 appLayoutState: widget.appLayoutState,
@@ -699,7 +728,7 @@ MimeType=x-scheme-handler/vup;
                 style: shortcutGroupTitleStyle,
               ),
               SidebarShortcutWidget(
-                path: 'vup.hns/.internal/shared-with-me',
+                path: 'vup.hns/shared-with-me',
                 appLayoutState: widget.appLayoutState,
                 title: 'Shared with me',
                 icon: 'folder-shared',
@@ -759,13 +788,13 @@ MimeType=x-scheme-handler/vup;
                   title: 'Active files',
                 ),
                 SidebarShortcutWidget(
-                  path: 'vup.hns/.internal/shared-static-directories',
+                  path: 'vup.hns/shared-static-directories',
                   appLayoutState: widget.appLayoutState,
                 ),
-                SidebarShortcutWidget(
+                /*    SidebarShortcutWidget(
                   path: 'vup.hns/.internal/shared-directories',
                   appLayoutState: widget.appLayoutState,
-                ),
+                ), */
               ],
               // TODO Recent
 
@@ -965,7 +994,7 @@ MimeType=x-scheme-handler/vup;
                 for (final String syncKey in syncTasks.keys)
                   StateNotifierBuilder<FileState>(
                       stateNotifier:
-                          storageService.dac.getFileStateChangeNotifier(
+                          storageService.dac.getDirectoryStateChangeNotifier(
                         syncTasks.get(syncKey)!.remotePath,
                       ),
                       builder: (context, state, _) {
@@ -1016,7 +1045,7 @@ MimeType=x-scheme-handler/vup;
                                         try {
                                           if (storageService.isSyncTaskLocked(
                                               syncKey)) return;
-                                          await storageService.syncDirectory(
+                                          await storageService.startSyncTask(
                                             Directory(
                                               task.localPath!,
                                             ),

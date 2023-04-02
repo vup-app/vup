@@ -1,4 +1,4 @@
-import 'dart:io';
+/* import 'dart:io';
 import 'dart:convert';
 
 import 'package:alfred/alfred.dart';
@@ -31,7 +31,7 @@ class PortalProxyServerService extends VupService {
     skynetClient = mySky.skynetClient;
     httpClient = mySky.skynetClient.httpClient;
 
-    var server = await HttpServer.bind(InternetAddress.anyIPv6, 4444);
+    var server = await HttpServer.bind(InternetAddress.anyIPv4, 4444);
 
     server.listen(_handler);
   }
@@ -84,14 +84,7 @@ class PortalProxyServerService extends VupService {
         );
       }
     } else if (parts.length == 2) {
-      res = await skynetClient.httpClient.get(
-        uri.replace(
-          scheme: 'https',
-          host: '${parts[0]}.${skynetClient.portalHost}',
-          port: 443,
-        ),
-        headers: skynetClient.headers,
-      );
+      
     } else if (parts.length == 3) {
       if (parts[1] == 'hns') {
         final hnsDomain = parts[0];
@@ -170,3 +163,4 @@ class PortalProxyServerService extends VupService {
     request.response.close();
   }
 }
+ */

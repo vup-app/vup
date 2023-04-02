@@ -63,3 +63,7 @@ builds/
 drafts/
 
 web/
+
+rust/target
+
+old_libs/

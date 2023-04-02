@@ -1,13 +1,14 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:random_string/random_string.dart';
-import 'package:skynet/skynet.dart';
 
-import 'package:skynet/src/mysky_seed/generation.dart';
+import 'package:lib5/src/seed/seed.dart';
+import 'package:lib5/storage_service.dart';
 import 'package:string_validator/string_validator.dart';
-import 'package:skynet/src/portal_accounts/index.dart';
+import 'package:lib5/util.dart';
 
 import 'package:vup/app.dart';
 import 'package:vup/widget/hint_card.dart';
@@ -48,7 +49,7 @@ class _RegisterViewState extends State<RegisterView> {
             height: 12,
           ),
           Text(
-              'Vup is secure decentralized cloud storage. You can start here by creating a MySky account.'), //  An email address is required to register your siasky.net portal account.
+              'Vup is secure decentralized cloud storage. You can start here by creating a S5 identity.'), //  An email address is required to register your siasky.net portal account.
           SizedBox(
             height: 24,
           ),
@@ -119,7 +120,7 @@ class _RegisterViewState extends State<RegisterView> {
         ),
         if (mnemonic == null) ...[
           Text(
-              'Your email address is only used for automatically creating an account on skynetfree.net which includes 100 GB of free storage.'),
+              'Your email address is only used for automatically creating an account on s5.ninja which includes 10 GB of free storage to get started.'),
           SizedBox(
             height: 24,
           ),
@@ -142,7 +143,7 @@ class _RegisterViewState extends State<RegisterView> {
                   showInfoDialog(
                     context,
                     'Your word seed passphrase',
-                    'This passphrase is the key to your MySky identity. Keep it secure, anyone who knows it can access and modify all of your files.',
+                    'This passphrase is the key to your S5 identity. Keep it secure, anyone who knows it can access and modify all of your files.',
                   );
                 },
               ),
@@ -152,17 +153,16 @@ class _RegisterViewState extends State<RegisterView> {
             extraHeight: 4,
             filled: true,
             color: Theme.of(context).colorScheme.secondary,
-            onPressed: () {
+            onPressed: () async {
               if (!isEmail(emailCtrl.text)) {
                 setState(() {
                   _error = 'Please enter a valid email address';
                 });
                 return;
               }
-              setState(() {
-                _error = null;
-                mnemonic = generatePhrase();
-              });
+              _error = null;
+              mnemonic = generatePhrase(crypto: mySky.crypto);
+              setState(() {});
             },
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -220,10 +220,9 @@ class _RegisterViewState extends State<RegisterView> {
             children: [
               buildWordSeedActionButton(
                 context,
-                () {
-                  setState(() {
-                    mnemonic = generatePhrase();
-                  });
+                () async {
+                  mnemonic = generatePhrase(crypto: mySky.crypto);
+                  setState(() {});
                 },
                 'New seed',
                 UniconsLine.redo,
@@ -237,7 +236,11 @@ class _RegisterViewState extends State<RegisterView> {
                   FlutterClipboard.copy(mnemonic!).then(
                     (value) => ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Seed copied successfully'),
+                        backgroundColor: Colors.black,
+                        content: Text(
+                          'Seed copied successfully',
+                          style: TextStyle(color: Colors.white),
+                        ),
                         duration: Duration(seconds: 2),
                       ),
                     ),
@@ -384,60 +387,98 @@ class _RegisterViewState extends State<RegisterView> {
 
                       // NOTE: Use a large amount of bytes just to prevent any collisions. It's
                       // fine if the tweak is a little long.
-                      final portalAccountTweak = randomAlphaNumeric(
+                      /*     final portalAccountTweak = randomAlphaNumeric(
                         64,
                         provider: CoreRandomProvider.from(
                           Random.secure(),
                         ),
+                      ); */
+
+                      // mySky.skynetClient.portalHost = 'skynetfree.net';
+
+                      final portalConfig = StorageServiceConfig(
+                        authority: 's5.ninja',
+                        scheme: 'https',
+                        headers: {},
                       );
 
-                      mySky.skynetClient.portalHost = 'skynetfree.net';
+                      final seed = mySky.crypto.generateRandomBytes(32);
 
                       final portalAccounts = {
-                        mySky.skynetClient.portalHost: {
-                          'activeAccountNickname': 'vup',
-                          'accountNicknames': {
-                            'vup': portalAccountTweak,
+                        'uploadPortalOrder': [portalConfig.authority],
+                        'enabledPortals': [portalConfig.authority],
+                        'portals': {
+                          portalConfig.authority: {
+                            'protocol': portalConfig.scheme,
+                            'activeAccount': 'vup',
+                            'accounts': {
+                              'vup': {
+                                'seed': base64UrlNoPaddingEncode(seed),
+                              }
+                            }
                           },
                         }
                       };
 
-                      mySky.user =
-                          await SkynetUser.fromMySkySeedPhrase(mnemonic!);
-
-                      storageService.mySkyProvider.skynetUser = mySky.user;
+                      final identity = await S5UserIdentity.fromSeedPhrase(
+                        mnemonic!,
+                        api: mySky.api,
+                      );
 
                       final email = emailCtrl.text;
 
-                      final jwt = await register(
-                        mySky.skynetClient,
-                        mySky.user.rawSeed,
-                        email,
-                        portalAccountTweak,
+                      final authToken = await register(
+                        serviceConfig: portalConfig,
+                        httpClient: mySky.httpClient,
+                        identity: identity,
+                        email: email,
+                        seed: seed,
+                        label: 'vup-${dataBox.get('deviceId')}',
                       );
-                      mySky.skynetClient.headers = {
-                        'cookie': jwt,
-                        'user-agent': vupUserAgent,
-                      };
-                      // print(jwt);
 
-                      await storageService.mySkyProvider.setJSONEncrypted(
-                        mySky.portalAccountsPath,
-                        portalAccounts,
+                      /* mySky.skynetClient.headers = {
+                        'authorization': 'Bearer $authToken',
+                        'user-agent': vupUserAgent,
+                      }; */
+
+                      // logger.verbose(jwt);
+
+                      dataBox.put(
+                        'portal_accounts',
+                        json.encode(portalAccounts),
+                      );
+                      dataBox.put(
+                        'portal_accounts_revision',
                         0,
                       );
-                      dataBox.put('cookie', jwt);
-                      dataBox.put('portal_host', mySky.skynetClient.portalHost);
 
-                      dataBox.put('mysky_portal_auth_accounts', portalAccounts);
                       dataBox.put(
-                        'mysky_portal_auth_ts',
-                        DateTime.now().millisecondsSinceEpoch,
+                        'portal_${portalConfig.authority}_auth_token',
+                        authToken,
                       );
 
-                      await mySky.storeSeedPhrase(mnemonic!);
+                      // mySky.setupPortalAccounts();
+
+                      await mySky.storeAuthPayload(
+                        base64UrlNoPaddingEncode(
+                          identity.pack(),
+                        ),
+                      );
 
                       await mySky.autoLogin();
+
+                      await Future.delayed(Duration(seconds: 1));
+
+                      await hiddenDB.setJSON(
+                        mySky.portalAccountsPath,
+                        portalAccounts,
+                        revision: 0,
+                      );
+
+                      await S5UserIdentity.createUserIdentity(
+                        mnemonic!,
+                        api: mySky.api,
+                      );
 
                       // dataBox.put('seed', seed);
 
@@ -461,12 +502,14 @@ class _RegisterViewState extends State<RegisterView> {
                           builder: (context) => HomePage(),
                         ),
                       ); */
-                    } catch (e) {
+                    } catch (e, st) {
                       try {
-                        await mySky.secureStorage.delete(key: 'seed');
+                        await mySky.secureStorage.delete(key: 'auth_payload');
                       } catch (_) {}
                       // dataBox.delete('seed');
                       _error = e.toString();
+                      logger.verbose(e);
+                      logger.verbose(st);
                     }
 
                     setState(() {

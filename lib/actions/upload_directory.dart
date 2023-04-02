@@ -42,7 +42,7 @@ class UploadDirectoryVupAction extends VupFSAction {
 
     if (directoryPath != null) {
       final name = basename(directoryPath);
-      final di = storageService.dac.getDirectoryIndexCached(currentUri)!;
+      final di = storageService.dac.getDirectoryMetadataCached(currentUri)!;
       if (!di.directories.containsKey(name)) {
         await storageService.dac.createDirectory(
           currentUri,
@@ -50,7 +50,7 @@ class UploadDirectoryVupAction extends VupFSAction {
         );
       }
 
-      await storageService.syncDirectory(
+      await storageService.startSyncTask(
         Directory(directoryPath),
         (instance.pathNotifier.path + [name]).join('/'),
         SyncMode.sendOnly,

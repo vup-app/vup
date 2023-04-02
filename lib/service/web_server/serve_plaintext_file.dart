@@ -3,53 +3,36 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:alfred/alfred.dart';
+import 'package:path/path.dart';
+import 'package:s5_server/download/uri_provider.dart';
+import 'package:s5_server/http_api/serve_chunked_file.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/utils/download/generate_download_config.dart';
 
 Future handlePlaintextFile(
-  HttpRequest req2,
+  HttpRequest req,
   HttpResponse res,
-  DirectoryFile df,
-) async {
-  final dc = await generateDownloadConfig(df.file);
+  FileReference df,
+) {
+  // TODO Set relevant headers like content-type
 
-  final httpClient = HttpClient();
-  final serverReq = await httpClient.getUrl(Uri.parse(dc.url));
+  final dlUriProvider = StorageLocationProvider(s5Node, df.file.cid.hash);
 
-  req2.headers.forEach((name, values) {
-    serverReq.headers.add(name, values.join(','));
-  });
-  dc.headers.forEach((key, value) {
-    serverReq.headers.add(key, value);
-  });
+  dlUriProvider.start();
 
-  final serverRes = await serverReq.close();
+  return handleChunkedFile(
+    req,
+    res,
+    df.file.cid.hash,
+    df.file.cid.size!,
+    dlUriProvider,
+    cachePath: join(vupTempDir, 'stream_plaintext'),
+    logger: s5Node.logger,
+    node: s5Node,
+  );
+//   final dc = await generateDownloadConfig(df.file);
 
-  serverRes.headers.forEach((name, values) {
-    res.headers.add(name, values.join(','));
-  });
-
-  res.statusCode = serverRes.statusCode;
-
-  int totalSize = 0;
-  late StreamSubscription sub;
-
-  var isCancelled = false;
-
-  sub = serverRes.listen((event) {
-    try {
-      res.add(event);
-      totalSize += event.length;
-      if (totalSize > 1000 * 1000 * 100) {
-        throw 'stop';
-      }
-    } catch (e) {
-      print(e);
-      sub.cancel();
-      isCancelled = true;
-    }
-  });
-  while (!isCancelled) {
-    await Future.delayed(Duration(seconds: 1));
-  }
+  // final httpClient = HttpClient();
+  // final serverReq = await httpClient.getUrl(Uri.parse(dc.url));
 }

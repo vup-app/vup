@@ -17,8 +17,7 @@ class RemoveSharedDirectoryVupAction extends VupFSAction {
     if (isDirectoryView) return null;
     if (isFile) return null;
     if (entity == null) return null;
-    if (pathNotifier.toUriString() !=
-        'skyfs://local/fs-dac.hns/vup.hns/.internal/shared-with-me') {
+    if (pathNotifier.toUriString() != 'skyfs://root/vup.hns/shared-with-me') {
       return null;
     }
 
@@ -36,8 +35,8 @@ class RemoveSharedDirectoryVupAction extends VupFSAction {
     try {
       showLoadingDialog(context, 'Removing shared directory...');
       final res = await storageService.dac.doOperationOnDirectory(
-        Uri.parse('skyfs://local/fs-dac.hns/vup.hns/.internal/shared-with-me'),
-        (directoryIndex) async {
+        Uri.parse('skyfs://root/vup.hns/shared-with-me'),
+        (directoryIndex, writeKey) async {
           directoryIndex.directories.remove(instance.entity.key);
         },
       );

@@ -8,10 +8,10 @@ import 'package:angel3_range_header/angel3_range_header.dart';
 import 'package:alfred/alfred.dart';
 import 'package:filesystem_dac/dac.dart';
 import 'package:path/path.dart';
-import 'package:sodium/sodium.dart';
+import 'package:s5_server/download/uri_provider.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
-import 'package:skynet/src/encode_endian/encode_endian.dart';
-import 'package:skynet/src/encode_endian/base.dart';
+import 'package:lib5/util.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:vup/utils/download/generate_download_config.dart';
@@ -19,7 +19,7 @@ import 'package:vup/utils/download/generate_download_config.dart';
 Future handleChunkedFile(
   HttpRequest req,
   HttpResponse res,
-  DirectoryFile df,
+  FileReference df,
   int totalSize, {
   bool storeLocalFile = false,
 }) async {
@@ -147,12 +147,17 @@ Future handleChunkedFile(
 
 Map<String, Completer> downloadingChunkLock = {};
 
-Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
+Stream<List<int>> openRead(
+    FileReference fileReference, int start, int totalSize,
     {required bool storeLocalFile}) async* {
   logger.verbose('using openRead $start < $totalSize');
 
-  final chunkSize = df.file.chunkSize ?? maxChunkSize;
-  final padding = df.file.padding ?? 0;
+  final fileVersion = fileReference.file;
+
+  final encryptedCID = fileVersion.encryptedCID!;
+
+  final chunkSize = encryptedCID.chunkSize;
+  final padding = encryptedCID.padding;
 
   int chunk = (start / chunkSize).floor();
 
@@ -161,15 +166,22 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
   final outDir = Directory(join(
     storageService.temporaryDirectory,
     'streamed_files',
-    df.file.hash,
+    encryptedCID.encryptedBlobHash.toBase32(),
   ));
 
   outDir.createSync(recursive: true);
 
-  late Uri url;
   Map<String, String>? customHeaders;
 
-  if (df.file.url.startsWith('remote-')) {
+  final dlUriProvider =
+      StorageLocationProvider(s5Node, encryptedCID.encryptedBlobHash);
+
+  dlUriProvider.start();
+
+  // TODO Make this more reliable, try multiple nodes
+  final url = Uri.parse((await dlUriProvider.next()).location.bytesUrl);
+
+  /*  if (df.file.url.startsWith('remote-')) {
     final dc = await generateDownloadConfig(df.file);
 
     url = Uri.parse(dc.url);
@@ -180,19 +192,17 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
         df.file.url,
       )!,
     );
-  }
+  } */
 
-  final secretKey = SecureKey.fromList(
-    storageService.dac.sodium,
-    base64Url.decode(df.file.key!),
-  );
+  final secretKey = encryptedCID.encryptionKey;
 
   StreamSubscription? sub;
 
-  final totalEncSize = ((df.file.size / chunkSize).floor() * (chunkSize + 16)) +
-      (df.file.size % chunkSize) +
-      16 +
-      padding;
+  final totalEncSize =
+      ((fileVersion.cid.size! / chunkSize).floor() * (chunkSize + 16)) +
+          (fileVersion.cid.size! % chunkSize) +
+          16 +
+          padding;
 
   final downloadedEncData = <int>[];
 
@@ -204,7 +214,8 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
     final chunkCacheFile = File(join(outDir.path, chunk.toString()));
 
     if (!chunkCacheFile.existsSync()) {
-      final chunkLockKey = df.file.hash + '-' + chunk.toString();
+      final chunkLockKey =
+          encryptedCID.encryptedBlobHash.toBase32() + '-' + chunk.toString();
       if (downloadingChunkLock.containsKey(chunkLockKey)) {
         logger.verbose('[chunk] wait $chunk');
         sub?.cancel();
@@ -232,7 +243,7 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
               logger.info('[chunk] send http range request');
               final request = http.Request('GET', url);
 
-              if (customHeaders != null) {
+              /* if (customHeaders != null) {
                 request.headers.addAll(
                   customHeaders,
                 );
@@ -240,12 +251,11 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
                 request.headers.addAll(
                   storageService.mySky.skynetClient.headers ?? {},
                 );
-              }
-              request.headers['range'] = 'bytes=$encStartByte-';
+              } */
+              request.headers['range'] =
+                  'bytes=$encStartByte-${totalEncSize - 1}';
 
-              final response = await storageService
-                  .mySky.skynetClient.httpClient
-                  .send(request);
+              final response = await mySky.httpClient.send(request);
 
               if (response.statusCode != 206) {
                 throw 'HTTP ${response.statusCode}';
@@ -298,14 +308,18 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
               downloadedEncData.removeRange(0, (chunkSize + 16));
             }
 
-            final nonce = Uint8List.fromList(
-              encodeEndian(
-                  chunk, storageService.dac.sodium.crypto.secretBox.nonceBytes,
-                  endianType: EndianType.littleEndian) as List<int>,
+            final nonce = encodeEndian(
+              chunk,
+              encryptionAlgorithmXChaCha20Poly1305NonceSize,
             );
 
-            final r = storageService.dac.sodium.crypto.secretBox
-                .openEasy(cipherText: bytes, nonce: nonce, key: secretKey);
+            logger.verbose('decryptXChaCha20Poly1305 ${bytes.length}');
+
+            final r = await mySky.api.crypto.decryptXChaCha20Poly1305(
+              key: secretKey,
+              nonce: nonce,
+              ciphertext: bytes,
+            );
 
             if (isLastChunk) {
               await chunkCacheFile.writeAsBytes(
@@ -361,7 +375,8 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
 
     chunk++;
 
-    if (storeLocalFile) {
+    // TODO Implement
+/*     if (storeLocalFile) {
       if (!localFiles.containsKey(df.file.hash)) {
         final chunkFiles = outDir.listSync();
         final totalSize = chunkFiles.fold<int>(
@@ -403,7 +418,7 @@ Stream<List<int>> openRead(DirectoryFile df, int start, int totalSize,
           }
         }
       }
-    }
+    } */
   }
 
   sub?.cancel();

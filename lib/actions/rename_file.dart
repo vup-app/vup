@@ -65,11 +65,10 @@ class RenameFileVupAction extends VupFSAction {
     if (name != null) {
       showLoadingDialog(context, 'Renaming file...');
       try {
-        final res = await storageService.dac.renameFile(
+        await storageService.dac.renameFile(
           instance.entity.uri,
           name,
         );
-        if (!res.success) throw res.error!;
         context.pop();
       } catch (e, st) {
         context.pop();

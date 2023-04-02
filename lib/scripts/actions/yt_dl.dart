@@ -13,7 +13,7 @@ class YTDLAction extends VupAction {
     final String format = config['format'];
     final String targetURI = config['targetURI'];
 
-    final dirIndex = await storageService.dac.getDirectoryIndexCached(
+    final dirIndex = storageService.dac.getDirectoryMetadataCached(
       targetURI,
     )!;
     final existingUrls = [];

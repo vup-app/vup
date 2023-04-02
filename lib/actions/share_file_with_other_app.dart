@@ -41,12 +41,12 @@ class ShareFileWithOtherAppVupAction extends VupFSAction {
     BuildContext context,
     VupFSActionInstance instance,
   ) async {
-    final files = <DirectoryFile>[];
+    final files = <FileReference>[];
     if (instance.isSelected) {
       for (final uri in instance.pathNotifier.selectedFiles) {
         final path = storageService.dac.parseFilePath(uri);
         final di =
-            storageService.dac.getDirectoryIndexCached(path.directoryPath);
+            storageService.dac.getDirectoryMetadataCached(path.directoryPath);
         files.add(di!.files[path.fileName]!);
       }
     } else {

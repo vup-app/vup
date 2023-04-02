@@ -4,36 +4,25 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:hive/hive.dart';
+import 'package:lib5/src/upload/tus/client.dart';
+import 'package:messagepack/messagepack.dart';
 import 'package:pool/pool.dart';
-import 'package:random_string/random_string.dart';
 import 'package:stash/stash_api.dart';
-import 'package:vup/generic/state.dart';
-import 'package:vup/library/compute.dart';
-import 'package:vup/utils/download/generate_download_config.dart';
+import 'package:vup/app.dart';
+import 'package:vup/model/cancel_exception.dart';
+import 'package:vup/queue/sync.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
-import 'package:dio/dio.dart' as dio;
 import 'package:stash_hive/stash_hive.dart';
-import 'package:convert/convert.dart';
-import 'package:crypto/crypto.dart';
-import 'package:filesize/filesize.dart';
 import 'package:filesystem_dac/dac.dart';
-
-import 'package:mime/mime.dart';
 import 'package:path/path.dart';
 import 'package:mno_streamer/parser.dart';
-import 'package:sodium/sodium.dart' hide Box;
 import 'package:uuid/uuid.dart';
 import 'package:vup/model/sync_task.dart';
-import 'package:skynet/skynet.dart';
-import 'package:skynet/src/mysky_provider/native.dart';
 import 'package:vup/service/base.dart';
-import 'package:skynet/src/encode_endian/encode_endian.dart';
-import 'package:skynet/src/encode_endian/base.dart';
-import 'package:skynet/src/mysky/encrypted_files.dart';
 import 'package:vup/utils/process_image.dart';
 import 'package:watcher/watcher.dart';
-import 'package:skynet/src/utils/base32.dart';
+import 'package:cancellation_token/cancellation_token.dart';
+import 'package:lib5/util.dart';
 
 import 'mysky.dart';
 
@@ -57,6 +46,7 @@ const supported3DModelExtensions = [
   '.stl',
 ];
 
+/* 
 Future<String> hashFileSha256(File file) async {
   var output = new AccumulatorSink<Digest>();
   var input = sha256.startChunkedConversion(output);
@@ -65,20 +55,21 @@ Future<String> hashFileSha256(File file) async {
   final hash = output.events.single;
   return hash.toString();
 }
-
-Future<String> hashFileSha1(File file) async {
+ */
+/* Future<String> hashFileSha1(File file) async {
   var output = new AccumulatorSink<Digest>();
   var input = sha1.startChunkedConversion(output);
   await file.openRead().forEach(input.add);
   input.close();
   final hash = output.events.single;
   return hash.toString();
-}
+} */
 
 class StorageService extends VupService {
   final MySkyService mySky;
   late final FileSystemDAC dac;
-  final Box localFiles;
+  CryptoImplementation get crypto => mySky.crypto;
+  final KeyValueDB localFiles;
 
   final Box<SyncTask> syncTasks;
   final String temporaryDirectory;
@@ -95,17 +86,11 @@ class StorageService extends VupService {
     required this.dataDirectory,
   });
 
-  late NativeMySkyProvider mySkyProvider;
-
   get trashPath => 'home/.trash';
 
-  late dio.Dio dioClient;
+  Future<void> init() async {}
 
-  Future<void> init(Sodium sodium) async {
-    mySkyProvider = NativeMySkyProvider(mySky.skynetClient);
-
-    dioClient = dio.Dio();
-
+  Future<void> onAuth() async {
     final logger = SkyFS();
 
     final dbDir = Directory(join(
@@ -121,19 +106,19 @@ class StorageService extends VupService {
       name: 'thumbnailCache',
       maxEntries: 1000,
     );
-
     dac = FileSystemDAC(
-      mySkyProvider: mySkyProvider,
+      api: mySky.api,
       skapp: skappDomain,
-      sodium: sodium,
       debugEnabled: true,
       onLog: (s) => logger.verbose(s),
       thumbnailCache: thumbnailCache,
+      hiddenDB: mySky.identity.hiddenDB,
+      fsRootKey: mySky.identity.fsRootKey,
     );
     await dac.init();
   }
 
-  Future<FileData?> uploadOneFile(
+  Future<FileVersion?> uploadOneFile(
     String path,
     File file, {
     bool create = true,
@@ -142,8 +127,9 @@ class StorageService extends VupService {
     // Function? onHashAvailable,
     bool returnFileData = false,
     bool metadataOnly = false,
-    FileStateNotifier? fileStateNotifier,
+    required FileStateNotifier fileStateNotifier,
   }) async {
+    logger.verbose('upload-timestamp-1 ${DateTime.now()}');
     final changeNotifier = dac.getUploadingFilesChangeNotifier(
       dac.parsePath(path).toString(),
     );
@@ -151,16 +137,35 @@ class StorageService extends VupService {
 
     String? name;
     try {
+      name = basename(file.path);
+
+      logger.verbose('getMultiHashForFile');
       final multihash = await getMultiHashForFile(file);
+
+      final currentDirState = dac.getDirectoryMetadataCached(path) ??
+          await dac.getDirectoryMetadata(path);
+
+      if (currentDirState.files.containsKey(name)) {
+        final currentFileData = currentDirState.files[name]!;
+
+        if (currentFileData.file.cid.hash == multihash) {
+          throw 'Directory already contains this file (same hash)';
+        } else {
+          create = false;
+        }
+      }
+
+      if (fileStateNotifier.isCanceled) {
+        throw CancelException();
+      }
       /*     if (onHashAvailable != null) {
         onHashAvailable(multihash);
       } */
 
-      fileStateNotifier ??=
-          storageService.dac.getFileStateChangeNotifier(multihash);
+      /* fileStateNotifier ??=
+          storageService.dac.getFileStateChangeNotifier(multihash); */
 
-      final sha1Hash = await getSHA1HashForFile(file);
-      name = basename(file.path);
+      // final sha1Hash = await getSHA1HashForFile(file);
 
       final ext = extension(file.path).toLowerCase();
 
@@ -247,10 +252,14 @@ class StorageService extends VupService {
 
           final outFile = File(join(
             temporaryDirectory,
-            '${Uuid().v4()}-thumbnail-extract.jpg',
+            '${Uuid().v4()}-thumbnail-extract.png',
           ));
+          print('ffmpeg1 $outFile');
           if (!outFile.existsSync()) {
             final extractThumbnailArgs = [
+              '-hide_banner',
+              '-loglevel',
+              'warning',
               '-i',
               file.path,
               '-map',
@@ -274,7 +283,7 @@ class StorageService extends VupService {
           verbose(st);
         }
       } else if (supportedVideoExtensionsForFFmpeg.contains(ext)) {
-        // print('[MetadataExtractor/video] try ffprobe');
+        // logger.verbose('[MetadataExtractor/video] try ffprobe');
         try {
           final args = [
             '-v',
@@ -379,10 +388,10 @@ class StorageService extends VupService {
                   ]);
                 } catch (_) {}
 
-                /* print(res.exitCode);
-                print(res.stdout); */
+                /* logger.verbose(res.exitCode);
+                logger.verbose(res.stdout); */
                 if (subOutFile.existsSync()) {
-                  final fileData = await storageService.uploadOneFile(
+                  final fileData = await storageService.startFileUploadingTask(
                     'vup.hns',
                     subOutFile,
                     returnFileData: true,
@@ -406,7 +415,7 @@ class StorageService extends VupService {
 
           final outFile = File(join(
             temporaryDirectory,
-            '${Uuid().v4()}-thumbnail-extract.jpg',
+            '${Uuid().v4()}-thumbnail-extract.png',
           ));
           verbose('extracting thumbnail to ${outFile.path}');
           if (!outFile.existsSync()) {
@@ -482,12 +491,12 @@ class StorageService extends VupService {
             final outFile = File(join(
               temporaryDirectory,
               'thumbnails',
-              '${Uuid().v4()}-thumbnail-extract.jpg',
+              '${Uuid().v4()}-thumbnail-extract.png',
             ));
 
             outFile.createSync(recursive: true);
             outFile.writeAsBytesSync(bytes.getOrThrow().buffer.asUint8List());
-            print(outFile);
+            logger.verbose(outFile);
             if (outFile.existsSync()) {
               videoThumbnailFile = outFile;
               generateMetadata = true;
@@ -495,7 +504,7 @@ class StorageService extends VupService {
           }
 
           customMimeType = res.container.rootFile.mimetype;
-          print(customMimeType);
+          logger.verbose(customMimeType);
 
           if (res.container.rootFile.mimetype.startsWith('application/epub')) {
             final wordMatcher = RegExp(r'[^\s]+');
@@ -517,16 +526,16 @@ class StorageService extends VupService {
 
           // publication
 
-          print(metadata.toJson());
+          logger.verbose(metadata.toJson());
         } catch (e, st) {
-          print(e);
-          print(st);
+          logger.verbose(e);
+          logger.verbose(st);
         }
 
         if (publicationExt.isNotEmpty) {
           additionalExt['publication'] = publicationExt;
         }
-        // print(res.publication.get(link));
+        // logger.verbose(res.publication.get(link));
       } else if (supported3DModelExtensions.contains(ext) &&
           (Platform.isLinux || Platform.isWindows)) {
         try {
@@ -620,6 +629,13 @@ class StorageService extends VupService {
         }
       }
 
+      if (fileStateNotifier.isCanceled) {
+        throw CancelException();
+      }
+
+      logger.verbose('upload-timestamp-3 ${DateTime.now()}');
+      //generateMetadata = false;
+
       final fileData = await dac.uploadFileData(
         multihash,
         file.lengthSync(),
@@ -630,6 +646,8 @@ class StorageService extends VupService {
               'encrypted_files',
               Uuid().v4(), /* fileMultiHash */
             ));
+            encryptedCacheFile.parent.createSync(recursive: true);
+
             try {
               final res = await encryptAndUploadFileInChunks(
                 file,
@@ -639,11 +657,11 @@ class StorageService extends VupService {
                 customRemote: getCustomRemoteForPath(path),
               );
               return res;
-            } catch (e, st) {
+            } catch (e) {
               if (encryptedCacheFile.existsSync()) {
                 await encryptedCacheFile.delete();
               }
-              throw '$e: $st';
+              rethrow;
             }
           } else {
             // return await uploadPlaintextFileTODO(file, multihash);
@@ -652,24 +670,25 @@ class StorageService extends VupService {
         generateMetadata: generateMetadata,
         filename: file.path,
         additionalExt: additionalExt,
-        hashes: [sha1Hash],
+        // hashes: [sha1Hash],
         generateMetadataWrapper: (
           extension,
-          rootPathSeed,
+          rootThumbnailSeed,
         ) async {
+          logger.verbose('upload-timestamp-process-image-0 ${DateTime.now()}');
           if (videoThumbnailFile != null) {
             // ! This is a media file
-            return await compute(processImage, [
+            return await /* compute( */ processImage2([
               additionalExt.isEmpty ? 'media' : additionalExt.keys.first,
-              await videoThumbnailFile.readAsBytes(),
-              rootPathSeed,
+              videoThumbnailFile.path,
+              rootThumbnailSeed,
             ]);
           } else {
             // ! This is an image
-            return await compute(processImage, [
+            return await processImage2([
               'image',
-              await file.readAsBytes(),
-              rootPathSeed,
+              file.path,
+              rootThumbnailSeed,
             ]);
           }
         },
@@ -688,7 +707,7 @@ class StorageService extends VupService {
         return fileData;
       }
       if (create) {
-        final res = await dac
+        await dac
             .createFile(
               path,
               name,
@@ -696,18 +715,12 @@ class StorageService extends VupService {
               customMimeType: customMimeType,
             )
             .timeout(const Duration(seconds: 60 * 5));
-        if (!res.success) {
-          throw res.error!;
-        }
       } else {
-        final res = await dac.updateFile(
+        await dac.updateFile(
           path,
           name,
           fileData,
         );
-        if (!res.success) {
-          throw res.error!;
-        }
       }
 
       changeNotifier.removeUploadingFile(name);
@@ -717,9 +730,13 @@ class StorageService extends VupService {
       if (name != null) {
         changeNotifier.removeUploadingFile(name);
       }
-      error(e);
-      verbose(st);
-      globalErrorsState.addError(e, name);
+      if (e is CancelException || e is S5TusClientCancelException) {
+        verbose('$e: $st');
+      } else {
+        error(e);
+        verbose(st);
+        globalErrorsState.addError(e, name);
+      }
     }
   }
 
@@ -736,7 +753,7 @@ class StorageService extends VupService {
     }
   }
 
-  Future<FileData?> startFileUploadingTask(
+  Future<FileVersion?> startFileUploadingTask(
     String path,
     File file, {
     bool create = true,
@@ -750,7 +767,7 @@ class StorageService extends VupService {
       storageService.dac.parsePath(path).toString(),
     );
 
-    final uploadId = Uuid().v4();
+    final uploadId = Multihash(crypto.generateRandomBytes(32));
     if (onUploadIdAvailable != null) {
       onUploadIdAvailable(uploadId);
     }
@@ -766,42 +783,54 @@ class StorageService extends VupService {
     final now = DateTime.now().millisecondsSinceEpoch;
 
     changeNotifier.addUploadingFile(
-      DirectoryFile(
+      FileReference(
         created: now,
-        file: FileData(
-          chunkSize: null,
-          encryptionType: null,
-          hash: uploadId,
+        file: FileVersion(
+          encryptedCID: EncryptedCID(
+            encryptedBlobHash: uploadId,
+            originalCID: CID(cidTypeRaw, uploadId, size: file.lengthSync()),
+            encryptionKey: Uint8List(0),
+            padding: 0,
+            chunkSizeAsPowerOf2: 0,
+            encryptionAlgorithm: 0,
+          ),
           hashes: [],
-          key: null,
-          size: file.lengthSync(),
           ts: now,
-          url: '',
         ),
         modified: now,
         name: basename(file.path),
-        version: 0,
+        version: -1,
       ),
     );
 
     final customRemote = getCustomRemoteForPath(path);
     if (!uploadPools.containsKey(customRemote)) {
-      uploadPools[customRemote] = Pool(customRemote == null ? 3 : 16);
+      uploadPools[customRemote] = Pool(customRemote == null ? 8 : 16);
     }
     final pool = uploadPools[customRemote]!;
 
+    final cancelSub = fileStateNotifier.onCancel.listen((event) {
+      changeNotifier.removeUploadingFile(basename(file.path));
+    });
+
     return await pool.withResource(
-      () => uploadOneFile(
-        path,
-        file,
-        fileStateNotifier: fileStateNotifier,
-        create: create,
-        modified: modified,
-        encrypted: encrypted,
-        // onHashAvailable: onHashAvailable,
-        returnFileData: returnFileData,
-        metadataOnly: metadataOnly,
-      ),
+      () {
+        cancelSub.cancel();
+        if (fileStateNotifier.isCanceled) {
+          throw CancelException();
+        }
+        return uploadOneFile(
+          path,
+          file,
+          fileStateNotifier: fileStateNotifier,
+          create: create,
+          modified: modified,
+          encrypted: encrypted,
+          // onHashAvailable: onHashAvailable,
+          returnFileData: returnFileData,
+          metadataOnly: metadataOnly,
+        );
+      },
     );
   }
 
@@ -809,36 +838,140 @@ class StorageService extends VupService {
 
   final uploadPools = <String?, Pool>{};
 
-  Future<void> syncDirectory(
+  Future<void> startSyncTask(
     Directory dir,
     String remotePath,
     SyncMode mode, {
     required String syncKey,
-    bool overwrite = true,
-    int level = 0,
+    // bool overwrite = true,
   }) async {
     StreamSubscription? sub;
-    // TODO ! SPLIT
-    if (level == 0) {
+
+    verbose('[sync] update lock');
+    syncTasksLock.put(syncKey, DateTime.now().millisecondsSinceEpoch);
+    sub = Stream.periodic(Duration(seconds: 30)).listen((event) {
       verbose('[sync] update lock');
       syncTasksLock.put(syncKey, DateTime.now().millisecondsSinceEpoch);
-      sub = Stream.periodic(Duration(seconds: 30)).listen((event) {
-        verbose('[sync] update lock');
-        syncTasksLock.put(syncKey, DateTime.now().millisecondsSinceEpoch);
-      });
+    });
 
-      notificationProvider.show(
-        1,
-        'Started Sync',
-        dir.path,
-        // syncNotificationChannelSpecifics,
-        payload: 'sync:$syncKey',
+    notificationProvider.show(
+      1,
+      'Started Sync',
+      dir.path,
+      // syncNotificationChannelSpecifics,
+      payload: 'sync:$syncKey',
+    );
+
+    final paths = <String>{};
+    if (mode != SyncMode.receiveOnly) {
+      await for (final entity in dir.list(recursive: true)) {
+        if (entity is Directory) {
+          paths.add(
+            entity.path.substring(dir.path.length + 1).replaceAll('\\', '/'),
+          );
+        }
+      }
+    }
+    if (mode != SyncMode.sendOnly) {
+      final startUri = dac.parsePath(remotePath).toString().length;
+      final dm = await dac.getAllFiles(
+        startDirectory: remotePath,
+        includeDirectories: true,
+        includeFiles: false,
       );
+      for (final key in dm.directories.keys) {
+        final path = Uri.decodeFull(key.substring(startUri + 1));
+        paths.add(path);
+      }
+    }
+    final pathList = paths.toList();
+    pathList.sort();
+
+    final remainingTaskIds = <String>{};
+
+    for (final path in pathList) {
+      final task = SyncQueueTask(
+        id: '$remotePath/$path',
+        remotePath: '$remotePath/$path',
+        dir: Directory(join(dir.path, joinAll(path.split('/')))),
+        mode: mode,
+        dependencies: [],
+      );
+      if (path.contains('/')) {
+        final pathParts = path.split('/');
+        pathParts.removeLast();
+        task.dependencies.add('$remotePath/${pathParts.join('/')}');
+      } else {
+        task.dependencies.add(remotePath);
+      }
+      remainingTaskIds.add(task.id);
+
+      queue.add(task);
+    }
+    queue.add(SyncQueueTask(
+      id: remotePath,
+      remotePath: remotePath,
+      dir: dir,
+      mode: mode,
+      dependencies: [],
+    ));
+
+    final notifier = dac.getDirectoryStateChangeNotifier(remotePath);
+
+    int totalTaskCount = remainingTaskIds.length;
+
+    while (true) {
+      for (final id in remainingTaskIds.toList()) {
+        if (!queue.tasks.containsKey(id) &&
+            !queue.runningTasks.containsKey(id)) {
+          remainingTaskIds.remove(id);
+        }
+      }
+
+      if (remainingTaskIds.isEmpty) {
+        break;
+      }
+
+      notifier.updateFileState(
+        FileState(
+          type: FileStateType.sync,
+          progress: 1 - (remainingTaskIds.length / totalTaskCount),
+        ),
+      );
+      await Future.delayed(Duration(milliseconds: 50));
     }
 
-    // print('syncDirectory ${dir.path} ${remotePath} ${mode} ${overwrite}');
+    sub.cancel();
 
-    dac.setFileState(
+    notifier.updateFileState(
+      FileState(
+        type: FileStateType.idle,
+        progress: null,
+      ),
+    );
+
+    syncTasksLock.delete(syncKey);
+    syncTasksTimestamps.put(syncKey, DateTime.now().millisecondsSinceEpoch);
+    notificationProvider.show(
+      1,
+      'Finished Sync',
+      dir.path,
+      // syncNotificationChannelSpecifics,
+      payload: 'sync:$syncKey',
+    );
+  }
+
+  Future<void> syncSingleDirectory(
+    SyncQueueTask task, {
+    bool overwrite = true,
+  }) async {
+    final dir = task.dir;
+    final remotePath = task.remotePath;
+    final mode = task.mode;
+
+    // logger.verbose('syncDirectory ${dir.path} ${remotePath} ${mode} ${overwrite}');
+
+    dac.setDirectoryState(
       remotePath,
       FileState(
         type: FileStateType.sync,
@@ -849,50 +982,52 @@ class StorageService extends VupService {
     final futures = <Future>[];
 
     final index = (mode == SyncMode.sendOnly
-            ? dac.getDirectoryIndexCached(remotePath)
+            ? dac.getDirectoryMetadataCached(remotePath)
             : null) ??
-        await dac.getDirectoryIndex(remotePath);
+        await dac.getDirectoryMetadata(remotePath);
 
     final syncedDirs = <String>[];
     final syncedFiles = <String>[];
 
     if (dir.existsSync()) {
-      final list = await dir.listSync(followLinks: false);
+      final list = dir.listSync(followLinks: false);
 
       int i = 0;
       for (final entity in list) {
-        dac.setFileState(
+        /* dac.setDirectoryState(
           remotePath,
           FileState(
             type: FileStateType.sync,
             progress: list.length == 0 ? 0 : i / list.length,
           ),
-        );
+        ); */
         i++;
         if (entity is Directory) {
           /* if (entity.path.contains('ABC123')) {
-            print('SKIPPING $entity');
+            logger.verbose('SKIPPING $entity');
             continue;
           }
           if (entity.statSync().modified.isBefore(DateTime(2022, 2, 10))) {
-            print('SKIPPING $entity');
+            logger.verbose('SKIPPING $entity');
             continue;
           } */
           final dirName = basename(entity.path);
           if (mode != SyncMode.receiveOnly) {
             if (!index.directories.containsKey(dirName)) {
-              await dac.createDirectory(remotePath, dirName);
+              futures.add(
+                dac.createDirectory(remotePath, dirName),
+              );
             }
           }
           //final future =
-          await syncDirectory(
+          /* TODO? await syncDirectory(
             entity,
             '$remotePath/$dirName',
             mode,
             level: level + 1,
             overwrite: overwrite,
             syncKey: syncKey,
-          );
+          ); */
           /* if (level != 0) {
             await future;
           } else {
@@ -926,14 +1061,14 @@ class StorageService extends VupService {
               final check1 = (remoteModified / 1000).floor() !=
                   (localModified / 1000).floor();
 
-              if (check1 || existing.file.size != entity.lengthSync()) {
+              if (check1 || existing.file.cid.size != entity.lengthSync()) {
                 final multihash = await getMultiHashForFile(entity);
 
-                if (multihash != existing.file.hash) {
-                  // print('MODIFIED');
+                if (multihash != existing.file.cid.hash) {
+                  // logger.verbose('MODIFIED');
                   if (localModified > remoteModified) {
                     if (mode != SyncMode.receiveOnly) {
-                      // print('UPLOAD');
+                      // logger.verbose('UPLOAD');
 
                       futures.add(
                         storageService.startFileUploadingTask(
@@ -946,7 +1081,7 @@ class StorageService extends VupService {
                     }
                   } else {
                     if (mode != SyncMode.sendOnly) {
-                      // print('DOWNLOAD');
+                      // logger.verbose('DOWNLOAD');
                       info('[sync] Downloading file ${existing.uri}');
                       futures.add(downloadPool.withResource(
                         () => storageService.downloadAndDecryptFile(
@@ -959,10 +1094,10 @@ class StorageService extends VupService {
                     }
                   }
                 } else {
-                  // print('Unchanged (hash)');
+                  // logger.verbose('Unchanged (hash)');
                 }
               } else {
-                // print('Unchanged');
+                // logger.verbose('Unchanged');
               }
             }
           } catch (e, st) {
@@ -977,14 +1112,14 @@ class StorageService extends VupService {
         if (!syncedDirs.contains(d.name)) {
           final subDir = Directory(join(dir.path, d.name));
           await subDir.create();
-          await syncDirectory(
+          /* TODO? await syncDirectory(
             subDir,
             '$remotePath/${d.name}',
             mode,
             level: level + 1,
             overwrite: overwrite,
             syncKey: syncKey,
-          );
+          ); */
         }
       }
       for (final file in index.files.values) {
@@ -1003,31 +1138,41 @@ class StorageService extends VupService {
     }
 
     // TODO Handle errors
+    final completer = Completer();
 
-    await Future.wait(futures);
+    int remaining = 0;
+    int total = futures.length;
 
-    dac.setFileState(
+    try {
+      for (var future in futures) {
+        future.then((_) {
+          remaining--;
+
+          task.progress = 1 - (remaining / total);
+
+          if (remaining == 0) {
+            return completer.complete();
+          }
+        }, onError: (e, st) {
+          completer.completeError(e, st);
+        });
+        remaining++;
+      }
+      if (remaining == 0) {
+        return completer.complete();
+      }
+    } catch (e, st) {
+      completer.completeError(e, st);
+    }
+    await completer.future;
+
+    dac.setDirectoryState(
       remotePath,
       FileState(
         type: FileStateType.idle,
         progress: null,
       ),
     );
-
-    // TODO ! SPLIT
-    if (level == 0) {
-      sub?.cancel();
-
-      syncTasksLock.delete(syncKey);
-      syncTasksTimestamps.put(syncKey, DateTime.now().millisecondsSinceEpoch);
-      notificationProvider.show(
-        1,
-        'Finished Sync',
-        dir.path,
-        // syncNotificationChannelSpecifics,
-        payload: 'sync:$syncKey',
-      );
-    }
   }
 
   Future<void> setupSyncTasks() async {
@@ -1043,7 +1188,7 @@ class StorageService extends VupService {
         if (now.difference(ts) > Duration(seconds: task.interval)) {
           if (isSyncTaskLocked(syncKey)) continue;
 
-          await storageService.syncDirectory(
+          await storageService.startSyncTask(
             Directory(
               task.localPath!,
             ),
@@ -1064,7 +1209,7 @@ class StorageService extends VupService {
     for (final syncKey in syncTasks.keys) {
       final task = syncTasks.get(syncKey)!;
       if (task.watch) {
-        if (!watchers.containsKey(syncKey)) {
+        /* if (!watchers.containsKey(syncKey)) {
           info('[watcher] new');
           dynamic watcher = DirectoryWatcher(task.localPath!);
           watchers[syncKey] = watcher;
@@ -1072,7 +1217,7 @@ class StorageService extends VupService {
             info('[watcher] event ${event.type} ${event.path}');
             if (isSyncTaskLocked(syncKey)) return;
 
-            await storageService.syncDirectory(
+            await storageService.startSyncTask(
               Directory(
                 task.localPath!,
               ),
@@ -1081,7 +1226,7 @@ class StorageService extends VupService {
               syncKey: syncKey,
             );
           });
-        }
+        } */
       } else {
         if (watchers.containsKey(syncKey)) {
           info('[watcher] close');
@@ -1092,7 +1237,19 @@ class StorageService extends VupService {
     }
   }
 
-  Future<String> getMultiHashForFile(File file) async {
+  // TODO Check if this works for Jellyfin! (all implementations)
+  Future<Multihash> getMultiHashForFile(File file) async {
+    final hash = await s5Node.rust.hashBlake3File(path: file.path);
+
+    final multihash = Multihash(
+      Uint8List.fromList(
+        [mhashBlake3Default] + hash,
+      ),
+    );
+    return multihash;
+  }
+
+/*   Future<String> getSHA256HashForFile(File file) async {
     if (Platform.isLinux) {
       final res = await Process.run('sha256sum', [file.path]);
       String hash = res.stdout.split(' ').first;
@@ -1106,10 +1263,11 @@ class StorageService extends VupService {
     }
     final hash = await compute(hashFileSha256, file);
     return '1220$hash';
-  }
+  } */
 
-  Future<String> getSHA1HashForFile(File file) async {
-    if (Platform.isLinux) {
+/*   Future<String> getSHA1HashForFile(File file) async {
+    final hash = await nativeRustApi.hashSha1File(path: file.path);
+/*     if (Platform.isLinux) {
       final res = await Process.run('sha1sum', [file.path]);
       String hash = res.stdout.split(' ').first;
 
@@ -1122,24 +1280,25 @@ class StorageService extends VupService {
       }
       return '1114$hash';
     }
-    final hash = await compute(hashFileSha1, file);
-    return '1114$hash';
-  }
+    final hash = await compute(hashFileSha1, file); */
+    return '1114${hex.encode(hash).toLowerCase()}';
+  } */
 
-  String getLocalFilePath(String hash, String name) {
+  String getLocalFilePath(Multihash hash, String name) {
     return join(
       dataDirectory,
       'local_files',
-      hash,
+      hash.toBase32(),
       name,
     );
   }
 
-  File? getLocalFile(DirectoryFile file) {
-    if (!localFiles.containsKey(file.file.hash)) {
+  File? getLocalFile(FileReference file) {
+    final fileVersion = file.file;
+    if (!localFiles.contains(fileVersion.cid.hash.fullBytes)) {
       return null;
     }
-    final path = getLocalFilePath(file.file.hash, file.name);
+    final path = getLocalFilePath(fileVersion.cid.hash, file.name);
 
     final f = File(path);
     if (f.existsSync()) {
@@ -1153,7 +1312,7 @@ class StorageService extends VupService {
             .cast<File>();
 
         if (list.length == 1) {
-          if (list[0].lengthSync() == file.file.size) {
+          if (list[0].lengthSync() == fileVersion.cid.size) {
             info('renaming local file to ${f.path}');
             list[0].renameSync(f.path);
 
@@ -1167,17 +1326,20 @@ class StorageService extends VupService {
   }
 
   Future<String> downloadAndDecryptFile({
-    required FileData fileData,
+    required FileVersion fileData,
     required String name,
+    bool isTemporary = true,
     File? outFile,
     int? modified,
     int? created,
   }) async {
-    final decryptedFile = File(getLocalFilePath(fileData.hash, name));
+    final decryptedFile = File(getLocalFilePath(fileData.cid.hash, name));
+
+    logger.verbose('downloadAndDecryptFile ${decryptedFile}');
 
     bool doDownload = false;
 
-    if (localFiles.containsKey(fileData.hash)) {
+    if (localFiles.contains(fileData.cid.hash.fullBytes)) {
       var exists = decryptedFile.existsSync();
       if (!exists) {
         doDownload = true;
@@ -1190,7 +1352,7 @@ class StorageService extends VupService {
               .cast<File>();
 
           if (list.length == 1) {
-            if (list[0].lengthSync() == fileData.size) {
+            if (list[0].lengthSync() == fileData.cid.size) {
               info('renaming local file to ${decryptedFile.path}');
               list[0].renameSync(decryptedFile.path);
               doDownload = false;
@@ -1203,7 +1365,8 @@ class StorageService extends VupService {
       // if(!doDownload && !exists){}
 
       if (!doDownload && exists) {
-        if (decryptedFile.lengthSync() != fileData.size) {
+        // TODO verify integrity first
+        if (decryptedFile.lengthSync() != fileData.cid.size) {
           doDownload = true;
         }
       }
@@ -1212,19 +1375,25 @@ class StorageService extends VupService {
     }
 
     if (doDownload) {
-      if (fileData.encryptionType == 'libsodium_secretbox') {
-        final stream = await dac.downloadAndDecryptFileInChunks(fileData,
-            downloadConfig: fileData.url.startsWith('remote-')
+      /*   if (fileData.encryptedCID!.encryptionAlgorithm ==
+          encryptionAlgorithmLibsodiumSecretbox) {
+        throw 'Not supported';
+        /* final stream = await dac.downloadAndDecryptFileInChunks(
+          fileData,
+          /*  downloadConfig: fileData.url.startsWith('remote-')
                 ? (await generateDownloadConfig(fileData))
-                : null);
+                : null */
+        );
         decryptedFile.createSync(recursive: true);
         final sink = decryptedFile.openWrite();
         await sink.addStream(stream.map((e) => e.toList()));
 
         await sink.flush();
-        await sink.close();
-      } else if (fileData.encryptionType == null) {
-        decryptedFile.createSync(recursive: true);
+        await sink.close(); */
+      } else */
+      if (fileData.encryptedCID == null) {
+        throw 'Not implemented';
+        /*    decryptedFile.createSync(recursive: true);
         final dc = await generateDownloadConfig(fileData);
 
         await dioClient.download(
@@ -1232,7 +1401,7 @@ class StorageService extends VupService {
           decryptedFile.path,
           onReceiveProgress: (count, total) {
             dac.setFileState(
-              fileData.hash,
+              fileData.cid.hash,
               FileState(
                 type: FileStateType.downloading,
                 progress: count / total,
@@ -1244,36 +1413,147 @@ class StorageService extends VupService {
           ),
         );
         dac.setFileState(
-          fileData.hash,
+          fileData.cid.hash,
+          FileState(
+            type: FileStateType.idle,
+            progress: null,
+          ),
+        ); */
+      } else {
+        final encryptedCacheFile = File(join(
+          temporaryDirectory,
+          'encrypted_files_dl',
+          Uuid().v4(),
+        ));
+        encryptedCacheFile.parent.createSync(recursive: true);
+
+        logger.verbose('encryptedCacheFile $encryptedCacheFile');
+
+        final fullChunkCount =
+            (fileData.cid.size! / fileData.encryptedCID!.chunkSize).floor();
+
+        final totalEncSize =
+            fullChunkCount * (fileData.encryptedCID!.chunkSize + 16) +
+                (fileData.cid.size! % fileData.encryptedCID!.chunkSize) +
+                16 +
+                fileData.encryptedCID!.padding;
+
+        final fileStateNotifier =
+            dac.getFileStateChangeNotifier(fileData.cid.hash);
+
+        final cancelToken = CancellationToken();
+        final cancelSub = fileStateNotifier.onCancel.listen((event) async {
+          cancelToken.cancel();
+        });
+
+        try {
+          await s5Node.downloadFileByHash(
+            hash: fileData.encryptedCID!.encryptedBlobHash,
+            size: totalEncSize,
+            outputFile: encryptedCacheFile,
+            onProgress: (progress) {
+              dac.setFileState(
+                fileData.cid.hash,
+                FileState(
+                  type: FileStateType.downloading,
+                  progress: progress,
+                ),
+              );
+            },
+            cancelToken: cancelToken,
+          );
+          cancelSub.cancel();
+        } catch (_) {
+          fileStateNotifier.updateFileState(
+            FileState(
+              type: FileStateType.idle,
+              progress: null,
+            ),
+          );
+          cancelSub.cancel();
+          rethrow;
+        }
+
+        logger.verbose('totalEncSize $totalEncSize');
+
+        dac.setFileState(
+          fileData.cid.hash,
+          FileState(
+            type: FileStateType.downloading,
+            progress: null,
+          ),
+        );
+
+        /*  await sink.addStream(openRead(
+          dlUriProvider,
+          hash: encryptedBlobHash,
+          start: 0,
+          totalSize: ,
+          cachePath: s5Node.cachePath,
+          logger: s5Node.logger,
+          node: s5Node,
+        ).map((event) {
+         
+          return event;
+        })); */
+
+        (outFile ?? decryptedFile).parent.createSync(recursive: true);
+
+        logger.verbose('decrypting to ${(outFile ?? decryptedFile).path}');
+
+        dac.setFileState(
+          fileData.cid.hash,
+          FileState(
+            type: FileStateType.decrypting,
+            progress: null,
+          ),
+        );
+
+        await nativeRustApi.decryptFileXchacha20(
+          inputFilePath: encryptedCacheFile.path,
+          outputFilePath: (outFile ?? decryptedFile).path,
+          key: fileData.encryptedCID!.encryptionKey,
+          padding: fileData.encryptedCID!.padding,
+          lastChunkIndex: fullChunkCount,
+        );
+
+        await encryptedCacheFile.delete();
+        dac.setFileState(
+          fileData.cid.hash,
           FileState(
             type: FileStateType.idle,
             progress: null,
           ),
         );
-      } else {
-        final stream = await dac.downloadAndDecryptFile(fileData);
+        /*  final stream = await dac.downloadAndDecryptFile(fileData);
         decryptedFile.createSync(recursive: true);
         final sink = decryptedFile.openWrite();
 
         await sink.addStream(stream.map((e) => e.toList()));
 
         await sink.flush();
-        await sink.close();
+        await sink.close(); */
       }
 
-      localFiles.put(fileData.hash, {
-        'ts': DateTime.now().millisecondsSinceEpoch,
-      });
+      if (outFile == null) {
+        final p = Packer();
+        p.packInt(1);
+        p.packBool(isTemporary);
+        p.packInt((DateTime.now().millisecondsSinceEpoch / 1000).round());
+
+        localFiles.set(
+          fileData.cid.hash.fullBytes,
+          p.takeBytes(),
+        );
+      }
     }
 
     if (outFile == null) {
       return decryptedFile.path;
     }
-    // TODO Maybe directly download+decrypt to outFile
 
-    outFile.createSync(recursive: true);
-
-    await decryptedFile.copy(outFile.path);
+    // outFile.parent.createSync(recursive: true);
+    // await decryptedFile.copy(outFile.path);
 
     try {
       outFile.setLastModifiedSync(
@@ -1284,10 +1564,10 @@ class StorageService extends VupService {
 
     return '';
   }
-
+/* 
   Future<EncryptAndUploadResponse> encryptAndUploadFileDeprecated(
     File file,
-    String fileMultiHash,
+    Multihash fileMultiHash,
   ) async {
     final fileStateNotifier = dac.getFileStateChangeNotifier(fileMultiHash);
 
@@ -1299,7 +1579,7 @@ class StorageService extends VupService {
     final outFile = File(join(
       temporaryDirectory,
       'encrypted_files',
-      fileMultiHash,
+      fileMultiHash.toBase32(),
     ));
 
     outFile.createSync(recursive: true);
@@ -1392,7 +1672,7 @@ class StorageService extends VupService {
         filename: 'encrypted-file.skyfs',
         fingerprint: Uuid().v4(),
         onProgress: (value) {
-          // print('onProgress $value');
+          // logger.verbose('onProgress $value');
           fileStateNotifier.updateFileState(
             FileState(
               type: FileStateType.uploading,
@@ -1432,24 +1712,25 @@ class StorageService extends VupService {
       maxChunkSize: maxChunkSize,
       padding: 0,
     );
-  }
+  } */
 
   Future<EncryptAndUploadResponse> encryptAndUploadFileInChunks(
     File file,
-    String fileMultiHash,
+    Multihash fileMultiHash,
     File outFile, {
-    FileStateNotifier? fileStateNotifier,
+    required FileStateNotifier fileStateNotifier,
     required String? customRemote,
   }) async {
+    logger.verbose('upload-timestamp-4 ${DateTime.now()}');
     int padding = 0;
-    const maxChunkSize = 1 * 1000 * 1000; // 1 MiB
-
-    fileStateNotifier ??= dac.getFileStateChangeNotifier(fileMultiHash);
+    const maxChunkSizeAsPowerOf2 = 18;
+    const maxChunkSize = 262144; // 256 KiB
 
     fileStateNotifier.updateFileState(FileState(
       type: FileStateType.encrypting,
       progress: 0,
     ));
+
 /* 
     bool isCancelled = false;
 
@@ -1457,20 +1738,48 @@ class StorageService extends VupService {
       isCancelled = true;
     }); */
 
-    outFile.createSync(recursive: true);
+    // outFile.createSync(recursive: true);
 
     final totalSize = file.lengthSync();
 
-    final secretKey = dac.sodium.crypto.secretBox.keygen();
+    final chunkCount = (totalSize / maxChunkSize).ceil();
 
-    int internalSize = 0;
-    int currentSize = 0;
+    final totalSizeWithPadding = totalSize + chunkCount * 16;
 
-    final sink = outFile.openWrite();
+    padding = padFileSizeDefault(totalSizeWithPadding) - totalSizeWithPadding;
 
-    final streamCtrl = StreamController<PlaintextChunk>();
+    final lastChunkSize = totalSize % maxChunkSize;
 
-    final List<int> data = [];
+    if ((padding + lastChunkSize) >= maxChunkSize) {
+      padding = maxChunkSize - lastChunkSize;
+    }
+
+    logger.verbose('encryptFileXchacha20 ${file.path} ${outFile.path}');
+
+    final key = await nativeRustApi.encryptFileXchacha20(
+      inputFilePath: file.path,
+      outputFilePath: outFile.path,
+      padding: padding,
+    );
+
+    if (fileStateNotifier.isCanceled) {
+      await outFile.delete();
+      throw CancelException();
+    }
+
+    /* verbose(
+        'padding: ${filesize(padding)} | $padding | ${chunk.bytes.length} | ${totalSize}'); */
+
+    // final secretKey = dac.sodium.crypto.secretBox.keygen().extractBytes();
+
+    /* int internalSize = 0;
+    int currentSize = 0; */
+
+    // final sink = outFile.openWrite();
+
+    // final streamCtrl = StreamController<PlaintextChunk>();
+
+/*     final List<int> data = [];
 
     file.openRead().listen((event) {
       data.addAll(event);
@@ -1504,22 +1813,16 @@ class StorageService extends VupService {
 
     await for (var chunk in streamCtrl.stream) {
       final nonce = Uint8List.fromList(
-        encodeEndian(i, dac.sodium.crypto.secretBox.nonceBytes,
-            endianType: EndianType.littleEndian) as List<int>,
+        encodeEndian(
+          i,
+          12,
+          endianType: EndianType.littleEndian,
+        ) as List<int>,
       );
 
       i++;
 
       if (chunk.isLast) {
-        padding = padFileSize(totalSize) - totalSize;
-        if ((padding + chunk.bytes.length) >= maxChunkSize) {
-          padding = maxChunkSize - chunk.bytes.length;
-        }
-
-        // 5807 bytes
-
-        verbose(
-            'padding: ${filesize(padding)} | $padding | ${chunk.bytes.length} | ${totalSize}');
 
         final bytes = Uint8List.fromList(
           chunk.bytes +
@@ -1530,11 +1833,17 @@ class StorageService extends VupService {
         chunk = PlaintextChunk(bytes, true);
       }
 
-      final res = dac.sodium.crypto.secretBox.easy(
+      final res = await nativeRustApi.encryptChunk(
+        key: secretKey,
+        nonce: nonce,
+        bytes: chunk.bytes,
+      );
+
+      /* final res = dac.sodium.crypto.secretBox.easy(
         message: chunk.bytes,
         nonce: nonce,
         key: secretKey,
-      );
+      ); */
 
       currentSize += chunk.bytes.length;
       fileStateNotifier.updateFileState(
@@ -1547,19 +1856,19 @@ class StorageService extends VupService {
       if (currentSize >= totalSize) {
         completer.complete(true);
       }
-    }
+    } */
 
-    await completer.future;
+    /* await completer.future;
 
     await sink.flush();
-    await sink.close();
+    await sink.close(); */
 
-    fileStateNotifier.updateFileState(
+/*     fileStateNotifier.updateFileState(
       FileState(
         type: FileStateType.encrypting,
         progress: 1,
       ),
-    );
+    ); */
 
     fileStateNotifier.updateFileState(
       FileState(
@@ -1569,12 +1878,16 @@ class StorageService extends VupService {
       ),
     );
 
-    String? blobUrl;
+    Multihash? encryptedBlobHash;
 
-    final TUS_CHUNK_SIZE = (1 << 22) * 10; // ~ 41 MB
+    logger.verbose('upload-timestamp-6 ${DateTime.now()}');
+
+    // final TUS_CHUNK_SIZE = (1 << 22) * 10; // ~ 41 MB
+
+    final SMALL_FILE_SIZE = 33554432; // 32 MiB
 
     if (customRemote != null) {
-      final rem = dac.customRemotes[customRemote]!;
+      /*    final rem = dac.customRemotes[customRemote]!;
       final config = rem['config']! as Map;
       final type = rem['type']!;
 
@@ -1645,31 +1958,74 @@ class StorageService extends VupService {
         blobUrl = 'remote-$customRemote://$fileId';
       } else {
         throw 'Remote type "$type" not supported';
-      }
+      } */
+      throw UnimplementedError();
     } else {
-      if (outFile.lengthSync() > TUS_CHUNK_SIZE) {
-        blobUrl = await mySky.skynetClient.upload.uploadLargeFile(
-          XFileDart(outFile.path),
-          filename: 'encrypted-file.skyfs',
-          fingerprint: Uuid().v4(),
+      if (outFile.lengthSync() > SMALL_FILE_SIZE) {
+        logger.verbose('fileMultiHash $fileMultiHash');
+
+        encryptedBlobHash = await getMultiHashForFile(outFile);
+
+        for (final uc in mySky.api.storageServiceConfigs +
+            mySky.api.storageServiceConfigs +
+            mySky.api.storageServiceConfigs) {
+          try {
+            final tusClient = S5TusClient(
+              url: uc.getAPIUrl('/s5/upload/tus'),
+              fileLength: outFile.lengthSync(),
+              headers: uc.headers,
+              hash: encryptedBlobHash,
+              httpClient: mySky.httpClient,
+              onCancel: fileStateNotifier.onCancel,
+              openRead: (start) {
+                return outFile.openRead(start);
+              },
+            );
+            await tusClient.upload(
+              onProgress: (value) {
+                fileStateNotifier.updateFileState(
+                  FileState(
+                    type: FileStateType.uploading,
+                    progress: value,
+                  ),
+                );
+              },
+            );
+            break;
+          } catch (e, st) {
+            logger.error(e);
+            logger.verbose(st);
+          }
+        }
+      } else {
+        final ts = DateTime.now();
+
+        encryptedBlobHash = await getMultiHashForFile(outFile);
+
+        // final cid = await mySky.api.uploadRawFile(outFile.readAsBytesSync());
+        await uploadFileWithStream(
+          encryptedBlobHash,
+          outFile.lengthSync(),
+          outFile.openRead(),
+          fileStateNotifier: fileStateNotifier,
           onProgress: (value) {
-            fileStateNotifier!.updateFileState(
+            fileStateNotifier.updateFileState(
               FileState(
                 type: FileStateType.uploading,
                 progress: value,
               ),
             );
           },
-        );
-      } else {
-        blobUrl = await mySky.skynetClient.upload.uploadFileWithStream(
+        ).timeout(const Duration(minutes: 5));
+
+        /*       final cid = await mySky.skynetClient.upload.uploadFileWithStream(
           SkyFile(
             content: Uint8List(0),
             filename: 'encrypted-file.skyfs',
             type: 'application/octet-stream',
           ),
           outFile.lengthSync(),
-          outFile.openRead().map((event) => Uint8List.fromList(event)),
+          outFile.openRead(),
           onProgress: (value) {
             fileStateNotifier!.updateFileState(
               FileState(
@@ -1678,18 +2034,18 @@ class StorageService extends VupService {
               ),
             );
           },
-        );
-      }
-      if (blobUrl != null) {
-        blobUrl = 'sia://' + blobUrl;
+          raw: true,
+        ); */
+        logger
+            .verbose('upload-timestamp-delay ${DateTime.now().difference(ts)}');
       }
     }
 
     await outFile.delete();
 
-    if (blobUrl == null) {
+    /* if (encryptedBlobHash == null) {
       throw 'File Upload failed';
-    }
+    } */
     fileStateNotifier.updateFileState(
       FileState(
         type: FileStateType.idle,
@@ -1697,16 +2053,19 @@ class StorageService extends VupService {
       ),
     );
 
+    logger.verbose('upload-timestamp-8 ${DateTime.now()}');
+
     return EncryptAndUploadResponse(
-      blobUrl: blobUrl,
-      secretKey: secretKey.extractBytes(),
-      encryptionType: 'libsodium_secretbox',
-      maxChunkSize: maxChunkSize,
+      encryptedBlobHash: encryptedBlobHash,
+      secretKey: key,
+      // encryptionType: 'ChaCha20-Poly1305',
+      chunkSizeAsPowerOf2: maxChunkSizeAsPowerOf2,
       padding: padding,
     );
   }
 
-  Future<EncryptAndUploadResponse> uploadPlaintextFileTODO(
+// TODO Implement uploadPlaintextFile
+/*   Future<EncryptAndUploadResponse> uploadPlaintextFileTODO(
     File outFile,
     String fileMultiHash,
   ) async {
@@ -1772,6 +2131,127 @@ class StorageService extends VupService {
       maxChunkSize: null,
       padding: null,
     );
+  } */
+
+  final ioHttpClient = HttpClient();
+
+  Future<CID?> uploadFileWithStream(
+    Multihash hash,
+    int length,
+    Stream<List<int>> readStream, {
+    Function(double)? onProgress,
+    int retryCount = 0,
+    required FileStateNotifier fileStateNotifier,
+  }) async {
+    final errors = <String>[];
+    for (final sc in mySky.api.storageServiceConfigs) {
+      try {
+        if (fileStateNotifier.isCanceled) {
+          throw CancelException();
+        }
+
+        var uri = sc.getAPIUrl(
+          '/s5/upload',
+        );
+
+        final headers = {
+          'content-type': 'application/octet-stream',
+        };
+
+        headers.addAll(sc.headers);
+
+        final req = await ioHttpClient.openUrl(
+          'POST',
+          uri,
+        );
+        for (final h in headers.entries) {
+          req.headers.set(h.key, h.value);
+        }
+
+        var uploadedLength = 0;
+
+        StreamSubscription? sub;
+
+        if (onProgress != null) {
+          sub = Stream.periodic(Duration(milliseconds: 100)).listen((event) {
+            onProgress(uploadedLength / length);
+          });
+        }
+        final cancelSub = fileStateNotifier.onCancel.listen((_) {
+          req.abort();
+        });
+
+        logger.verbose('[upload] start');
+        await req
+            .addStream(readStream.transform(
+              StreamTransformer.fromHandlers(
+                handleData: (data, sink) {
+                  uploadedLength += data.length;
+                  sink.add(data);
+                },
+                handleError: (error, stack, sink) {},
+                handleDone: (sink) {
+                  sink.close();
+                },
+              ),
+            ))
+            .timeout(const Duration(minutes: 10));
+        logger.verbose('[upload] end');
+        final res = await req.close();
+
+        sub?.cancel();
+
+        cancelSub.cancel();
+
+        if (res.statusCode != 200) {
+          throw Exception('HTTP ${res.statusCode}');
+        }
+
+        final resBody = await utf8.decoder.bind(res).join();
+
+        if (fileStateNotifier.isCanceled) {
+          throw CancelException();
+        }
+
+        final cidStr = json.decode(resBody)['cid'];
+
+        if (cidStr == null) throw Exception('Upload failed');
+
+        // if (!skynetClient.trusted) {
+        final cid = CID.decode(cidStr);
+
+        if (cid.hash != hash) {
+          throw 'Trustless raw upload failed';
+        }
+        return cid;
+      } catch (e, st) {
+        errors.add('${sc.authority}: $e: $st');
+        logger.verbose(e);
+        logger.verbose(st);
+      }
+    }
+
+    if (fileStateNotifier.isCanceled) {
+      throw CancelException();
+    }
+
+    logger.error(
+      'Could not upload file: ${json.encode(errors)}, retryCount: $retryCount',
+    );
+
+    if (retryCount < 8) {
+      await Future.delayed(Duration(seconds: pow(2, retryCount) as int));
+      return uploadFileWithStream(
+        hash,
+        length,
+        readStream,
+        onProgress: onProgress,
+        fileStateNotifier: fileStateNotifier,
+        retryCount: retryCount + 1,
+      );
+    }
+
+    throw 'Could not upload file: ${json.encode(errors)}';
   }
 
   String? getCustomRemoteForPath(String path) {
