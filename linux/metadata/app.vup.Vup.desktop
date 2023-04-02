@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Exec=vup
+Terminal=false
+Name=Vup Cloud Storage
+Icon=app.vup.Vup
+Categories=FileManager;FileTransfer;Network;Utility;System;FileTools;
+StartupWMClass=Vup
+GenericName=Cloud Storage
+Comment=Private and decentralized cloud storage
+MimeType=x-scheme-handler/vup;
