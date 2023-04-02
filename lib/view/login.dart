@@ -186,9 +186,8 @@ class _LoginViewState extends State<LoginView> {
 
                       await mySky.loadPortalAccounts();
 
-                      context.beamToNamed(
+                      context.beamToReplacementNamed(
                         '/browse',
-                        replaceCurrent: true,
                       );
                     } catch (e, st) {
                       logger.verbose(e);

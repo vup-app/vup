@@ -16,10 +16,10 @@ import flutter_local_notifications
 import flutter_secure_storage_macos
 import just_audio
 import macos_ui
-import network_info_plus_macos
-import package_info_plus_macos
+import network_info_plus
+import package_info_plus
 import path_provider_foundation
-import share_plus_macos
+import share_plus
 import tray_manager
 import url_launcher_macos
 
@@ -32,7 +32,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FFmpegKitFlutterPlugin.register(with: registry.registrar(forPlugin: "FFmpegKitFlutterPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
-  FlutterSecureStorageMacosPlugin.register(with: registry.registrar(forPlugin: "FlutterSecureStorageMacosPlugin"))
+  FlutterSecureStoragePlugin.register(with: registry.registrar(forPlugin: "FlutterSecureStoragePlugin"))
   JustAudioPlugin.register(with: registry.registrar(forPlugin: "JustAudioPlugin"))
   MacOSUiPlugin.register(with: registry.registrar(forPlugin: "MacOSUiPlugin"))
   NetworkInfoPlusPlugin.register(with: registry.registrar(forPlugin: "NetworkInfoPlusPlugin"))

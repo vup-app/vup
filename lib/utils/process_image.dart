@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:filesystem_dac/dac.dart';
 import 'package:exif/exif.dart';
 import 'package:image/image.dart' as img;

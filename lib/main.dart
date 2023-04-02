@@ -283,32 +283,27 @@ Future<void> initApp() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('sync');
 
-    final IOSInitializationSettings initializationSettingsIOS =
-        IOSInitializationSettings(
-            /* onDidReceiveLocalNotification: onDidReceiveLocalNotification */);
+    final InitializationSettings initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        /* iOS: initializationSettingsIOS,
+            macOS: initializationSettingsMacOS, */
+        linux: LinuxInitializationSettings(defaultActionName: 'helloworld'));
 
-    final MacOSInitializationSettings initializationSettingsMacOS =
-        MacOSInitializationSettings();
-
-    final InitializationSettings initializationSettings =
-        InitializationSettings(
-            android: initializationSettingsAndroid,
-            iOS: initializationSettingsIOS,
-            macOS: initializationSettingsMacOS,
-            linux:
-                LinuxInitializationSettings(defaultActionName: 'helloworld'));
-
-    await flutterLocalNotificationsPlugin!.initialize(initializationSettings,
-        onSelectNotification: (str) {
-      logger.info('onSelectNotification $str');
-      if (str == null) return;
-      if (str.startsWith('sync:')) {
-        final task = syncTasks.get(str.substring(5));
-        if (task != null) {
-          appLayoutState.navigateTo(task.remotePath.split('/'));
+    await flutterLocalNotificationsPlugin!.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (nr) {
+        // TODO Check if this works
+        final str = nr.actionId;
+        logger.info('onSelectNotification $str');
+        if (str == null) return;
+        if (str.startsWith('sync:')) {
+          final task = syncTasks.get(str.substring(5));
+          if (task != null) {
+            appLayoutState.navigateTo(task.remotePath.split('/'));
+          }
         }
-      }
-    });
+      },
+    );
   }
   logger.verbose('Done with initApp');
 }
@@ -556,10 +551,10 @@ void main(List<String> args) async {
 class MyApp extends StatelessWidget {
   final routerDelegate = BeamerDelegate(
     initialPath: mySky.isLoggedIn.value == true ? '/browse' : '/auth',
-    locationBuilder: SimpleLocationBuilder(
+    locationBuilder: RoutesLocationBuilder(
       routes: {
-        '/auth': (context, state) => AuthPage(),
-        '/browse': (context, state) =>
+        '/auth': (context, state, _) => AuthPage(),
+        '/browse': (context, state, _) =>
             HomePage(MediaQuery.of(context).size.width),
       },
     ),

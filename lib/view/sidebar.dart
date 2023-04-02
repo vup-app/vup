@@ -1060,8 +1060,8 @@ MimeType=x-scheme-handler/vup;
                                         // syncing = null;
                                         // if (mounted) setState(() {});
                                       },
-                                      icon: Icon(
-                                        UniconsLine.sync_icon,
+                                      icon: const Icon(
+                                        UniconsLine.sync,
                                       ),
                                     )),
                           title: Padding(

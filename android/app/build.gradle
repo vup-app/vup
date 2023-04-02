@@ -32,7 +32,8 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    compileSdkVersion 31
+    compileSdkVersion flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
@@ -41,7 +42,7 @@ android {
     defaultConfig {
         applicationId "app.vup"
         minSdkVersion 18
-        targetSdkVersion 31
+        targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true

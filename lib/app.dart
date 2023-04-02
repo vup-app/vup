@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:filesystem_dac/dac.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background/flutter_background.dart';
@@ -162,7 +161,7 @@ final iconMap = {
   FileStateType.decrypting: UniconsLine.unlock_alt,
   FileStateType.encrypting: UniconsLine.lock_alt,
   FileStateType.uploading: UniconsLine.cloud_upload,
-  FileStateType.sync: UniconsLine.sync_icon,
+  FileStateType.sync: UniconsLine.sync,
   FileStateType.idle: UniconsLine.clock,
 };
 

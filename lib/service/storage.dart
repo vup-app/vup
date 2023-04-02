@@ -11,7 +11,6 @@ import 'package:stash/stash_api.dart';
 import 'package:vup/app.dart';
 import 'package:vup/model/cancel_exception.dart';
 import 'package:vup/queue/sync.dart';
-import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:stash_hive/stash_hive.dart';
 import 'package:filesystem_dac/dac.dart';
 import 'package:path/path.dart';
@@ -833,8 +832,6 @@ class StorageService extends VupService {
       },
     );
   }
-
-  final _webDavClientCache = <String, webdav.Client>{};
 
   final uploadPools = <String?, Pool>{};
 

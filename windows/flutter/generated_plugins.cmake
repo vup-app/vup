@@ -10,8 +10,9 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   flutter_secure_storage_windows
   local_auth_windows
-  network_info_plus_windows
+  network_info_plus
   permission_handler_windows
+  share_plus
   tray_manager
   url_launcher_windows
 )

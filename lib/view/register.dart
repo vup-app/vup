@@ -482,9 +482,8 @@ class _RegisterViewState extends State<RegisterView> {
 
                       // dataBox.put('seed', seed);
 
-                      context.beamToNamed(
+                      context.beamToReplacementNamed(
                         '/browse',
-                        replaceCurrent: true,
                       );
 
                       /*         Navigator.of(context).pushReplacement(
