@@ -71,7 +71,8 @@ class Settings {
 late AppLocalizations al;
 bool isMobile = false;
 
-final globalThumbnailMemoryCache = <String, Uint8List>{};
+// TODO Remove this, more efficient implementation
+final globalThumbnailMemoryCache = <Multihash, Uint8List>{};
 
 bool isShiftPressed = false;
 bool isControlPressed = false;
@@ -109,6 +110,7 @@ enum ZoomLevelType {
   list,
   grid,
   gridCover,
+  mosaic,
 }
 
 class ZoomLevel {

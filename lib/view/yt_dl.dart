@@ -741,7 +741,11 @@ mp3: better compatibility''', // mkv: more features
             } else {
               file.ext?['video'] = mediaExt;
             }
-            storageService.dac.updateFileExtensionData(file.uri!, file.ext);
+            storageService.dac.updateFileExtensionDataAndThumbnail(
+              file.uri!,
+              file.ext,
+              file.file.thumbnail,
+            );
           }
         }
       }

@@ -35,8 +35,9 @@ pub extern "C" fn wire_generate_thumbnail_for_image_file(
     port_: i64,
     image_type: *mut wire_uint_8_list,
     path: *mut wire_uint_8_list,
+    exif_image_orientation: u8,
 ) {
-    wire_generate_thumbnail_for_image_file_impl(port_, image_type, path)
+    wire_generate_thumbnail_for_image_file_impl(port_, image_type, path, exif_image_orientation)
 }
 
 #[no_mangle]

@@ -22,6 +22,7 @@ import 'package:vup/utils/process_image.dart';
 import 'package:watcher/watcher.dart';
 import 'package:cancellation_token/cancellation_token.dart';
 import 'package:lib5/util.dart';
+import 'package:yaml/yaml.dart';
 
 import 'mysky.dart';
 
@@ -570,6 +571,22 @@ class StorageService extends VupService {
         } catch (e, st) {
           warning(e);
           verbose(st);
+        }
+      } else if (['.md', '.markdown', '.rst'].contains(ext)) {
+        var documentExt = <String, dynamic>{};
+
+        final fileContent = file.readAsStringSync();
+        if (fileContent.trimLeft().startsWith('#')) {
+          documentExt['title'] =
+              fileContent.substring(1).split('\n').first.trim();
+        } else if (fileContent.startsWith('---')) {
+          final yamlFrontmatter =
+              fileContent.substring(3).split('---')[0].trim();
+          final metadata = loadYaml(yamlFrontmatter);
+          documentExt = json.decode(json.encode(metadata));
+        }
+        if (documentExt.isNotEmpty) {
+          additionalExt['document'] = documentExt;
         }
       } else if (Platform.isLinux && ext == '.pdf') {
         try {

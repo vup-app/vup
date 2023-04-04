@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:contextmenu/contextmenu.dart';
 import 'package:filesize/filesize.dart';
 import 'package:filesystem_dac/dac.dart';
-import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:flutter_state_notifier/flutter_state_notifier.dart';
 import 'package:path/path.dart';
+import 'package:thumbhash_flutter/thumbhash_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:vup/actions/base.dart';
@@ -15,6 +15,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:open_file/open_file.dart';
 import 'package:vup/main.dart';
 import 'package:vup/utils/date_format.dart';
+import 'package:image/image.dart' as img;
 
 class FileSystemEntityWidget extends StatefulWidget {
   final dynamic _entity;
@@ -335,7 +336,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                   });
                   try {
                     final openStreamingUrlInWebBrowser =
-                        file.ext!.containsKey('video');
+                        file.ext?.containsKey('video') ?? false;
                     if (openStreamingUrlInWebBrowser) {
                       final url = await temporaryStreamingServerService
                           .makeFileAvailable(
@@ -487,13 +488,16 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
             );
           });
 
-      if (widget.zoomLevel.type == ZoomLevelType.gridCover && !isDirectory) {
-        if ((file.ext ?? {}).containsKey('thumbnail'))
+      if ((widget.zoomLevel.type == ZoomLevelType.gridCover ||
+              widget.zoomLevel.type == ZoomLevelType.mosaic) &&
+          !isDirectory) {
+        if (file.file.thumbnail != null)
           return Stack(
             fit: StackFit.passthrough,
             children: [
               ThumbnailCoverWidget(
-                file: file,
+                thumbnail: file.file.thumbnail!,
+                isSquare: widget.zoomLevel.type == ZoomLevelType.gridCover,
               ),
               Align(
                 alignment: Alignment.bottomCenter,
@@ -590,7 +594,8 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                         (file.ext!.containsKey('audio') ||
                             file.ext!.containsKey('video') ||
                             file.ext!.containsKey('image') ||
-                            file.ext!.containsKey('publication'))) ...[
+                            file.ext!.containsKey('publication') ||
+                            file.ext!.containsKey('document'))) ...[
                       Text.rich(
                         TextSpan(
                           children: file.ext!.containsKey('image')
@@ -598,9 +603,15 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                               : file.ext!.containsKey('publication')
                                   ? renderPublicationMetadata(
                                       file.ext?['publication'], context)
-                                  : renderAudioMetadata(
-                                      file.ext!['audio'] ?? file.ext!['video'],
-                                      context),
+                                  : file.ext!.containsKey('document')
+                                      ? renderDocumentMetadata(
+                                          file.ext?['document'],
+                                          context,
+                                        )
+                                      : renderAudioMetadata(
+                                          file.ext!['audio'] ??
+                                              file.ext!['video'],
+                                          context),
                         ),
                         style: TextStyle(
                           color: Theme.of(context).textTheme.caption!.color,
@@ -693,12 +704,12 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
   Widget _buildIconWidget(double iconSize, {bool isWidth = true}) {
     if (!isDirectory) {
-      if ((file.ext ?? {}).containsKey('thumbnail')) {
+      if (file.file.thumbnail != null) {
         if (widget.zoomLevel.type == ZoomLevelType.list) {
           iconSize = iconSize * 1.6;
         }
         return ThumbnailWidget(
-          file: file,
+          thumbnail: file.file.thumbnail!,
           width: isWidth ? iconSize : null,
           height: !isWidth ? iconSize : null,
         );
@@ -921,7 +932,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
               alignment: Alignment.centerLeft,
               child: Text(
                [
-                  // if (file.ext!.containsKey('thumbnail')) 'Has thumbnail',
+                  // if (file.ext!.containsKey('')) 'Has thumbnail',
                 ].join('\n'),
                 textAlign: TextAlign.start,
               ),
@@ -1033,6 +1044,31 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
         ),
       );
     }
+    return spans;
+  }
+
+  List<TextSpan> renderDocumentMetadata(Map? map, BuildContext context) {
+    final spans = <TextSpan>[];
+
+    final highlightTextStyle = TextStyle(
+      fontWeight: FontWeight.bold,
+      color: Theme.of(context).primaryColor,
+    );
+
+    if (map?['title'] != null) {
+      spans.add(
+        const TextSpan(
+          text: 'Title: ',
+        ),
+      );
+      spans.add(
+        TextSpan(
+          text: map?['title'].toString(),
+          style: highlightTextStyle,
+        ),
+      );
+    }
+
     return spans;
   }
 
@@ -1284,71 +1320,72 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 }
 
 class ThumbnailCoverWidget extends StatefulWidget {
-  final FileReference file;
+  final FileVersionThumbnail thumbnail;
+  final bool isSquare;
 
   ThumbnailCoverWidget({
     Key? key,
-    required this.file,
-  }) : super(key: ValueKey(file.ext!['thumbnail']['cid']));
+    required this.thumbnail,
+    required this.isSquare,
+  }) : super(key: ValueKey(thumbnail.cid.originalCID.hash));
 
   @override
   State<ThumbnailCoverWidget> createState() => _ThumbnailCoverWidgetState();
 }
 
 class _ThumbnailCoverWidgetState extends State<ThumbnailCoverWidget> {
-  late final thumbnail;
-  late final thumbnailKey;
+  Multihash get key => widget.thumbnail.cid.originalCID.hash;
+
   @override
   void initState() {
-    thumbnail = widget.file.ext!['thumbnail'];
-    thumbnailKey = thumbnail['cid'];
-
-    if (!globalThumbnailMemoryCache.containsKey(thumbnailKey)) {
+    if (!globalThumbnailMemoryCache.containsKey(key)) {
       _fetchData();
-    } else {
-      showBlurHash = false;
     }
     super.initState();
   }
-
-  bool showBlurHash = true;
 
   void _fetchData() async {
     try {
       await Future.delayed(thumbnailLoadDelay);
       if (!mounted) return;
 
-      globalThumbnailMemoryCache[thumbnailKey] =
-          (await storageService.dac.loadThumbnail(
-        thumbnailKey ?? 'none',
-      ))!;
+      globalThumbnailMemoryCache[key] =
+          (await storageService.dac.loadThumbnail(widget.thumbnail.cid))!;
 
       if (mounted) setState(() {});
-/*       await Future.delayed(Duration(milliseconds: 200));
-      if (mounted)
-        setState(() {
-          showBlurHash = false;
-        }); */
     } catch (e) {}
   }
 
   @override
   Widget build(BuildContext context) {
+    final child = globalThumbnailMemoryCache.containsKey(key)
+        ? AspectRatio(
+            aspectRatio: widget.thumbnail.aspectRatio,
+            child: Image.memory(
+              globalThumbnailMemoryCache[key]!,
+              fit: BoxFit.cover,
+              key: ValueKey(key.toBase64Url()),
+            ),
+          )
+        : Image.memory(
+            img.encodeBmp(
+              // TODO Maybe do this in Rust
+              ThumbHash.thumbHashToRGBA(
+                widget.thumbnail.thumbhash!,
+              ),
+            ), // TODO Null-safety
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.low,
+          );
+
+    if (!widget.isSquare) {
+      return child;
+    }
     return LayoutBuilder(builder: (context, cons) {
       return SizedBox(
-        child: SizedBox(
-          height: cons.maxWidth,
-          child: globalThumbnailMemoryCache.containsKey(thumbnailKey)
-              ? AspectRatio(
-                  aspectRatio: (thumbnail['aspectRatio'] ?? 1) + 0.0,
-                  child: Image.memory(
-                    globalThumbnailMemoryCache[thumbnailKey]!,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : BlurHash(
-                  hash: thumbnail['blurHash'] ?? '00FFaX',
-                ), /* Stack(
+        height: cons.maxWidth,
+        child:
+            child, /* Stack(
             fit: StackFit.expand,
             children: [
               if (globalThumbnailMemoryCache.containsKey(thumbnailKey))
@@ -1366,8 +1403,7 @@ class _ThumbnailCoverWidgetState extends State<ThumbnailCoverWidget> {
             ],
           ), */
 
-          /* ), */
-        ),
+        /* ), */
       );
     });
   }
@@ -1379,26 +1415,22 @@ class ThumbnailWidget extends StatefulWidget {
 
   ThumbnailWidget({
     Key? key,
-    required this.file,
+    required this.thumbnail,
     required this.width,
     required this.height,
-  }) : super(key: ValueKey(file.ext!['thumbnail']['cid']));
+  }) : super(key: ValueKey(thumbnail.cid.originalCID.hash));
 
-  final FileReference file;
+  final FileVersionThumbnail thumbnail;
 
   @override
   State<ThumbnailWidget> createState() => _ThumbnailWidgetState();
 }
 
 class _ThumbnailWidgetState extends State<ThumbnailWidget> {
-  late final thumbnail;
-  late final thumbnailKey;
+  Multihash get key => widget.thumbnail.cid.originalCID.hash;
   @override
   void initState() {
-    thumbnail = widget.file.ext!['thumbnail'];
-    thumbnailKey = thumbnail['cid'];
-
-    if (!globalThumbnailMemoryCache.containsKey(thumbnailKey)) {
+    if (!globalThumbnailMemoryCache.containsKey(key)) {
       _fetchData();
     }
     super.initState();
@@ -1409,9 +1441,8 @@ class _ThumbnailWidgetState extends State<ThumbnailWidget> {
       await Future.delayed(thumbnailLoadDelay);
       if (!mounted) return;
 
-      globalThumbnailMemoryCache[thumbnailKey] =
-          (await storageService.dac.loadThumbnail(
-        thumbnailKey ?? 'none',
+      globalThumbnailMemoryCache[key] = (await storageService.dac.loadThumbnail(
+        widget.thumbnail.cid,
       ))!;
       /*   logger.verbose(
         'tempImageCache ${globalThumbnailMemoryCache.values.fold<int>(0, (previousValue, el) => previousValue + el.length)}',
@@ -1430,14 +1461,22 @@ class _ThumbnailWidgetState extends State<ThumbnailWidget> {
       width: widget.width,
       height: widget.height,
       child: AspectRatio(
-        aspectRatio: (thumbnail['aspectRatio'] ?? 1) + 0.0,
-        child: !globalThumbnailMemoryCache.containsKey(thumbnailKey)
-            ? BlurHash(
-                hash: thumbnail['blurHash'] ?? '00FFaX',
+        aspectRatio: widget.thumbnail.aspectRatio,
+        child: (!globalThumbnailMemoryCache.containsKey(key))
+            ? Image.memory(
+                img.encodeBmp(
+                  // TODO Maybe do this in Rust
+                  ThumbHash.thumbHashToRGBA(
+                    widget.thumbnail.thumbhash!,
+                  ),
+                ), // TODO Null-safety
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.low,
               )
             : Image.memory(
-                globalThumbnailMemoryCache[thumbnailKey]!,
-                key: ValueKey('thumbnail_' + thumbnailKey),
+                globalThumbnailMemoryCache[key]!,
+                fit: BoxFit.fitHeight,
+                key: ValueKey(key.toBase64Url()),
               ),
       ),
     );

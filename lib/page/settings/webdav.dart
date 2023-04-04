@@ -25,9 +25,9 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
         ),
         CheckboxListTile(
           value: isWebDavServerEnabled,
-          title: Text('WebDav Server enabled'),
+          title: Text('WebDAV Server enabled'),
           subtitle: Text(
-            'When enabled, a local WebDav server is started which exposes all common file operations for your SkyFS',
+            'When enabled, a local WebDAV server is started which exposes all common file operations for your SkyFS',
           ),
           onChanged: (val) async {
             dataBox.put('webdav_server_enabled', val!);
@@ -118,7 +118,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: SelectableText(
-              'WebDav server running at http://${webDavServerBindIp}:${webDavServerPort}\nStop the WebDav server if you want to change any settings.',
+              'WebDAV server running at http://${webDavServerBindIp}:${webDavServerPort}\nStop the WebDAV server if you want to change any settings.',
             ),
           ),
       ],

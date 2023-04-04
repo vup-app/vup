@@ -81,7 +81,8 @@ class RichStatusService extends VupService {
 
     String? thumbnailSkylink;
 
-    if (isDiscordThumbnailsEnabled) {
+    // TODO Fix this
+    /* if (isDiscordThumbnailsEnabled) {
       if (thumbnailKey != null && !audioCovers.containsKey(thumbnailKey)) {
         try {
           info('uploading thumbnail...');
@@ -98,7 +99,7 @@ class RichStatusService extends VupService {
 
       thumbnailSkylink = audioCovers.get(thumbnailKey ?? '');
       info('thumbnailSkylink $thumbnailSkylink');
-    }
+    } */
 
     rpc!.updatePresence(
       DiscordPresence(

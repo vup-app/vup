@@ -150,8 +150,11 @@ class FileDetailsDialogState extends State<FileDetailsDialog> {
             onPressed: () async {
               showLoadingDialog(context, 'Updating metadata...');
               try {
-                await storageService.dac
-                    .updateFileExtensionData(file.uri!, ext);
+                await storageService.dac.updateFileExtensionDataAndThumbnail(
+                  file.uri!,
+                  ext,
+                  file.file.thumbnail,
+                );
                 context.pop();
               } catch (e, st) {
                 context.pop();

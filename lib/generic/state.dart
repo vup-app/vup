@@ -80,11 +80,11 @@ final logger = Global();
 
 // Preferences
 bool get isWebServerEnabled => dataBox.get('web_server_enabled') ?? false;
-int get webServerPort => dataBox.get('web_server_port') ?? 4040;
+int get webServerPort => dataBox.get('web_server_port') ?? 8080;
 String get webServerBindIp => dataBox.get('web_server_bindip') ?? '127.0.0.1';
 
 bool get isWebDavServerEnabled => dataBox.get('webdav_server_enabled') ?? false;
-int get webDavServerPort => dataBox.get('webdav_server_port') ?? 5050;
+int get webDavServerPort => dataBox.get('webdav_server_port') ?? 4040;
 String get webDavServerBindIp =>
     dataBox.get('webdav_server_bindip') ?? '127.0.0.1';
 String get webDavServerUsername =>

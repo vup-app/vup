@@ -61,7 +61,7 @@ class _SettingsPageState extends State<SettingsPage> {
       build: () => JellyfinServerSettingsPage(),
     ), */
     SettingsPane(
-      title: 'WebDav Server',
+      title: 'WebDAV Server',
       build: () => WebDavSettingsPage(),
     ),
     SettingsPane(

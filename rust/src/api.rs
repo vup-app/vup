@@ -13,6 +13,7 @@ use image::imageops::FilterType;
 
 pub struct ThumbnailResponse {
     pub bytes: Vec<u8>,
+    pub thumbhash_bytes: Vec<u8>,
     pub width: u32,
     pub height: u32,
 }
@@ -150,6 +151,7 @@ fn decrypt_file_xchacha20_internal<R: Read>(
 pub fn generate_thumbnail_for_image_file(
     image_type: String,
     path: String,
+    exif_image_orientation: u8,
 ) -> Result<ThumbnailResponse, anyhow::Error> {
     // let img = image::open(path).unwrap();
 
@@ -166,27 +168,51 @@ pub fn generate_thumbnail_for_image_file(
     : image.width > image.height
          */
 
-    let mut scaled = img.resize(512, 512, FilterType::Triangle);
+    // TODO Maybe reduce thumbnail size
+    // TODO Maybe reduce webp quality
+    // TODO Maybe use other FilterType
+    let mut scaled = img.resize(384, 384, FilterType::Triangle);
 
     if image_type == "audio" {
         if scaled.height() > scaled.width() {
             let diff = scaled.height() - scaled.width();
             scaled = scaled.crop(0, diff / 2, scaled.width(), scaled.width())
-        } else if img.height() < img.width() {
+        } else if scaled.height() < scaled.width() {
             let diff = scaled.width() - scaled.height();
             scaled = scaled.crop(diff / 2, 0, scaled.height(), scaled.height())
         }
         // img.crop(x, y, width, height)
     }
 
+    scaled = match &exif_image_orientation {
+        2 => scaled.fliph(),
+        3 => scaled.rotate180(),
+        4 => scaled.rotate180().fliph(),
+        5 => scaled.rotate90().fliph(),
+        6 => scaled.rotate90(),
+        7 => scaled.rotate270().fliph(),
+        8 => scaled.rotate270(),
+        _ => scaled,
+    };
+
     // image::ImageOutputFormat::Jpeg(80)
     let mut bytes: Vec<u8> = Vec::new();
     scaled.write_to(&mut Cursor::new(&mut bytes), image::ImageOutputFormat::WebP)?;
+
+    // TODO Maybe reduce height and width here
+    let thumbhash_input_image = scaled.resize(100, 100, FilterType::Triangle);
+
+    let thumbhash_bytes = thumbhash::rgba_to_thumb_hash(
+        thumbhash_input_image.width().try_into().unwrap(),
+        thumbhash_input_image.height().try_into().unwrap(),
+        &thumbhash_input_image.to_rgba8().into_raw(),
+    );
 
     Ok(ThumbnailResponse {
         bytes: bytes,
         width: img.width(),
         height: img.height(),
+        thumbhash_bytes: thumbhash_bytes,
     })
 }
 

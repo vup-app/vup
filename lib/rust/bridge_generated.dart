@@ -79,15 +79,19 @@ class RustImpl implements Rust {
       );
 
   Future<ThumbnailResponse> generateThumbnailForImageFile(
-      {required String imageType, required String path, dynamic hint}) {
+      {required String imageType,
+      required String path,
+      required int exifImageOrientation,
+      dynamic hint}) {
     var arg0 = _platform.api2wire_String(imageType);
     var arg1 = _platform.api2wire_String(path);
+    var arg2 = api2wire_u8(exifImageOrientation);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner
-          .wire_generate_thumbnail_for_image_file(port_, arg0, arg1),
+          .wire_generate_thumbnail_for_image_file(port_, arg0, arg1, arg2),
       parseSuccessData: _wire2api_thumbnail_response,
       constMeta: kGenerateThumbnailForImageFileConstMeta,
-      argValues: [imageType, path],
+      argValues: [imageType, path, exifImageOrientation],
       hint: hint,
     ));
   }
@@ -95,7 +99,7 @@ class RustImpl implements Rust {
   FlutterRustBridgeTaskConstMeta get kGenerateThumbnailForImageFileConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
         debugName: "generate_thumbnail_for_image_file",
-        argNames: ["imageType", "path"],
+        argNames: ["imageType", "path", "exifImageOrientation"],
       );
 
   Future<Uint8List> encryptXchacha20Poly1305(
@@ -276,12 +280,13 @@ class RustImpl implements Rust {
 
   ThumbnailResponse _wire2api_thumbnail_response(dynamic raw) {
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return ThumbnailResponse(
       bytes: _wire2api_uint_8_list(arr[0]),
-      width: _wire2api_u32(arr[1]),
-      height: _wire2api_u32(arr[2]),
+      thumbhashBytes: _wire2api_uint_8_list(arr[1]),
+      width: _wire2api_u32(arr[2]),
+      height: _wire2api_u32(arr[3]),
     );
   }
 
@@ -504,23 +509,27 @@ class RustWire implements FlutterRustBridgeWireBase {
     int port_,
     ffi.Pointer<wire_uint_8_list> image_type,
     ffi.Pointer<wire_uint_8_list> path,
+    int exif_image_orientation,
   ) {
     return _wire_generate_thumbnail_for_image_file(
       port_,
       image_type,
       path,
+      exif_image_orientation,
     );
   }
 
   late final _wire_generate_thumbnail_for_image_filePtr = _lookup<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Int64, ffi.Pointer<wire_uint_8_list>,
-                  ffi.Pointer<wire_uint_8_list>)>>(
-      'wire_generate_thumbnail_for_image_file');
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64,
+              ffi.Pointer<wire_uint_8_list>,
+              ffi.Pointer<wire_uint_8_list>,
+              ffi.Uint8)>>('wire_generate_thumbnail_for_image_file');
   late final _wire_generate_thumbnail_for_image_file =
       _wire_generate_thumbnail_for_image_filePtr.asFunction<
           void Function(int, ffi.Pointer<wire_uint_8_list>,
-              ffi.Pointer<wire_uint_8_list>)>();
+              ffi.Pointer<wire_uint_8_list>, int)>();
 
   void wire_encrypt_xchacha20poly1305(
     int port_,

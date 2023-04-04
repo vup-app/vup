@@ -29,7 +29,10 @@ abstract class Rust extends s5_server.Rust {
   FlutterRustBridgeTaskConstMeta get kDecryptFileXchacha20ConstMeta;
 
   Future<ThumbnailResponse> generateThumbnailForImageFile(
-      {required String imageType, required String path, dynamic hint});
+      {required String imageType,
+      required String path,
+      required int exifImageOrientation,
+      dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGenerateThumbnailForImageFileConstMeta;
 
@@ -81,11 +84,13 @@ abstract class Rust extends s5_server.Rust {
 
 class ThumbnailResponse {
   final Uint8List bytes;
+  final Uint8List thumbhashBytes;
   final int width;
   final int height;
 
   ThumbnailResponse({
     required this.bytes,
+    required this.thumbhashBytes,
     required this.width,
     required this.height,
   });

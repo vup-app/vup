@@ -436,7 +436,7 @@ void main(List<String> args) async {
     storageService.setupWatchers();
 
     logger.verbose(
-        'Starting user services if enabled... (Web, WebDav and Jellyfin)');
+        'Starting user services if enabled... (Web, WebDAV and Jellyfin)');
 
     if (isWebServerEnabled) {
       webServerService.start(webServerPort, webServerBindIp);
@@ -489,16 +489,7 @@ void main(List<String> args) async {
     if (UniversalPlatform.isLinux ||
         /* UniversalPlatform.isMacOS || */
         UniversalPlatform.isWindows) {
-      try {
-        final res = await Process.run(
-          ytDlPath,
-          [
-            '--version',
-          ],
-          stdoutEncoding: systemEncoding,
-        );
-        isYTDlIntegrationEnabled = res.exitCode == 0;
-      } catch (_) {}
+      unawaited(_checkForYTDL());
     }
 
     packageInfo = await PackageInfo.fromPlatform();
@@ -546,6 +537,19 @@ void main(List<String> args) async {
   });
 
   logger.verbose('Done with main().');
+}
+
+Future<void> _checkForYTDL() async {
+  try {
+    final res = await Process.run(
+      ytDlPath,
+      [
+        '--version',
+      ],
+      stdoutEncoding: systemEncoding,
+    );
+    isYTDlIntegrationEnabled = res.exitCode == 0;
+  } catch (_) {}
 }
 
 class MyApp extends StatelessWidget {

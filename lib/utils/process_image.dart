@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:filesystem_dac/dac.dart';
 import 'package:exif/exif.dart';
-import 'package:image/image.dart' as img;
 import 'package:s5_server/constants.dart';
 
 import 'package:lib5/src/crypto/encryption/chunk.dart';
@@ -12,20 +11,11 @@ import 'package:vup/app.dart';
 import 'package:lib5/util.dart';
 
 import 'package:vup/rust/ffi.dart' as ffi;
-import 'package:vup/generic/state.dart';
-
-// TODO Move this to SkyFS
 
 Future<List> processImage2(List list) async {
   logger.verbose('upload-timestamp-process-image-1 ${DateTime.now()}');
-  /* for (final item in list) {
-    logger.verbose('processImage ${item.length}');
-  } */
-  // String extension = list[0].toLowerCase();
-  // String extension = list[0].toLowerCase();
 
   String type = list[0];
-  // logger.verbose('processImage type ${type}');
   String imagePath = list[1];
 
   // 32 bytes
@@ -33,40 +23,12 @@ Future<List> processImage2(List list) async {
 
   List more = [];
 
-  bool hasThumbnail = false;
+  FileVersionThumbnail? thumbnail;
 
   Map<String, dynamic>? ext;
 
-  if (type != 'image') {
-    // final hash = sha256.convert(bytes);
-
-    // ext ??= {};
-
-    // ext[type] ??= {};
-    // ext[type]['coverKey'] ??= key;
-
-    // more.add(bytes);
-
-    hasThumbnail = true;
-  }
-
-  // if (hasThumbnail || supportedImageExtensions.contains(extension)) {
   try {
     logger.verbose('upload-timestamp-process-image-9 ${DateTime.now()}');
-    final result = await ffi.api
-        .generateThumbnailForImageFile(imageType: type, path: imagePath);
-    // var image = img.decodeImage(bytes);
-
-    logger.verbose('upload-timestamp-process-image-20 ${DateTime.now()}');
-
-    ext ??= {};
-
-    if (!hasThumbnail) {
-      ext['image'] = {
-        'width': result.width,
-        'height': result.height,
-      };
-    }
 
 /*     final size = 384;
 
@@ -90,36 +52,33 @@ Future<List> processImage2(List list) async {
 
     // final hash = sha1.convert(thumbnailBytes);
 
-    // TODO Do EXIF stuff in Rust
-    final res = await deriveThumbnailKey(
-      result.bytes,
-      rootThumbnailSeed,
-    );
+    logger
+        .verbose('upload-timestamp-process-image-exif-start ${DateTime.now()}');
 
-    ext['thumbnail'] = {
-      'cid': res[0] as String,
-      'aspectRatio': (result.width / result.height) + 0.0,
-      // TODO Rust blurhash/thumbhash
-      // 'blurHash':null
-      /* BlurHash.encode(
-        thumbnail,
-        numCompX: 5, // TODO Aspect-ratio
-        numCompY: 5,
-      ).hash */
-    };
-    more.add(result.bytes);
-
-    more.add(res[1] as Uint8List);
+    int? exifImageOrientation;
 
     try {
-      if (!hasThumbnail) {
-        Map<String, IfdTag> data =
-            await readExifFromBytes(File(imagePath).readAsBytesSync());
+      if (type == 'image') {
+        final imageFile = File(imagePath);
+        Map<String, IfdTag> data = await readExifFromBytes(
+          await imageFile
+              .openRead(0, min(65536, imageFile.lengthSync()))
+              .fold<List<int>>(
+                  <int>[], (previous, element) => previous + element),
+        );
         if (data.isNotEmpty) {
+          ext ??= {};
+
           if (data.containsKey('Image DateTime')) {
             ext['exif'] ??= {};
             ext['exif']['DateTime'] = data['Image DateTime']!.printable;
           }
+
+          if (data.containsKey('Image Orientation')) {
+            exifImageOrientation =
+                data['Image Orientation']!.values.firstAsInt();
+          }
+
           if (data.containsKey('GPS GPSLatitude')) {
             final latRef = data['GPS GPSLatitudeRef']!;
             final isNorth = latRef.printable == 'N';
@@ -161,6 +120,38 @@ Future<List> processImage2(List list) async {
         }
       }
     } catch (e) {}
+
+    final result = await ffi.api.generateThumbnailForImageFile(
+      imageType: type,
+      path: imagePath,
+      exifImageOrientation: exifImageOrientation ?? 1,
+    );
+
+    logger.verbose('upload-timestamp-process-image-20 ${DateTime.now()}');
+
+    ext ??= {};
+
+    if (type == 'image') {
+      ext['image'] = {
+        'width': result.width,
+        'height': result.height,
+      };
+    }
+
+    final res = await deriveThumbnailKey(
+      result.bytes,
+      rootThumbnailSeed,
+    );
+
+    thumbnail = FileVersionThumbnail(
+      cid: res[0] as EncryptedCID,
+      aspectRatio: (result.width / result.height) + 0.0,
+      thumbhash: result.thumbhashBytes,
+    );
+
+    more.add(result.bytes);
+
+    more.add(res[1] as Uint8List);
   } catch (e, st) {
     logger.verbose(e);
     logger.verbose(st);
@@ -171,6 +162,7 @@ Future<List> processImage2(List list) async {
 
   return <dynamic>[
         json.encode(ext),
+        thumbnail,
       ] +
       more;
 }
@@ -222,7 +214,7 @@ Future<List> deriveThumbnailKey(
     encryptionAlgorithm: encryptionAlgorithmXChaCha20Poly1305,
   );
 
-  return ['${cid.toBase64Url()}.webp', cipherText];
+  return [cid, cipherText];
 }
 
 // base64url,         u,    rfc4648 no padding,                                           default

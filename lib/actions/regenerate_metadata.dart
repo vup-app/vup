@@ -69,9 +69,10 @@ class RegenerateMetadataVupAction extends VupFSAction {
           metadataOnly: true,
         );
         logger.verbose(fileData);
-        await storageService.dac.updateFileExtensionData(
+        await storageService.dac.updateFileExtensionDataAndThumbnail(
           file.uri!,
           fileData!.ext,
+          fileData.thumbnail,
         );
 
         /*   storageService.dac

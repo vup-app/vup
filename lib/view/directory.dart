@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:contextmenu/contextmenu.dart';
 import 'package:draggable_scrollbar/draggable_scrollbar.dart';
@@ -100,6 +101,12 @@ class _DirectoryViewState extends State<DirectoryView> {
         _calculateSizes();
       }
     });
+
+    storageService.dac.listenForDirectoryChanges(
+      storageService.dac.parsePath(
+        widget.pathNotifier.value.join('/'),
+      ),
+    );
 
     if (uri == 'skyfs://root/vup.hns/.internal/active-files') {
       // TODO This doesn't really work yet
@@ -600,52 +607,130 @@ class _DirectoryViewState extends State<DirectoryView> {
         (previousValue, element) =>
             previousValue + (element.file.cid.size ?? 0),
       );
-      final BoxScrollView contentView;
+      final Function contentViewBuilder;
+
+      final groups = <String, List<dynamic>>{};
+      List<String>? groupTags;
+
+      if (zoomLevel.type == ZoomLevelType.mosaic) {
+        for (final entity in entities) {
+          String groupTag = '';
+          if (entity is FileReference) {
+            final String? dateTime = entity.ext?['exif']?['DateTime'];
+            if (dateTime != null) {
+              groupTag = dateTime.split(':').first;
+            }
+          } else {}
+          groups[groupTag] ??= [];
+          groups[groupTag]!.add(entity);
+        }
+        groupTags = groups.keys.toList();
+        groupTags.remove('');
+        groupTags.sort((a, b) => -a.compareTo(b));
+        if (groups.containsKey('')) {
+          groupTags.insert(0, '');
+        }
+      }
+      double maxHeight = zoomLevel.sizeValue * 300;
+
       if (zoomLevel.type == ZoomLevelType.list) {
-        contentView = ListView.builder(
-          controller: widget.viewState.scrollCtrl,
-          itemCount: entities.length,
-          itemBuilder: (context, index) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Theme.of(context).dividerColor,
-                        width: 1,
+        contentViewBuilder = () => ListView.builder(
+              controller: widget.viewState.scrollCtrl,
+              itemCount: entities.length,
+              itemBuilder: (context, index) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Theme.of(context).dividerColor,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: FileSystemEntityWidget(
+                        entities[index],
+                        pathNotifier: widget.pathNotifier,
+                        viewState: widget.viewState,
                       ),
                     ),
-                  ),
+                  ],
+                );
+              },
+            );
+      } else if (zoomLevel.type == ZoomLevelType.mosaic) {
+        contentViewBuilder = (rows) => ListView.builder(
+              itemCount: rows.length,
+              itemBuilder: (context, index) {
+                final item = rows[index];
+                if (item is MosaicTitleRow) {
+                  return Stack(
+                    children: [
+                      for (final title in item.titles)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top: zoomLevel.sizeValue * 52,
+                            left: title.offset + zoomLevel.sizeValue * 16,
+                            bottom: zoomLevel.sizeValue * 16,
+                          ),
+                          child: Text(
+                            title.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: zoomLevel.sizeValue * 52,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                } else if (item is MosaicRow) {
+                  return SizedBox(
+                    height: max(item.height, maxHeight),
+                    child: Row(
+                      children: [
+                        for (final entity in item.parts)
+                          entity.entity == null
+                              ? SizedBox(width: entity.width)
+                              : SizedBox(
+                                  width: entity.width,
+                                  child: Padding(
+                                    // TODO Configure padding
+                                    padding: const EdgeInsets.all(
+                                      1,
+                                    ),
+                                    child: FileSystemEntityWidget(
+                                      entity.entity,
+                                      pathNotifier: widget.pathNotifier,
+                                      viewState: widget.viewState,
+                                    ),
+                                  ),
+                                ),
+                      ],
+                    ),
+                  );
+                }
+              },
+            );
+      } else {
+        contentViewBuilder = () => GridView.builder(
+              controller: widget.viewState.scrollCtrl,
+              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: zoomLevel.gridSize,
+              ),
+              itemCount: entities.length,
+              itemBuilder: (context, index) {
+                return SizedBox(
+                  // width: double.infinity,
                   child: FileSystemEntityWidget(
                     entities[index],
                     pathNotifier: widget.pathNotifier,
                     viewState: widget.viewState,
                   ),
-                ),
-              ],
+                );
+              },
             );
-          },
-        );
-      } else {
-        contentView = GridView.builder(
-          controller: widget.viewState.scrollCtrl,
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: zoomLevel.gridSize,
-          ),
-          itemCount: entities.length,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              // width: double.infinity,
-              child: FileSystemEntityWidget(
-                entities[index],
-                pathNotifier: widget.pathNotifier,
-                viewState: widget.viewState,
-              ),
-            );
-          },
-        );
       }
 
       final footerStr = renderFileSystemEntityCount(
@@ -678,16 +763,103 @@ class _DirectoryViewState extends State<DirectoryView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: ((Platform.isAndroid || Platform.isIOS) &&
-                        entities.length > 100)
-                    ? DraggableScrollbar.semicircle(
-                        controller: widget.viewState.scrollCtrl,
-                        child: contentView,
+                child: zoomLevel.type == ZoomLevelType.mosaic
+                    ? LayoutBuilder(
+                        builder: (p0, cons) {
+                          final width = cons.maxWidth;
+                          final rows = <dynamic>[];
+
+                          var currentTitleRow = MosaicTitleRow();
+                          var currentRow = MosaicRow();
+                          rows.add(currentTitleRow);
+
+                          void adjustCurrentRowWidth() {
+                            final currentWidth = currentRow.parts
+                                .fold<double>(0.0, (p, e) => p + e.width);
+
+                            final ratio = width / currentWidth;
+
+                            currentRow.parts.forEach((element) {
+                              element.width *= ratio;
+                            });
+
+                            currentRow.height = maxHeight * ratio;
+                            currentTitleRow.titles.forEach((element) {
+                              element.offset *= ratio;
+                            });
+                          }
+
+                          bool isInFirstRow = true;
+
+                          for (final tag in groupTags!) {
+                            currentTitleRow.titles.add(MosaicTitle(tag));
+
+                            if (currentRow.parts.isNotEmpty) {
+                              currentRow.parts.add(MosaicPart(maxHeight * 0.4));
+                              currentTitleRow.titles.last.offset =
+                                  currentRow.parts.fold<double>(
+                                0.0,
+                                (p, e) => p + e.width,
+                              );
+                            }
+
+                            for (final entity in groups[tag]!) {
+                              final aspectRatio = entity is FileReference
+                                  ? (entity.file.thumbnail?.aspectRatio ?? 1)
+                                  : 1;
+                              currentRow.parts.add(MosaicPart(
+                                maxHeight * aspectRatio,
+                                entity: entity,
+                              ));
+                              if (currentRow.parts.fold<double>(
+                                      0.0, (p, e) => p + e.width) >
+                                  width) {
+                                currentRow.parts.removeLast();
+
+                                adjustCurrentRowWidth();
+
+                                rows.add(currentRow);
+                                currentRow = MosaicRow();
+                                currentRow.parts.add(MosaicPart(
+                                  maxHeight * aspectRatio,
+                                  entity: entity,
+                                ));
+                                isInFirstRow = false;
+                              }
+                            }
+
+                            final currentWidth = currentRow.parts
+                                .fold<double>(0.0, (p, e) => p + e.width);
+
+                            if (!isInFirstRow || currentWidth > (width * 0.5)) {
+                              if (currentWidth > (width * 0.5)) {
+                                adjustCurrentRowWidth();
+                              } else {}
+
+                              rows.add(currentRow);
+                              currentRow = MosaicRow();
+                              currentTitleRow = MosaicTitleRow();
+                              rows.add(currentTitleRow);
+                              isInFirstRow = true;
+                            }
+                          }
+                          return DraggableScrollbar.semicircle(
+                            controller: widget.viewState.scrollCtrl,
+                            child: contentViewBuilder(rows),
+                          );
+                        },
                       )
-                    : Scrollbar(
-                        controller: widget.viewState.scrollCtrl,
-                        child: contentView,
-                      ),
+                    : ((Platform.isAndroid || Platform.isIOS) &&
+                            entities.length > 100 &&
+                            zoomLevel.type != ZoomLevelType.mosaic)
+                        ? DraggableScrollbar.semicircle(
+                            controller: widget.viewState.scrollCtrl,
+                            child: contentViewBuilder(),
+                          )
+                        : Scrollbar(
+                            controller: widget.viewState.scrollCtrl,
+                            child: contentViewBuilder(),
+                          ),
               ),
               if (widget.pathNotifier.isInSelectionMode) ...[
                 Divider(
@@ -883,7 +1055,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Icon(
-                              UniconsLine.list_ul,
+                              UniconsLine.bars,
                               color: zoomLevel.type == ZoomLevelType.list
                                   ? Theme.of(context).primaryColor
                                   : null,
@@ -901,7 +1073,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Icon(
-                              UniconsLine.table,
+                              UniconsLine.apps,
                               color: zoomLevel.type == ZoomLevelType.grid
                                   ? Theme.of(context).primaryColor
                                   : null,
@@ -921,6 +1093,24 @@ class _DirectoryViewState extends State<DirectoryView> {
                             child: Icon(
                               UniconsSolid.apps,
                               color: zoomLevel.type == ZoomLevelType.gridCover
+                                  ? Theme.of(context).primaryColor
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              zoomLevel.sizeValue = 0.3;
+                              zoomLevel.type = ZoomLevelType.mosaic;
+                            });
+                            widget.viewState.save();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(
+                              UniconsSolid.grid,
+                              color: zoomLevel.type == ZoomLevelType.mosaic
                                   ? Theme.of(context).primaryColor
                                   : null,
                             ),
@@ -971,4 +1161,26 @@ class _DirectoryViewState extends State<DirectoryView> {
       // }
     }
   }
+}
+
+class MosaicTitleRow {
+  List<MosaicTitle> titles = [];
+}
+
+class MosaicTitle {
+  double offset = 0;
+  String title;
+
+  MosaicTitle(this.title);
+}
+
+class MosaicRow {
+  double height = 0;
+  List<MosaicPart> parts = [];
+}
+
+class MosaicPart {
+  double width;
+  final dynamic entity;
+  MosaicPart(this.width, {this.entity});
 }

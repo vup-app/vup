@@ -79,6 +79,7 @@ fn wire_generate_thumbnail_for_image_file_impl(
     port_: MessagePort,
     image_type: impl Wire2Api<String> + UnwindSafe,
     path: impl Wire2Api<String> + UnwindSafe,
+    exif_image_orientation: impl Wire2Api<u8> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -89,7 +90,14 @@ fn wire_generate_thumbnail_for_image_file_impl(
         move || {
             let api_image_type = image_type.wire2api();
             let api_path = path.wire2api();
-            move |task_callback| generate_thumbnail_for_image_file(api_image_type, api_path)
+            let api_exif_image_orientation = exif_image_orientation.wire2api();
+            move |task_callback| {
+                generate_thumbnail_for_image_file(
+                    api_image_type,
+                    api_path,
+                    api_exif_image_orientation,
+                )
+            }
         },
     )
 }
@@ -286,6 +294,7 @@ impl support::IntoDart for ThumbnailResponse {
     fn into_dart(self) -> support::DartAbi {
         vec![
             self.bytes.into_dart(),
+            self.thumbhash_bytes.into_dart(),
             self.width.into_dart(),
             self.height.into_dart(),
         ]

@@ -208,9 +208,11 @@ class MySkyService extends VupService {
 
       await storageService.onAuth();
 
-      // TODO Maybe not await
       await storageService.dac.onUserLogin();
-      await storageService.dac.getDirectoryMetadata('');
+
+      if (storageService.dac.getDirectoryMetadataCached('') == null) {
+        await storageService.dac.getDirectoryMetadata('');
+      }
 
       isLoggedIn.value = true;
       registerDeviceId();

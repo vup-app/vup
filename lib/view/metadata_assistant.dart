@@ -128,11 +128,12 @@ class _MetadataAssistantState extends State<MetadataAssistant> {
     };
     mediaMap['id'] = id;
 
-    await storageService.dac.updateFileExtensionData(
+    await storageService.dac.updateFileExtensionDataAndThumbnail(
       widget.uri + '/' + metaFileName,
       {
         'media': mediaMap,
       },
+      null,
     );
     // Series
   }
