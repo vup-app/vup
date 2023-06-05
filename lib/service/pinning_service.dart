@@ -1,8 +1,10 @@
 import 'package:lib5/lib5.dart';
+import 'package:s5_server/store/pixeldrain.dart';
+import 'package:s5_server/store/sia.dart';
 import 'package:vup/generic/state.dart';
 import 'package:lib5/storage_service.dart';
 import 'package:vup/service/base.dart';
-import 'package:messagepack/messagepack.dart';
+import 'package:s5_msgpack/s5_msgpack.dart';
 
 class PinningService extends VupService {
   void start() {
@@ -25,6 +27,23 @@ class PinningService extends VupService {
     for (final authority in portalPins.keys) {
       if (portalPins[authority]!.contains(hash)) {
         pins.add(authority);
+      }
+    }
+    if (s5Node.store != null) {
+      // TODO This is a workaround, fix!
+      final name = s5Node.store.runtimeType.toString();
+      final remoteName = name.substring(0, name.length - 11);
+
+      if (s5Node.store is PixeldrainObjectStore) {
+        if ((s5Node.store as PixeldrainObjectStore)
+            .availableHashes
+            .containsKey(hash)) {
+          pins.add(remoteName);
+        }
+      } else if (s5Node.store is SiaObjectStore) {
+        if ((s5Node.store as SiaObjectStore).availableHashes.contains(hash)) {
+          pins.add(remoteName);
+        }
       }
     }
     return pins;
@@ -68,7 +87,7 @@ class PinningService extends VupService {
 
         // portalStats[pc.authority] = stats;
       } catch (e, st) {
-        warning(e);
+        warning('${pc.authority}: $e');
         verbose(st);
       }
     }

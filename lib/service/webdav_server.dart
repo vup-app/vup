@@ -105,6 +105,7 @@ class WebDavServerService extends VupService {
 
         verbose('path $path');
 
+        // TODO Fix quota info
         if (props?.contains('quota-available-bytes') ?? false) {
           return '''<?xml version="1.0" encoding="UTF-8"?>
 <d:multistatus
@@ -118,9 +119,9 @@ class WebDavServerService extends VupService {
         <d:resourcetype>
           <d:collection/>
         </d:resourcetype>
-        <d:quota-used-bytes>${quotaService.usedBytes}</d:quota-used-bytes>
-        <d:quota-available-bytes>${quotaService.totalBytes}</d:quota-available-bytes>
-        <d:getetag>&quot;${quotaService.usedBytes.toString()}&quot;</d:getetag>
+        <d:quota-used-bytes>1000000</d:quota-used-bytes>
+        <d:quota-available-bytes>1000000000000</d:quota-available-bytes>
+        <d:getetag>&quot;none&quot;</d:getetag>
       </d:prop>
       <d:status>HTTP/1.1 200 OK</d:status>
     </d:propstat>
@@ -384,13 +385,21 @@ class WebDavServerService extends VupService {
         await sink.flush();
         await sink.close();
 
-        final dirIndex = storageService.dac.getDirectoryMetadataCached(
-              // TODO Check if this is ok
-              parsed.directoryPath,
-            ) ??
-            (await storageService.dac.getDirectoryMetadata(
-              parsed.directoryPath,
-            ));
+        final DirectoryMetadata dirIndex;
+
+        try {
+          dirIndex = storageService.dac.getDirectoryMetadataCached(
+                // TODO Check if this is ok
+                parsed.directoryPath,
+              ) ??
+              (await storageService.dac.getDirectoryMetadata(
+                parsed.directoryPath,
+              ));
+        } catch (e, st) {
+          // TODO Create recursive
+          rethrow;
+          // await storageService.dac.createDirectory(path, name)
+        }
 
         final fileData = await storageService.startFileUploadingTask(
             parsed.directoryPath, cacheFile,
@@ -415,6 +424,20 @@ class WebDavServerService extends VupService {
         final pathSegments = req.requestedUri.pathSegments
             .where((element) => element.isNotEmpty)
             .toList();
+
+        final parsed = storageService.dac.parseFilePath(pathSegments.join('/'));
+
+        final dirIndex = storageService.dac.getDirectoryMetadataCached(
+              parsed.directoryPath,
+            ) ??
+            await storageService.dac.getDirectoryMetadata(
+              parsed.directoryPath,
+            );
+
+        if (dirIndex.directories.containsKey(parsed.fileName)) {
+          res.statusCode = HttpStatus.ok;
+          return '';
+        }
 
         await storageService.dac.createDirectory(
           pathSegments.sublist(0, pathSegments.length - 1).join('/'),

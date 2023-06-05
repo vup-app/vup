@@ -43,7 +43,7 @@ class _SetupSyncDialogState extends State<SetupSyncDialog> {
     final androidInfo = await DeviceInfoPlugin().androidInfo;
 
     // TODO Check if 30 is correct
-    isAndroid10 = (androidInfo.version.sdkInt ?? 100) >= 30;
+    isAndroid10 = androidInfo.version.sdkInt >= 30;
 
     if (isAndroid10) {
       Permission.manageExternalStorage.isGranted.then((value) {
@@ -100,7 +100,7 @@ class _SetupSyncDialogState extends State<SetupSyncDialog> {
             onTap: () async {
               late final String? filePath;
               // FilePicker.platform.sa
-              if (Platform.isAndroid) {
+              if (Platform.isAndroid || Platform.isIOS) {
                 filePath = await FilePicker.platform.getDirectoryPath();
               } else {
                 filePath = await file_selector.getDirectoryPath();

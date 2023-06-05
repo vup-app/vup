@@ -1,7 +1,8 @@
 import 'package:vup/generic/state.dart';
+import 'package:vup/service/jellyfin_server/id.dart';
 
-String generateStatisticsPage(Map<String, Map> allItems) {
-  final artists = <String, int>{};
+String generateStatisticsPage(Map<JellyID, Map> allItems) {
+  final artists = <JellyID, int>{};
 
   for (final key in activityService.playCounts.keys) {
     final item = allItems[key];

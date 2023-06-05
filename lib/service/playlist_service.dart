@@ -1,11 +1,17 @@
+import 'package:convert/convert.dart';
 import 'package:hive/hive.dart';
 import 'package:pool/pool.dart';
 import 'package:uuid/uuid.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/library/state.dart';
 import 'package:vup/service/base.dart';
 
+import 'package:vup/service/jellyfin_server/id.dart';
+
 const playlistsPath = 'vup.hns/playlists/all.json';
+
+// TODO Do not use JSON?
 
 class PlaylistService extends VupService with CustomState {
   late final Box<Map> playlists;
@@ -15,7 +21,7 @@ class PlaylistService extends VupService with CustomState {
   Future<void> init() async {
     playlists = await Hive.openBox('playlists');
     if (!playlists.containsKey('favorites')) {
-      createPlaylist('Audio', 'Favorites', customId: 'favorites');
+      createPlaylist('Audio', 'Favorites', customId: JellyID.hash('favorites'));
     }
     syncPool.withResource(() => syncPlaylists());
 
@@ -24,9 +30,9 @@ class PlaylistService extends VupService with CustomState {
     });
   }
 
-  void savePlaylist(String id, Map playlist) {
+  void savePlaylist(JellyID id, Map playlist) {
     playlist['modified'] = DateTime.now().millisecondsSinceEpoch;
-    playlists.put(id, playlist);
+    playlists.put(id.toString(), playlist);
     // final str = json.encode(id);
     syncPool.withResource(() => syncPlaylists());
   }
@@ -86,12 +92,13 @@ class PlaylistService extends VupService with CustomState {
     info('< syncPlaylists');
   }
 
-  String createPlaylist(String mediaType, String name, {String? customId}) {
-    final id = customId ?? Uuid().v4().replaceAll('-', '');
+  JellyID createPlaylist(String mediaType, String name, {JellyID? customId}) {
+    final id = customId ?? JellyID.fromHex(Uuid().v4().replaceAll('-', ''));
+
     final ts = DateTime.now().millisecondsSinceEpoch;
 
     savePlaylist(id, {
-      'id': id,
+      'id': id.toString(),
       'name': name,
       'overview': '',
       'mediaType': mediaType,
@@ -103,7 +110,7 @@ class PlaylistService extends VupService with CustomState {
     return id;
   }
 
-  void updatePlaylist(String id, Map changes) {
+  void updatePlaylist(JellyID id, Map changes) {
     final p = playlists.get(id)!;
     for (final key in changes.keys) {
       p[key] = changes[key];
@@ -112,9 +119,9 @@ class PlaylistService extends VupService with CustomState {
     $();
   }
 
-  void deletePlaylist(String id) {
+  void deletePlaylist(JellyID id) {
     final p = {
-      'id': id,
+      'id': id.toString(),
       'modified': 0,
       'deleted': true,
     };
@@ -124,8 +131,8 @@ class PlaylistService extends VupService with CustomState {
     $();
   }
 
-  void addItemsToPlaylist(String playlistId, List<String> ids) {
-    final p = playlists.get(playlistId)!;
+  void addItemsToPlaylist(JellyID playlistId, List<Multihash> ids) {
+    final p = playlists.get(playlistId.toString())!;
     for (final id in ids) {
       p['items'].add({'id': id});
     }
@@ -133,18 +140,21 @@ class PlaylistService extends VupService with CustomState {
     $();
   }
 
-  void removeItemsFromPlaylist(String playlistId, List<String> ids) {
-    final p = playlists.get(playlistId)!;
-    p['items'].removeWhere((i) => ids.contains(i['id']));
+  void removeItemsFromPlaylist(JellyID playlistId, List<Multihash> ids) {
+    final b64Ids = ids.map((e) => e.toBase64Url());
+
+    final p = playlists.get(playlistId.toString())!;
+    p['items'].removeWhere((i) => b64Ids.contains(i['id']));
 
     savePlaylist(playlistId, p);
     $();
   }
 
-  bool isItemOnPlaylist(String playlistId, String? id) {
+  bool isItemOnPlaylist(String playlistId, Multihash? id) {
+    return false;
     final p = playlists.get(playlistId)!;
     for (final item in p['items']) {
-      if (item['id'] == id) return true;
+      if (item['id'] == id?.toBase64Url()) return true;
     }
     return false;
   }

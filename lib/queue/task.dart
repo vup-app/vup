@@ -3,4 +3,6 @@ abstract class QueueTask {
   List<String> get dependencies;
   Future<void> execute();
   double get progress;
+
+  String get threadPool;
 }

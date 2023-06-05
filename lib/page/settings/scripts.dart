@@ -152,7 +152,7 @@ class _ScriptsSettingsPageState extends State<ScriptsSettingsPage> {
         onPressed: () {
           setState(() {
             scripts.add({
-              "name": "Download Skynet YT Videos :)",
+              "name": "Download IPFS videos",
               "id": Uuid().v4(),
               "devices": [dataBox.get('deviceId')],
               /*   "trigger": {
@@ -171,10 +171,9 @@ class _ScriptsSettingsPageState extends State<ScriptsSettingsPage> {
                 {
                   "type": "yt_dl",
                   "config": {
-                    "url":
-                        "https://www.youtube.com/playlist?list=PLPv00ttW4uXPFBidbogIAVe0HdOBDqZeB",
+                    "url": "https://www.youtube.com/@IPFSbot/videos",
                     "format": "mp4",
-                    "targetURI": "skyfs://root/home/Videos/Skynet"
+                    "targetURI": "skyfs://root/home/Videos/IPFS"
                   }
                 }
               ]

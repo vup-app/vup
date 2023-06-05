@@ -8,8 +8,8 @@
   <name>Vup Cloud Storage</name>
   <summary>Open-source end-to-end-encrypted cloud storage app with integrated media server</summary>
   <developer_name>redsolver</developer_name>
-  <url type="homepage">https://github.com/redsolver/vup</url>
-  <metadata_license>CC0-1.0</metadata_license>
+  <url type="homepage">https://vup.app</url>
+  <metadata_license>CC-BY-4.0</metadata_license>
   <project_license>EUPL-1.2-or-later</project_license>
   <supports>
     <control>pointing</control>
@@ -27,6 +27,7 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
-    <release version="0.13.3 BETA" date="2023-04-4" />
+    <release version="0.14.0 BETA" date="2023-06-05" />
+    <release version="0.13.3 BETA" date="2023-04-04" />
   </releases>
 </component>

@@ -24,7 +24,7 @@ class _WebServerSettingsPageState extends State<WebServerSettingsPage> {
           value: isWebServerEnabled,
           title: Text('Web Server enabled'),
           subtitle: Text(
-            'When enabled, a HTTP server is started with directory listing and file downloading support. Warning: Anyone on your local network can access the web server',
+            'When enabled, a HTTP server with directory listing and file streaming support is started',
           ),
           onChanged: (val) async {
             dataBox.put('web_server_enabled', val!);

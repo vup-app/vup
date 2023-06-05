@@ -21,7 +21,7 @@ class YTDLVupAction extends VupFSAction {
 
     if (isYTDlIntegrationEnabled) {
       return VupFSActionInstance(
-        label: 'YT-DL',
+        label: 'Media DL',
         icon: UniconsLine.image_download,
       );
     }

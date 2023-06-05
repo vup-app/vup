@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:open_file/open_file.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vup/app.dart';
@@ -41,34 +43,34 @@ class _SettingsPageState extends State<SettingsPage> {
       build: () => UISettingsPage(),
     ),
     SettingsPane(
-      title: 'Portal Auth',
+      title: 'Storage Services',
       build: () => PortalAuthSettingsPage(),
+    ),
+    SettingsPane(
+      title: 'Jellyfin Server',
+      build: () => JellyfinServerSettingsPage(),
+    ),
+    SettingsPane(
+      title: 'WebDAV Server',
+      build: () => WebDavSettingsPage(),
+    ),
+    SettingsPane(
+      title: 'Web Server',
+      build: () => WebServerSettingsPage(),
     ),
     SettingsPane(
       title: 'Devices',
       build: () => DevicesSettingsPage(),
     ),
     SettingsPane(
-      title: 'Custom themes',
+      title: 'Custom Themes',
       build: () => CustomThemesSettingsPage(),
-    ),
-    SettingsPane(
-      title: 'Web Server',
-      build: () => WebServerSettingsPage(),
-    ),
-    /* SettingsPane(
-      title: 'Jellyfin Server',
-      build: () => JellyfinServerSettingsPage(),
-    ), */
-    SettingsPane(
-      title: 'WebDAV Server',
-      build: () => WebDavSettingsPage(),
     ),
     SettingsPane(
       title: 'Manage Cache',
       build: () => CacheSettingsPage(),
     ),
-    if (devModeEnabled) ...[
+/*     if (devModeEnabled) ...[
       SettingsPane(
         title: 'Edit mounts.json',
         build: () => MountsSettingsPage(),
@@ -77,7 +79,7 @@ class _SettingsPageState extends State<SettingsPage> {
         title: 'Edit remotes.json',
         build: () => RemotesSettingsPage(),
       ),
-    ],
+    ], */
     SettingsPane(
       title: 'Advanced',
       build: () => AdvancedSettingsPage(),
@@ -104,27 +106,24 @@ class _SettingsPageState extends State<SettingsPage> {
     final listView = ListView(
       controller: _scrollCtrl,
       padding: const EdgeInsets.only(
-        top: 16,
+        top: 8,
       ),
       children: [
-        Column(
-          children: [
-            Text(
-              'Theme',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(
-              height: 6,
-            ),
-            ThemeSwitch(),
-          ],
-        ),
+        ThemeSwitch(),
         Divider(),
         for (final pane in panes)
           ListTile(
-            title: Text(pane.title),
+            title: Text(
+              pane.title,
+              style: TextStyle(
+                fontWeight: currentPaneTitle == pane.title
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+                color: currentPaneTitle == pane.title
+                    ? Theme.of(context).colorScheme.secondary
+                    : null,
+              ),
+            ),
             trailing: Icon(Icons.arrow_forward),
             selected: currentPaneTitle == pane.title,
             onTap: context.isMobile
@@ -154,7 +153,7 @@ class _SettingsPageState extends State<SettingsPage> {
           onTap: () {
             showAboutDialog(
               applicationLegalese:
-                  'Copyright © 2022 redsolver. Licensed under the terms of the EUPL-1.2 license.',
+                  'Copyright © 2023 redsolver. Licensed under the terms of the EUPL-1.2 license.',
               applicationName: 'Vup',
               applicationVersion: packageInfo.version,
               context: context,
@@ -233,19 +232,23 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
       ),
-      body: context.isMobile
-          ? listView
-          : Row(
-              children: [
-                SizedBox(
-                  width: 400,
-                  child: listView,
-                ),
-                Expanded(
-                  child: currentPaneChild,
-                )
-              ],
-            ),
+      body: LayoutBuilder(builder: (context, cons) {
+        if (isMobile) {
+          return listView;
+        } else {
+          return Row(
+            children: [
+              SizedBox(
+                width: min(400, cons.maxWidth * 0.4),
+                child: listView,
+              ),
+              Expanded(
+                child: currentPaneChild,
+              )
+            ],
+          );
+        }
+      }),
     );
   }
 }

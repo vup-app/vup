@@ -6,6 +6,11 @@ class QueueService {
   final tasks = <String, QueueTask>{};
   final runningTasks = <String, QueueTask>{};
 
+  final threadPools = <String, int>{
+    'sync': 8,
+    'mdl': 8,
+  };
+
   // final finishedTaskIds = <String>{};
 
   final _triggerPool = Pool(1);
@@ -24,23 +29,34 @@ class QueueService {
   }
 
   Future<void> _triggerCheck() async {
-    while (runningTasks.length < 8) {
-      QueueTask? selectedTask;
-
-      for (final task in tasks.values) {
-        if (task.dependencies.where((d) => tasks.containsKey(d)).isEmpty &&
-            task.dependencies
-                .where((d) => runningTasks.containsKey(d))
-                .isEmpty) {
-          selectedTask = task;
-          break;
+    for (final pool in threadPools.keys) {
+      int usedThreads = 0;
+      for (final task in runningTasks.values) {
+        if (task.threadPool == pool) {
+          usedThreads++;
         }
       }
-      if (selectedTask != null) {
-        runningTasks[selectedTask.id] = tasks.remove(selectedTask.id)!;
-        _execute(selectedTask);
-      } else {
-        break;
+
+      while (usedThreads < 8) {
+        QueueTask? selectedTask;
+
+        for (final task in tasks.values) {
+          if (task.threadPool != pool) continue;
+          if (task.dependencies.where((d) => tasks.containsKey(d)).isEmpty &&
+              task.dependencies
+                  .where((d) => runningTasks.containsKey(d))
+                  .isEmpty) {
+            selectedTask = task;
+            break;
+          }
+        }
+        if (selectedTask != null) {
+          runningTasks[selectedTask.id] = tasks.remove(selectedTask.id)!;
+          usedThreads++;
+          _execute(selectedTask);
+        } else {
+          break;
+        }
       }
     }
   }

@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
 import 'package:random_string/random_string.dart';
 import 'package:s5_server/api.dart';
+import 'package:s5_server/store/create.dart';
 
 import 'package:simple_observable/simple_observable.dart';
 import 'package:stash_hive/stash_hive.dart';
@@ -65,12 +66,13 @@ class MySkyService extends VupService {
       res.revision,
     );
     await ensureAllEnabledPortalsHaveAuthTokens();
-    setupPortalAccounts();
+    await setupPortalAccounts();
   }
 
   Future<void> ensureAllEnabledPortalsHaveAuthTokens() async {
     final enabledPortals = portalAccounts['enabledPortals'];
     for (final ep in enabledPortals) {
+      if (ep == '_local') continue;
       final authToken = dataBox.get('portal_${ep}_auth_token');
 
       if (authToken == null) {
@@ -96,7 +98,7 @@ class MySkyService extends VupService {
 
           await dataBox.put('portal_${ep}_auth_token', res);
         } catch (e, st) {
-          logger.verbose(e);
+          logger.verbose('$ep: $e');
           logger.verbose(st);
         }
       }
@@ -117,7 +119,7 @@ class MySkyService extends VupService {
     await loadPortalAccounts();
   }
 
-  void setupPortalAccounts() {
+  Future<void> setupPortalAccounts() async {
     if (!dataBox.containsKey('portal_accounts')) {
       return;
     }
@@ -129,11 +131,30 @@ class MySkyService extends VupService {
 
     for (final u in uploadPortalOrder) {
       logger.verbose('setupPortalAccounts1 $u');
+      if (u == '_local') {
+        if (s5Node.store == null) {
+          final stores = createStoresFromConfig(
+            portalAccounts['_local'],
+            httpClient: mySky.httpClient,
+            node: s5Node,
+          );
+          s5Node.store = stores.values.first;
+          await s5Node.store!.init();
+          // TODO Configurable
+          s5Node.exposeStore = true;
+        }
+        continue;
+      }
+      if (!portalAccounts['portals'].containsKey(u)) {
+        logger.error('No account on portal "$u"');
+        continue;
+      }
       final portal = portalAccounts['portals'][u]!;
       final authToken = dataBox.get('portal_${u}_auth_token');
 
       if (authToken == null) {
         // TODO Throw error
+        logger.warning('No auth token for portal "$u"');
         continue;
       }
       logger.verbose('setupPortalAccounts2 $u');
@@ -151,6 +172,7 @@ class MySkyService extends VupService {
 
       api.storageServiceConfigs.add(pc);
     }
+
     logger.verbose('setupPortalAccounts done');
 
     for (final uc in storageServiceConfigs) {
@@ -194,7 +216,7 @@ class MySkyService extends VupService {
 
     if (authPayload != null) {
       info('autoLogin done');
-      setupPortalAccounts();
+      await setupPortalAccounts();
 
       identity = S5UserIdentity.unpack(
         base64UrlNoPaddingDecode(authPayload),

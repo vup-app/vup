@@ -2,45 +2,6 @@ use super::*;
 // Section: wire functions
 
 #[no_mangle]
-pub extern "C" fn wire_encrypt_file_xchacha20(
-    port_: i64,
-    input_file_path: *mut wire_uint_8_list,
-    output_file_path: *mut wire_uint_8_list,
-    padding: usize,
-) {
-    wire_encrypt_file_xchacha20_impl(port_, input_file_path, output_file_path, padding)
-}
-
-#[no_mangle]
-pub extern "C" fn wire_decrypt_file_xchacha20(
-    port_: i64,
-    input_file_path: *mut wire_uint_8_list,
-    output_file_path: *mut wire_uint_8_list,
-    key: *mut wire_uint_8_list,
-    padding: usize,
-    last_chunk_index: u32,
-) {
-    wire_decrypt_file_xchacha20_impl(
-        port_,
-        input_file_path,
-        output_file_path,
-        key,
-        padding,
-        last_chunk_index,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn wire_generate_thumbnail_for_image_file(
-    port_: i64,
-    image_type: *mut wire_uint_8_list,
-    path: *mut wire_uint_8_list,
-    exif_image_orientation: u8,
-) {
-    wire_generate_thumbnail_for_image_file_impl(port_, image_type, path, exif_image_orientation)
-}
-
-#[no_mangle]
 pub extern "C" fn wire_encrypt_xchacha20poly1305(
     port_: i64,
     key: *mut wire_uint_8_list,
@@ -126,7 +87,6 @@ impl Wire2Api<Vec<u8>> for *mut wire_uint_8_list {
         }
     }
 }
-
 // Section: wire structs
 
 #[repr(C)]

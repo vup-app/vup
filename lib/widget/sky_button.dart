@@ -62,6 +62,7 @@ class SkyButton extends StatelessWidget {
                 label ?? '',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onPrimary,
                 ),
               ),
         ),

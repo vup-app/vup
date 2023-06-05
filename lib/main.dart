@@ -141,6 +141,7 @@ Future<void> initApp() async {
     vupConfigDir,
     // 'default',
     's5-alpha-13',
+    // 'debug-2023-6',
     // 'debug-2023-2',
     // 'debug',
   );
@@ -169,9 +170,12 @@ Future<void> initApp() async {
   isAppWindowVisible = !isStartMinimizedEnabled;
 
   if (Settings.securityIsBiometricAuthenticationEnabled) {
-    await localAuth.authenticate(
+    final authRes = await localAuth.authenticate(
       localizedReason: 'Open Vup Cloud Storage',
     );
+    if (authRes != true) {
+      exit(0);
+    }
   }
 
   if ((Platform.isLinux || Platform.isWindows || Platform.isMacOS) &&
@@ -196,6 +200,7 @@ Future<void> initApp() async {
   }
 
   nativeRustApi = ffi.api;
+  nativeRustVupApi = ffi.apiVup;
 
   mySky.crypto = RustCryptoImplementation(nativeRustApi);
 
@@ -207,17 +212,21 @@ Future<void> initApp() async {
       "http": {
         "api": {
           "port": 5050,
-          /* "authorization": {
+          "authorization": {
             "bearer_tokens": [dataBox.get('s5_auth_token')]
-          }, */
-          "delete": {"enabled": false}
+          },
+          // "delete": {"enabled": false}
         }
+      },
+      'store': {
+        'expose': false,
       },
       "p2p": {
         "peers": {
           "initial": [
-            'tcp://z2DWuWNZcdSyZLpXFK2uCU3haaWMXrDAgxzv17sDEMHstZb@199.247.20.119:4444',
-            'tcp://z2DWuPbL5pweybXnEB618pMnV58ECj2VPDNfVGm3tFqBvjF@116.203.139.40:4444',
+            'wss://z2DWuWNZcdSyZLpXFK2uCU3haaWMXrDAgxzv17sDEMHstZb@s5.garden/s5/p2p',
+            'wss://z2DWuPbL5pweybXnEB618pMnV58ECj2VPDNfVGm3tFqBvjF@s5.ninja/s5/p2p',
+            // 'tcp://z2DTBhF1giEHXD9HLwSNDpDw1QCe94E3jGtvt3Z9BDvhx5J@localhost:12314',
           ]
         }
       }
@@ -431,6 +440,7 @@ void main(List<String> args) async {
   logger.verbose('Entering new error zone...');
 
   runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
     logger.verbose('Setting up sync tasks and watchers...');
     storageService.setupSyncTasks();
     storageService.setupWatchers();
@@ -452,7 +462,7 @@ void main(List<String> args) async {
     }
 
     if (isJellyfinServerEnabled) {
-      /*  try {
+      try {
         jellyfinServerService.start(
           jellyfinServerPort,
           jellyfinServerBindIp,
@@ -461,7 +471,7 @@ void main(List<String> args) async {
         );
       } catch (e, st) {
         logger.error('$e $st');
-      } */
+      }
     }
 
     // skynetKernelServerService.start(42424, '127.0.0.1');
@@ -773,6 +783,7 @@ class _HomePageState extends State<HomePage> with TrayListener {
                         showLoadingDialog(context, 'Moving $entityStr...');
                         final futures = <Future>[];
 
+                        // TODO Use moveMultipleFiles
                         for (final uri in fileUris) {
                           futures.add(
                             storageService.dac.moveFile(
@@ -916,6 +927,36 @@ class _HomePageState extends State<HomePage> with TrayListener {
                     ],
                   ),
                 ),
+          // TODO Implement BottomNavigationBar
+          bottomNavigationBar: (!context.isMobile || true)
+              ? null
+              : BottomNavigationBar(
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(UniconsLine.home),
+                      label: // TODO The Start area should have a giant search bar and button
+                          'Start/Shared/recent', // ! shared by me, with me and recently opened files
+                      // ! this area is SMART and should be default, TODO move to first
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(UniconsLine.folder),
+                      label: 'Files', // ! normal file browser
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(UniconsLine.file_redo_alt), // TODO better icon
+                      label:
+                          'Task Queue/Sync manager', // ! shows current tasks, create and manage sync targets
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(
+                        UniconsLine.setting,
+                      ),
+                      label:
+                          'Settings', // ! Show settings in there, + show file usage header
+                    ),
+                  ],
+                  type: BottomNavigationBarType.fixed,
+                ),
           body: context.isMobile
               ? BrowseView(pathNotifier: appLayoutState.currentTab[0].state)
               : SafeArea(
@@ -943,43 +984,54 @@ class _HomePageState extends State<HomePage> with TrayListener {
                                 margin: const EdgeInsets.only(left: 1),
                                 child: Row(
                                   children: [
-                                    Expanded(
-                                        child: MoveWindow(
-                                      child: StreamBuilder<Null>(
-                                          stream: appLayoutState.stream,
-                                          builder: (context, snapshot) {
-                                            return /* Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 6.0,
-                                                ),
-                                                child: */
-                                                Row(
-                                              children: [
-                                                for (int i = 0;
-                                                    i <
-                                                        appLayoutState
-                                                            .tabs.length;
-                                                    i++)
-                                                  _buildTabIndicator(
-                                                      i, context),
-                                                InkWell(
-                                                  onTap: () {
-                                                    appLayoutState.createTab();
-                                                  },
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            4.0),
-                                                    child: Icon(
-                                                      UniconsLine.plus,
-                                                      size: 22,
+                                    Expanded(child: MoveWindow(
+                                      child: LayoutBuilder(
+                                          builder: (context, cons) {
+                                        return StreamBuilder<Null>(
+                                            stream: appLayoutState.stream,
+                                            builder: (context, snapshot) {
+                                              final expand = (196 *
+                                                          appLayoutState
+                                                              .tabs.length +
+                                                      50) >
+                                                  cons.maxWidth;
+                                              return /* Padding(
+                                                    padding: const EdgeInsets.only(
+                                                      top: 6.0,
+                                                    ),
+                                                    child: */
+                                                  Row(
+                                                children: [
+                                                  for (int i = 0;
+                                                      i <
+                                                          appLayoutState
+                                                              .tabs.length;
+                                                      i++)
+                                                    _buildTabIndicator(
+                                                      i,
+                                                      context,
+                                                      expand: expand,
+                                                    ),
+                                                  InkWell(
+                                                    onTap: () {
+                                                      appLayoutState
+                                                          .createTab();
+                                                    },
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              4.0),
+                                                      child: Icon(
+                                                        UniconsLine.plus,
+                                                        size: 22,
+                                                      ),
                                                     ),
                                                   ),
-                                                )
-                                              ],
-                                              /* ), */
-                                            );
-                                          }),
+                                                ],
+                                                /* ), */
+                                              );
+                                            });
+                                      }),
                                     )),
                                     WindowButtons(),
                                   ],
@@ -1031,14 +1083,15 @@ class _HomePageState extends State<HomePage> with TrayListener {
     );
   }
 
-  ClipRRect _buildTabIndicator(int i, BuildContext context) {
+  Widget _buildTabIndicator(int i, BuildContext context,
+      {required bool expand}) {
     final isSelected = i == appLayoutState.tabIndex;
     final borderRadius = BorderRadius.only(
 /*       topLeft: i == 0 ? Radius.zero : Radius.circular(16),
       topRight: Radius.circular(16), */
         );
     final tabState = appLayoutState.tabs[i][0].state;
-    return ClipRRect(
+    final child = ClipRRect(
       borderRadius: borderRadius,
       child: InkWell(
         borderRadius: borderRadius,
@@ -1063,38 +1116,43 @@ class _HomePageState extends State<HomePage> with TrayListener {
                   specialTitle = 'Shared directory';
                 }
                 return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Settings.tabsTitleShowFullPath
-                        ? SizedOverflowBox(
-                            size: Size(164, 30),
-                            alignment: Alignment.centerRight,
-                            child: Text('${tabState.path.join(' / ')}',
-                                style: isSelected
-                                    ? TextStyle(
-                                        color: Theme.of(context).primaryColor,
-                                        fontWeight: FontWeight.bold,
-                                      )
-                                    : TextStyle()),
+                        ? Padding(
+                            padding: const EdgeInsets.only(right: 2),
+                            child: SizedOverflowBox(
+                              size: Size(164, 30),
+                              alignment: Alignment.centerRight,
+                              child: Text('${tabState.path.join(' / ')}',
+                                  style: isSelected
+                                      ? TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .secondary,
+                                          fontWeight: FontWeight.bold,
+                                        )
+                                      : TextStyle()),
+                            ),
                           )
                         : Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
+                            padding: const EdgeInsets.only(left: 8.0, right: 2),
                             child: SizedBox(
-                              width: 156,
+                              width: expand ? null : 156,
                               child: Text(
                                   specialTitle ??
                                       '${tabState.path.isEmpty ? '/' : tabState.path.last}',
                                   maxLines: 1,
                                   style: isSelected
                                       ? TextStyle(
-                                          color: Theme.of(context).primaryColor,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .secondary,
                                           fontWeight: FontWeight.bold,
                                         )
                                       : TextStyle()),
                             ),
                           ),
-                    SizedBox(
-                      width: 2,
-                    ),
                     InkWell(
                       onTap: () {
                         appLayoutState.closeTab(i);
@@ -1107,7 +1165,7 @@ class _HomePageState extends State<HomePage> with TrayListener {
                           UniconsLine.times,
                           size: 20,
                           color: isSelected
-                              ? Theme.of(context).primaryColor
+                              ? Theme.of(context).colorScheme.secondary
                               : null,
                         ),
                       ),
@@ -1118,6 +1176,11 @@ class _HomePageState extends State<HomePage> with TrayListener {
         ),
       ),
     );
+    if (expand) {
+      return Expanded(child: child);
+    } else {
+      return child;
+    }
   }
 }
 

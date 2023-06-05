@@ -42,7 +42,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
         child: Text(
           title,
           style: subTitleTextStyle.copyWith(
-            color: Theme.of(context).primaryColor,
+            color: Theme.of(context).colorScheme.secondary,
           ),
         ),
       );
@@ -59,7 +59,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
           value: isRecursiveDirectorySizesEnabled,
           title: Text('Show directory sizes'),
           subtitle: Text(
-            'When enabled, the total file size of all files in a directory, including all subdirectories, is calculated and shown. This can impact performance and is experimental.',
+            'When enabled, the total size of all files in a directory, including all subdirectories, is calculated and shown. This impacts performance.',
           ),
           onChanged: (val) {
             dataBox.put('recursive_directory_sizes_enabled', val!);
@@ -71,7 +71,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
           value: isDoubleClickToOpenEnabled,
           title: Text('Double click'),
           subtitle: Text(
-            'When enabled, you need to double-click to open files and directories.',
+            'When enabled, you need to double-click to open files and directories',
           ),
           onChanged: (val) {
             dataBox.put('double_click_enabled', val!);
@@ -81,7 +81,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
         ),
         CheckboxListTile(
           value: Settings.tabsTitleShowFullPath,
-          title: Text('Show full path in tabs title'),
+          title: Text('Show full path in tab title'),
           onChanged: (val) {
             dataBox.put('tabs_title_show_full_path', val!);
 
@@ -92,7 +92,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
           value: isColumnViewFeatureEnabled,
           title: Text('Enable Column View (Experimental)'),
           subtitle: Text(
-            'When enabled, there will be a new button in the top left to enable a view with 4 linked columns.',
+            'Adds a new button in the top left to enable a view with 4 linked columns',
           ),
           onChanged: (val) {
             dataBox.put('column_view_enabled', val!);
@@ -109,7 +109,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
             value: Settings.securityIsBiometricAuthenticationEnabled,
             title: Text('Use biometric authentication'),
             subtitle: Text(
-              'When enabled, biometric authentication will be required every time you open Vup.',
+              'When enabled, biometric authentication will be required every time you open Vup',
             ),
             onChanged: (val) async {
               if (val == true) {
@@ -144,7 +144,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
           value: isWatchOpenedFilesEnabled,
           title: Text('Watch opened files'),
           subtitle: Text(
-            'When enabled, opened files will be watched for changes and new versions uploaded automatically.',
+            'When enabled, opened files will be watched for changes and new versions uploaded automatically',
           ),
           onChanged: (val) {
             dataBox.put('watch_opened_files_enabled', val!);
@@ -157,7 +157,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
             value: isStartMinimizedEnabled,
             title: Text('Start minimized'),
             subtitle: Text(
-              'When enabled, Vup is minimized to the system tray when launched.',
+              'When enabled, Vup is minimized to the system tray when launched',
             ),
             onChanged: (val) {
               dataBox.put('start_minimized_enabled', val!);
@@ -173,7 +173,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
                 value: snapshot.data,
                 title: Text('Launch at startup'),
                 subtitle: Text(
-                  'When enabled, Vup will be automatically launched with your system.',
+                  'When enabled, Vup will be automatically launched with your system',
                 ),
                 onChanged: (val) async {
                   if (val == true) {
@@ -203,7 +203,7 @@ class _UISettingsPageState extends State<UISettingsPage> {
           value: devModeEnabled,
           title: Text('Dev Mode enabled'),
           subtitle: Text(
-            'When enabled, more debug information and tools are shown.',
+            'When enabled, more debug information and tools are visible',
           ),
           onChanged: (val) {
             dataBox.put('dev_mode_enabled', val!);

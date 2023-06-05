@@ -1,12 +1,15 @@
 import 'dart:convert';
 
 import 'package:clipboard/clipboard.dart';
+import 'package:filesize/filesize.dart';
+import 'package:s5_server/store/create.dart';
+import 'package:selectable_autolink_text/selectable_autolink_text.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:vup/app.dart';
 import 'package:lib5/util.dart';
 import 'package:lib5/storage_service.dart';
 
-import 'package:vup/utils/pin.dart';
-import 'package:vup/utils/show_portal_dialog.dart';
+import 'package:vup/view/sidebar.dart';
 
 class PortalAuthSettingsPage extends StatefulWidget {
   const PortalAuthSettingsPage({Key? key}) : super(key: key);
@@ -28,85 +31,63 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
     dataBox.put('cookie', cookie);
   }
  */
+
+  String? get localStoreName =>
+      mySky.portalAccounts['_local']?['store']?.keys.first;
+
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        ElevatedButton(
-          onPressed: () async {
-            try {
-              showLoadingDialog(context, 'Loading...');
+        Row(
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  showLoadingDialog(context, 'Loading...');
 
-              await mySky.loadPortalAccounts();
+                  await mySky.loadPortalAccounts();
 
-              context.pop();
-              setState(() {});
-            } catch (e, st) {
-              context.pop();
-              showErrorDialog(context, e, st);
-            }
-          },
-          child: Text(
-            'Load portal accounts',
-          ),
+                  context.pop();
+                  setState(() {});
+                } catch (e, st) {
+                  context.pop();
+                  showErrorDialog(context, e, st);
+                }
+              },
+              child: Text(
+                'Reload accounts',
+              ),
+            ),
+            SizedBox(
+              width: 16,
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  showLoadingDialog(context, 'Saving...');
+
+                  await mySky.savePortalAccounts();
+
+                  context.pop();
+                  setState(() {});
+                } catch (e, st) {
+                  context.pop();
+                  showErrorDialog(context, e, st);
+                }
+              },
+              child: Text(
+                'Save configuration',
+              ),
+            ),
+          ],
         ),
         SizedBox(
-          height: 16,
-        ),
-        TextField(
-          decoration: InputDecoration(
-            labelText: 'enabledPortals',
-          ),
-          controller: TextEditingController(
-              text: json.encode(mySky.portalAccounts['enabledPortals'])),
-          onChanged: (str) {
-            try {
-              final data = json.decode(str);
-              mySky.portalAccounts['enabledPortals'] = data;
-            } catch (_) {}
-          },
-        ),
-        SizedBox(
-          height: 16,
-        ),
-        TextField(
-          decoration: InputDecoration(
-            labelText: 'uploadPortalOrder',
-          ),
-          controller: TextEditingController(
-              text: json.encode(mySky.portalAccounts['uploadPortalOrder'])),
-          onChanged: (str) {
-            try {
-              final data = json.decode(str);
-              mySky.portalAccounts['uploadPortalOrder'] = data;
-            } catch (_) {}
-          },
+          height: 8,
         ),
 
-        SizedBox(
-          height: 16,
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            try {
-              showLoadingDialog(context, 'Saving...');
-
-              await mySky.savePortalAccounts();
-
-              context.pop();
-              setState(() {});
-            } catch (e, st) {
-              context.pop();
-              showErrorDialog(context, e, st);
-            }
-          },
-          child: Text(
-            'Save settings',
-          ),
-        ),
-
-        StreamBuilder(
+        /* StreamBuilder(
           stream: quotaService.stream,
           builder: (context, snapshot) {
             return Padding(
@@ -114,71 +95,12 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
               child: Text(quotaService.tooltip),
             );
           },
-        ),
+        ), */
 
         for (final p in mySky.portalAccounts['portals'].keys)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SelectableText(
-                    p,
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  SelectableText(
-                      json.encode(mySky.portalAccounts['portals'][p])),
-                  Text(
-                    'auth token available: ${dataBox.get(
-                          'portal_${p}_auth_token',
-                        ) != null}',
-                  ),
-                  SizedBox(
-                    height: 6,
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final portal = mySky.portalAccounts['portals'][p];
-                      final link =
-                          '${portal['protocol']}://$p/accounts/set-auth-cookie/${dataBox.get(
-                        'portal_${p}_auth_token',
-                      )}';
+          _buildPortalCard(p, context),
 
-                      FlutterClipboard.copy(link);
-                    },
-                    child: Text(
-                      'Generate and copy auth link for web',
-                    ),
-                  ),
-                  SizedBox(
-                    height: 6,
-                  ),
-                  SelectableText('account info: ' +
-                      json.encode(quotaService.portalStats[p])),
-                  SizedBox(
-                    height: 6,
-                  ),
-                  SwitchListTile(
-                    value: mySky.portalAccounts['portals'][p]
-                            ['autoPinEnabled'] ??
-                        false,
-                    title: Text(
-                      'Auto-Pin enabled',
-                    ),
-                    subtitle: Text(
-                      'When enabled, all data stored on one of your upload portals is replicated on this portal too',
-                    ),
-                    onChanged: (val) {
-                      mySky.portalAccounts['portals'][p]['autoPinEnabled'] =
-                          val;
-                      setState(() {});
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+        if (localStoreName != null) _buildLocalStoreCard(context),
         /*   TextField(
           decoration: InputDecoration(
             labelText: 'Portal Host',
@@ -362,132 +284,423 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
         /*   SizedBox(
           height: 12,
         ), */
-        ElevatedButton(
-          onPressed: () async {
-            // final _emailCtrl = TextEditingController();
-            final _portalCtrl = TextEditingController();
-            final _authTokenCtrl = TextEditingController();
+        Text(
+          'Add Storage Service',
+          style: titleTextStyle,
+        ),
+        SizedBox(
+          height: 8,
+        ),
+        Row(
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                // final _emailCtrl = TextEditingController();
+                final _portalCtrl = TextEditingController();
+                final _authTokenCtrl = TextEditingController();
 
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text(
-                  'Register on new portal',
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'API URL',
-                        hintText: 'https://example.com',
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(
+                      'Register on S5 Node',
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          decoration: InputDecoration(
+                            labelText: 'API URL',
+                            hintText: 'https://example.com',
+                          ),
+                          autofocus: true,
+                          controller: _portalCtrl,
+                        ),
+                        SizedBox(
+                          height: 16,
+                        ),
+                        TextField(
+                          decoration: InputDecoration(
+                            labelText: 'Auth Token (optional)',
+                          ),
+                          controller: _authTokenCtrl,
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          context.pop();
+                        },
+                        child: Text('Cancel'),
                       ),
-                      controller: _portalCtrl,
-                    ),
-                    SizedBox(
-                      height: 16,
-                    ),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Auth Token (optional)',
-                      ),
-                      controller: _authTokenCtrl,
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      context.pop();
-                    },
-                    child: Text('Cancel'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      try {
-                        showLoadingDialog(context, 'Registering on portal...');
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            showLoadingDialog(
+                                context, 'Registering on S5 Node...');
 
-                        final parts = _portalCtrl.text.split('://');
+                            final parts = _portalCtrl.text.split('://');
 
-                        if (parts.length < 2) {
-                          throw 'Invalid URL, needs protocol (https://)';
-                        }
-                        String authority = parts[1];
-                        if (authority.endsWith('/')) {
-                          authority =
-                              authority.substring(0, authority.length - 1);
-                        }
-
-                        final portalConfig = StorageServiceConfig(
-                          authority: authority,
-                          scheme: parts[0],
-                          headers: {},
-                        );
-
-                        if (mySky.portalAccounts['portals']
-                            .containsKey(portalConfig.authority)) {
-                          throw 'You are already registered on this portal';
-                        }
-
-                        final seed =
-                            storageService.crypto.generateRandomBytes(32);
-
-                        final authToken = await register(
-                          serviceConfig: portalConfig,
-                          httpClient: mySky.httpClient,
-                          identity: mySky.identity,
-                          email: null,
-                          seed: seed,
-                          label: 'vup-${dataBox.get('deviceId')}',
-                          authToken: _authTokenCtrl.text.isEmpty
-                              ? null
-                              : _authTokenCtrl.text,
-                        );
-
-                        mySky.portalAccounts['portals']
-                            [portalConfig.authority] = {
-                          'protocol': portalConfig.scheme,
-                          'activeAccount': 'vup',
-                          'accounts': {
-                            'vup': {
-                              'seed': base64UrlNoPaddingEncode(seed),
+                            if (parts.length < 2) {
+                              throw 'Invalid URL, needs protocol (https://)';
                             }
+                            String authority = parts[1];
+                            if (authority.endsWith('/')) {
+                              authority =
+                                  authority.substring(0, authority.length - 1);
+                            }
+
+                            final portalConfig = StorageServiceConfig(
+                              authority: authority,
+                              scheme: parts[0],
+                              headers: {},
+                            );
+
+                            if (mySky.portalAccounts['portals']
+                                .containsKey(portalConfig.authority)) {
+                              throw 'You are already registered on this portal';
+                            }
+
+                            final seed =
+                                storageService.crypto.generateRandomBytes(32);
+
+                            final authToken = await register(
+                              serviceConfig: portalConfig,
+                              httpClient: mySky.httpClient,
+                              identity: mySky.identity,
+                              email: null,
+                              seed: seed,
+                              label: 'vup-${dataBox.get('deviceId')}',
+                              authToken: _authTokenCtrl.text.isEmpty
+                                  ? null
+                                  : _authTokenCtrl.text,
+                            );
+
+                            mySky.portalAccounts['portals']
+                                [portalConfig.authority] = {
+                              'protocol': portalConfig.scheme,
+                              'activeAccount': 'vup',
+                              'accounts': {
+                                'vup': {
+                                  'seed': base64UrlNoPaddingEncode(seed),
+                                }
+                              }
+                            };
+                            mySky.portalAccounts['uploadPortalOrder']
+                                .insert(0, portalConfig.authority);
+
+                            mySky.portalAccounts['enabledPortals']
+                                .add(portalConfig.authority);
+
+                            dataBox.put(
+                              'portal_${portalConfig.authority}_auth_token',
+                              authToken,
+                            );
+
+                            await mySky.savePortalAccounts();
+                            context.pop();
+                            context.pop();
+                            setState(() {});
+                          } catch (e, st) {
+                            context.pop();
+                            showErrorDialog(context, e, st);
                           }
-                        };
-                        mySky.portalAccounts['uploadPortalOrder']
-                            .add(portalConfig.authority);
-
-                        mySky.portalAccounts['enabledPortals']
-                            .add(portalConfig.authority);
-
-                        dataBox.put(
-                          'portal_${portalConfig.authority}_auth_token',
-                          authToken,
-                        );
-
-                        await mySky.savePortalAccounts();
-                        context.pop();
-                        context.pop();
-                        setState(() {});
-                      } catch (e, st) {
-                        context.pop();
-                        showErrorDialog(context, e, st);
-                      }
-                    },
-                    child: Text('Register'),
+                        },
+                        child: Text('Register'),
+                      ),
+                    ],
                   ),
-                ],
+                );
+                /* await showPortalDialog(context);
+                setState(() {}); */
+              },
+              child: Text(
+                'Register on S5 Node',
               ),
-            );
-            /* await showPortalDialog(context);
-            setState(() {}); */
-          },
-          child: Text(
-            'Register on new portal',
-          ),
+            ),
+            if (localStoreName == null) ...[
+              SizedBox(
+                width: 8,
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    final apiKeyCtrl = TextEditingController();
+                    final apiKeyRes = await showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Link Pixeldrain Account'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SelectableAutoLinkText(
+                              'You can get your API Key on https://pixeldrain.com/user/api_keys',
+                              onTap: (url) {
+                                launchUrlString(url);
+                              },
+                              linkStyle: TextStyle(
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                            ),
+                            SizedBox(
+                              height: 16,
+                            ),
+                            TextField(
+                              controller: apiKeyCtrl,
+                              decoration: InputDecoration(
+                                labelText: 'API Key',
+                                hintText:
+                                    'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+                              ),
+                              autofocus: true,
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => context.pop(),
+                            child: Text(
+                              'Cancel',
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => context.pop(apiKeyCtrl.text),
+                            child: Text(
+                              'Link',
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (apiKeyRes != null) {
+                      showLoadingDialog(context, 'Setting up Pixeldrain...');
+                      final apiKey = apiKeyRes.trim() as String;
+                      final res = await mySky.httpClient.get(
+                        Uri.parse(
+                          'https://pixeldrain.com/api/user/lists',
+                        ),
+                        headers: {
+                          'Authorization':
+                              "Basic ${base64Url.encode(utf8.encode(':$apiKey'))}"
+                        },
+                      );
+                      res.expectStatusCode(200);
+                      mySky.portalAccounts['_local'] = {
+                        'store': {
+                          'pixeldrain': {'apiKey': apiKey}
+                        }
+                      };
+
+                      mySky.portalAccounts['uploadPortalOrder']
+                          .remove('_local');
+                      mySky.portalAccounts['enabledPortals'].remove('_local');
+
+                      mySky.portalAccounts['uploadPortalOrder']
+                          .insert(0, '_local');
+
+                      mySky.portalAccounts['enabledPortals'].add('_local');
+
+                      await mySky.savePortalAccounts();
+
+                      final stores = createStoresFromConfig(
+                        mySky.portalAccounts['_local'],
+                        httpClient: mySky.httpClient,
+                        node: s5Node,
+                      );
+                      s5Node.store = stores.values.first;
+                      // TODO Configurable
+                      s5Node.exposeStore = true;
+                      await s5Node.store!.init();
+
+                      context.pop();
+                      setState(() {});
+
+                      quotaService.update();
+                    }
+                  } catch (e, st) {
+                    showErrorDialog(context, e, st);
+                  }
+                },
+                child: Text(
+                  'Link Pixeldrain Account',
+                ),
+              ),
+              SizedBox(
+                width: 8,
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    final workerApiUrlCtrl = TextEditingController();
+                    final apiPasswordCtrl = TextEditingController();
+                    final downloadUrlCtrl = TextEditingController();
+                    final dialogRes = await showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Add Sia Renter (renterd)'),
+                        content: SizedBox(
+                          width: 400,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SelectableAutoLinkText(
+                                'To use this store, you need a fully configured instance of https://github.com/SiaFoundation/renterd running somewhere. You should also setup a reverse proxy for downloads. Documentation: https://docs.sfive.net/stores/sia.html',
+                                onTap: (url) {
+                                  launchUrlString(url);
+                                },
+                                linkStyle: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.secondary,
+                                ),
+                              ),
+                              SizedBox(
+                                height: 16,
+                              ),
+                              TextField(
+                                controller: workerApiUrlCtrl,
+                                decoration: InputDecoration(
+                                  labelText: 'Worker API URL',
+                                  hintText: 'http://localhost:9980/api/worker',
+                                ),
+                                autofocus: true,
+                              ),
+                              SizedBox(
+                                height: 16,
+                              ),
+                              TextField(
+                                controller: apiPasswordCtrl,
+                                decoration: InputDecoration(
+                                  labelText: 'API Password',
+                                ),
+                              ),
+                              SizedBox(
+                                height: 16,
+                              ),
+                              TextField(
+                                controller: downloadUrlCtrl,
+                                decoration: InputDecoration(
+                                  labelText: 'Download URL',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => context.pop(),
+                            child: Text(
+                              'Cancel',
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => context.pop(true),
+                            child: Text(
+                              'Add',
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (dialogRes == true) {
+                      showLoadingDialog(context, 'Adding Sia Store...');
+
+                      mySky.portalAccounts['_local'] = {
+                        'store': {
+                          'sia': {
+                            'workerApiUrl': workerApiUrlCtrl.text,
+                            'apiPassword': apiPasswordCtrl.text,
+                            'downloadUrl': downloadUrlCtrl.text,
+                          }
+                        }
+                      };
+
+                      mySky.portalAccounts['uploadPortalOrder']
+                          .remove('_local');
+                      mySky.portalAccounts['enabledPortals'].remove('_local');
+
+                      mySky.portalAccounts['uploadPortalOrder']
+                          .insert(0, '_local');
+
+                      mySky.portalAccounts['enabledPortals'].add('_local');
+
+                      await mySky.savePortalAccounts();
+
+                      final stores = createStoresFromConfig(
+                        mySky.portalAccounts['_local'],
+                        httpClient: mySky.httpClient,
+                        node: s5Node,
+                      );
+                      s5Node.store = stores.values.first;
+                      // TODO Configurable
+                      s5Node.exposeStore = true;
+                      await s5Node.store!.init();
+
+                      context.pop();
+                      setState(() {});
+                    }
+                  } catch (e, st) {
+                    showErrorDialog(context, e, st);
+                  }
+                },
+                child: Text(
+                  'Add Sia Renter',
+                ),
+              ),
+            ],
+          ],
         ),
         SizedBox(
           height: 16,
+        ),
+
+        Text(
+          'Advanced',
+          style: titleTextStyle,
+        ),
+        SizedBox(
+          height: 12,
+        ),
+        TextField(
+          decoration: InputDecoration(
+            labelText: 'Enabled Services',
+          ),
+          controller: TextEditingController(
+              text: json.encode(mySky.portalAccounts['enabledPortals'])),
+          onChanged: (str) {
+            try {
+              final data = json.decode(str);
+              for (final portal in data) {
+                if (portal == '_local') continue;
+                if (mySky.portalAccounts['portals'][portal] == null) {
+                  throw 'Invalid portal $portal';
+                }
+              }
+              mySky.portalAccounts['enabledPortals'] = data;
+            } catch (_) {}
+          },
+        ),
+        SizedBox(
+          height: 16,
+        ),
+        TextField(
+          decoration: InputDecoration(
+            labelText: 'Upload Order',
+          ),
+          controller: TextEditingController(
+              text: json.encode(mySky.portalAccounts['uploadPortalOrder'])),
+          onChanged: (str) {
+            try {
+              final data = json.decode(str);
+              for (final portal in data) {
+                if (portal == '_local') continue;
+                if (mySky.portalAccounts['portals'][portal] == null) {
+                  throw 'Invalid portal $portal';
+                }
+              }
+              mySky.portalAccounts['uploadPortalOrder'] = data;
+            } catch (_) {}
+          },
         ),
         /*    ElevatedButton(
           onPressed: () async {
@@ -514,6 +727,155 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
           },
         ), */
       ],
+    );
+  }
+
+  Card _buildLocalStoreCard(BuildContext context) {
+    final accountInfo = quotaService.accountInfos['_local'];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Local (${localStoreName})',
+                    style: titleTextStyle,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    quotaService.accountInfos.remove('_local');
+                    setState(() {
+                      mySky.portalAccounts['_local'] = null;
+                    });
+                  },
+                  child: Text(
+                    'Remove',
+                  ),
+                ),
+              ],
+            ),
+            QuotaWidget(context: context, portal: '_local'),
+            if (accountInfo?.userIdentifier != null)
+              Text('Account ID: ${accountInfo?.userIdentifier}'),
+            if (accountInfo?.subscription != null)
+              Text('Subscription: ${accountInfo!.subscription}'),
+            if (accountInfo?.maxFileSize != null)
+              Text('Max file size: ${filesize(accountInfo?.maxFileSize)}'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Card _buildPortalCard(String portal, BuildContext context) {
+    final accountInfo = quotaService.accountInfos[portal];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 8, bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SelectableText(
+                  portal,
+                  style: titleTextStyle,
+                ),
+                Expanded(
+                  child: SelectableText(
+                    'id: ${accountInfo?.userIdentifier}',
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Details'),
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SelectableText(
+                              json.encode(
+                                mySky.portalAccounts['portals'][portal],
+                              ),
+                            ),
+                            Text(
+                              'auth token available: ${dataBox.get(
+                                    'portal_${portal}_auth_token',
+                                  ) != null}',
+                            ),
+                            SizedBox(
+                              height: 6,
+                            ),
+                            ElevatedButton(
+                              onPressed: () async {
+                                final portalInfo =
+                                    mySky.portalAccounts['portals'][portal];
+                                final link =
+                                    '${portalInfo['protocol']}://$portal/accounts/set-auth-cookie/${dataBox.get(
+                                  'portal_${portal}_auth_token',
+                                )}';
+
+                                FlutterClipboard.copy(link);
+                              },
+                              child: Text(
+                                'Generate and copy auth link for web',
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => context.pop(),
+                            child: Text('Close'),
+                          )
+                        ],
+                      ),
+                    );
+                  },
+                  icon: Icon(
+                    UniconsLine.info_circle,
+                  ),
+                )
+              ],
+            ),
+            if (accountInfo != null)
+              QuotaWidget(context: context, portal: portal),
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: 400,
+                child: SwitchListTile(
+                  dense: true,
+                  value: mySky.portalAccounts['portals'][portal]
+                          ['autoPinEnabled'] ??
+                      false,
+                  title: Text(
+                    'Auto-Pin enabled',
+                  ),
+                  subtitle: Text(
+                    'When enabled, all data stored on one of your upload portals is replicated on this portal too',
+                  ),
+                  onChanged: (val) {
+                    mySky.portalAccounts['portals'][portal]['autoPinEnabled'] =
+                        val;
+                    setState(() {});
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

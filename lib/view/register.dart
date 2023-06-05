@@ -57,17 +57,14 @@ class _RegisterViewState extends State<RegisterView> {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 6.0),
           child: Text(
-            'What\'s your email?',
+            'Choose a username',
             style: subTitleTextStyle,
           ),
         ),
         Theme(
           data: Theme.of(context).copyWith(
             primaryColor: _error == null
-                ? Theme.of(context).accentColor
-                : SkyColors.error,
-            accentColor: _error == null
-                ? Theme.of(context).accentColor
+                ? Theme.of(context).primaryColor
                 : SkyColors.error,
           ),
           child: TextFormField(
@@ -75,8 +72,8 @@ class _RegisterViewState extends State<RegisterView> {
             decoration: InputDecoration(
               // TODO Add additional username for social features
               border: OutlineInputBorder(),
-              hintText: 'Your email address',
-              prefixIcon: Icon(UniconsLine.envelope),
+              hintText: 'Your username',
+              prefixIcon: Icon(UniconsLine.user_circle),
             ),
 
             // autofocus: true,
@@ -120,7 +117,8 @@ class _RegisterViewState extends State<RegisterView> {
         ),
         if (mnemonic == null) ...[
           Text(
-              'Your email address is only used for automatically creating an account on s5.ninja which includes 10 GB of free storage to get started.'),
+            'Your username is only used for creating an account on s5.ninja which includes 5 GB of free storage used to store some required metadata for your new decentralized identity. You will need to configure another storage service to store your files.',
+          ),
           SizedBox(
             height: 24,
           ),
@@ -154,12 +152,18 @@ class _RegisterViewState extends State<RegisterView> {
             filled: true,
             color: Theme.of(context).colorScheme.secondary,
             onPressed: () async {
-              if (!isEmail(emailCtrl.text)) {
+              if (emailCtrl.text.isEmpty) {
+                setState(() {
+                  _error = 'Please enter a username';
+                });
+                return;
+              }
+              /* if (!isEmail(emailCtrl.text)) {
                 setState(() {
                   _error = 'Please enter a valid email address';
                 });
                 return;
-              }
+              } */
               _error = null;
               mnemonic = generatePhrase(crypto: mySky.crypto);
               setState(() {});
@@ -431,7 +435,8 @@ class _RegisterViewState extends State<RegisterView> {
                         serviceConfig: portalConfig,
                         httpClient: mySky.httpClient,
                         identity: identity,
-                        email: email,
+                        email: email +
+                            '@${DateTime.now().millisecondsSinceEpoch}.user.vup.app',
                         seed: seed,
                         label: 'vup-${dataBox.get('deviceId')}',
                       );

@@ -1,5 +1,6 @@
 import 'package:dart_discord_rpc/dart_discord_rpc.dart';
 import 'package:hive/hive.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 
@@ -33,7 +34,7 @@ class RichStatusService extends VupService {
     String? date,
     required int duration,
     required int progress,
-    required String? thumbnailKey,
+    required EncryptedCID? thumbnailKey,
     required RichStatusType type,
     int? indexNumber,
     String? seasonName,

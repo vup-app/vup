@@ -1,6 +1,7 @@
 import 'package:filesystem_dac/dac.dart';
 import 'package:vup/actions/add_to_quick_access.dart';
 import 'package:vup/actions/copy.dart';
+import 'package:vup/actions/copy_secure_streaming_link.dart';
 import 'package:vup/actions/copy_temporary_streaming_link.dart';
 import 'package:vup/actions/copy_uri.dart';
 import 'package:vup/actions/copy_web_server_url.dart';
@@ -20,6 +21,7 @@ import 'package:vup/actions/regenerate_metadata.dart';
 import 'package:vup/actions/remove_shared_directory.dart';
 import 'package:vup/actions/rename_directory.dart';
 import 'package:vup/actions/rename_file.dart';
+import 'package:vup/actions/restore_from_trash.dart';
 import 'package:vup/actions/save_locally.dart';
 import 'package:vup/actions/search.dart';
 import 'package:vup/actions/select.dart';
@@ -42,10 +44,10 @@ import 'package:vup/app.dart';
 
 final allActions = <VupFSAction>[
   // ! Directory view actions
-  SearchVupAction(),
   CreateDirectoryVupAction(),
+  // TODO Implement MountDirectoryVupAction(),
   UploadFilesVupAction(),
-  // TODO UploadDirectoryVupAction(),
+  UploadDirectoryVupAction(),
   UploadMediaFilesVupAction(),
   YTDLVupAction(),
   SetupSyncVupAction(),
@@ -69,6 +71,7 @@ final allActions = <VupFSAction>[
   DeleteFromDeviceVupAction(),
 
   MoveToTrashVupAction(),
+  RestoreFromTrashVupAction(),
   PermanentDeleteVupAction(),
   AddToQuickAccessVupAction(),
   RemoveSharedDirectoryVupAction(),
@@ -78,7 +81,9 @@ final allActions = <VupFSAction>[
   OpenParentDirectoryVupAction(),
 
   ShowFileDetailsVupAction(),
+  CopySecureStreamingLinkVupAction(),
   CopyTemporaryStreamingLinkVupAction(),
+  // TODO GenerateImageCaptionVupAction(),
   RegenerateMetadataVupAction(),
   CopyURIVupAction(),
   ViewJSONVupAction(),

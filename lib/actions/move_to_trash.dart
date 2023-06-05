@@ -44,11 +44,13 @@ class MoveToTrashVupAction extends VupFSAction {
       if (instance.isSelected) {
         final futures = <Future>[];
         for (final uri in instance.pathNotifier.selectedFiles) {
+          // TODO Optimize with moveMultipleFiles method
           futures.add(
             storageService.dac.moveFile(
               uri,
               storageService.trashPath + '/' + Uri.parse(uri).pathSegments.last,
               generateRandomKey: true,
+              trash: true,
             ),
           );
         }
@@ -60,6 +62,7 @@ class MoveToTrashVupAction extends VupFSAction {
                   '/' +
                   Uri.parse(uri).pathSegments.last +
                   ' (${DateTime.now().toString().split('.').first})',
+              trash: true,
             ),
           );
         }
@@ -72,6 +75,7 @@ class MoveToTrashVupAction extends VupFSAction {
             uri,
             storageService.trashPath + '/' + Uri.parse(uri).pathSegments.last,
             generateRandomKey: true,
+            trash: true,
           );
         } else {
           await storageService.dac.moveDirectory(
@@ -80,6 +84,7 @@ class MoveToTrashVupAction extends VupFSAction {
                 '/' +
                 Uri.parse(uri).pathSegments.last +
                 ' (${DateTime.now().toString().split('.').first})',
+            trash: true,
           );
         }
       }

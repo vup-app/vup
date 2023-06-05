@@ -6,6 +6,7 @@ import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vup/app.dart';
 import 'package:vup/model/sync_task.dart';
+import 'package:file_selector/file_selector.dart' as file_selector;
 
 import 'base.dart';
 
@@ -23,8 +24,6 @@ class UploadDirectoryVupAction extends VupFSAction {
     if (!isDirectoryView) return null;
     if (!hasWriteAccess) return null;
 
-    if (!(Platform.isAndroid || Platform.isIOS)) return null;
-
     return VupFSActionInstance(
       label: 'Upload directory',
       icon: UniconsLine.folder_upload,
@@ -36,7 +35,13 @@ class UploadDirectoryVupAction extends VupFSAction {
     BuildContext context,
     VupFSActionInstance instance,
   ) async {
-    final directoryPath = await FilePicker.platform.getDirectoryPath();
+    late final String? directoryPath;
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      directoryPath = await FilePicker.platform.getDirectoryPath();
+    } else {
+      directoryPath = await file_selector.getDirectoryPath();
+    }
 
     final currentUri = instance.pathNotifier.toCleanUri().toString();
 

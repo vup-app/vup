@@ -22,7 +22,7 @@ class _ShareDialogState extends State<ShareDialog> {
   List<String> get directoryUris => widget.directoryUris;
   List<String> get fileUris => widget.fileUris;
 
-  bool _isStatic = true;
+  bool _isStatic = false;
   bool _isWithWriteAccess = false;
 
   bool _isRunning = false;
@@ -55,7 +55,7 @@ class _ShareDialogState extends State<ShareDialog> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Share online',
+            'Share with a link',
             style: TextStyle(
               fontWeight: FontWeight.bold,
             ),
@@ -108,7 +108,6 @@ class _ShareDialogState extends State<ShareDialog> {
               'Sharing type',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
               ),
             ),
             if (!_advancedSharePossible) ...[
@@ -128,7 +127,7 @@ class _ShareDialogState extends State<ShareDialog> {
               ),
             ],
             if (_advancedSharePossible) ...[
-              RadioListTile<bool>(
+              /* RadioListTile<bool>(
                 title: Text('Static (only the current version)'),
                 value: true,
                 groupValue: _isStatic,
@@ -137,7 +136,7 @@ class _ShareDialogState extends State<ShareDialog> {
                     _isStatic = val!;
                   });
                 },
-              ),
+              ), */
               RadioListTile<bool>(
                 title: Text(
                     'With changes (all updates to this directory in the future)'),
@@ -178,7 +177,7 @@ class _ShareDialogState extends State<ShareDialog> {
                 ),
               ],
             ],
-            if (_isStatic && devModeEnabled) ...[
+            if (devModeEnabled) ...[
               SizedBox(
                 height: 16,
               ),
@@ -186,7 +185,6 @@ class _ShareDialogState extends State<ShareDialog> {
                 'View type',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 20,
                 ),
               ),
               SizedBox(
@@ -295,6 +293,7 @@ class _ShareDialogState extends State<ShareDialog> {
                         });
                         try {
                           if (_isStatic) {
+                            throw UnimplementedError();
                             logger
                                 .verbose('Preparing static share operation...');
                             final uuid = Uuid().v4();
@@ -344,26 +343,16 @@ class _ShareDialogState extends State<ShareDialog> {
                             context.pop();
                             showShareResultDialog(context, shareLink);
                           } else {
+                            // TODO Mark directories as link-shared (in details)
                             if (_isWithWriteAccess) {
                               logger.info(
                                   'preparing non-static read+write share operation...');
 
-                              final localUri = storageService.dac.parsePath(
-                                directoryUris.first,
-                                resolveMounted: false,
-                              );
+                              final localUri = directoryUris.first;
 
-                              final shareUri = await storageService.dac
-                                  .generateSharedReadWriteDirectory();
-
-                              await storageService.dac.cloneDirectory(
-                                localUri.toString(),
-                                shareUri,
-                              );
-
-                              await storageService.dac.mountUri(
-                                localUri.toString(),
-                                Uri.parse(shareUri),
+                              final shareUri =
+                                  await storageService.dac.getShareUriReadWrite(
+                                localUri,
                               );
 
                               final shareLink = _buildShareLink(shareUri);
@@ -373,41 +362,14 @@ class _ShareDialogState extends State<ShareDialog> {
                               logger.info(
                                   'preparing non-static read-only share operation...');
 
-                              final dirUri = storageService.dac
-                                  .parsePath(directoryUris.first);
-/* 
-                              final sharedDirectoriesUri = storageService.dac
-                                  .parsePath(
-                                      'vup.hns/.internal/shared-directories'); */
+                              final localUri = directoryUris.first;
 
-                              // TODO Use Links
-
-                              throw 'Not implemented';
-
-                              /*   final res = await storageService.dac
-                                  .doOperationOnDirectory(
-                                sharedDirectoriesUri,
-                                (directoryIndex) async {
-                                  directoryIndex
-                                          .directories[dirUri.toString()] =
-                                      DirectoryDirectory(
-                                    name: dirUri.pathSegments.isEmpty
-                                        ? 'RW share URI'
-                                        : dirUri.pathSegments.last,
-                                    created:
-                                        DateTime.now().millisecondsSinceEpoch,
-                                  );
-                                },
-                              );
-
-                              if (!res.success) throw res.error.toString(); */
-
-                              final shareSeed =
+                              final shareUri =
                                   await storageService.dac.getShareUriReadOnly(
-                                dirUri.toString(),
+                                localUri,
                               );
 
-                              final shareLink = _buildShareLink(shareSeed);
+                              final shareLink = _buildShareLink(shareUri);
                               context.pop();
                               showShareResultDialog(context, shareLink);
                             }
@@ -421,7 +383,7 @@ class _ShareDialogState extends State<ShareDialog> {
                           });
                         }
                       },
-                label: 'Start sharing process',
+                label: 'Generate share link',
               ),
             ),
             if (_isRunning)
@@ -453,7 +415,7 @@ class _ShareDialogState extends State<ShareDialog> {
 }
 
 void showShareResultDialog(BuildContext context, String shareLink) {
-  final qrImage = QrImage(
+  final qrImage = QrImageView(
     data: shareLink,
     version: QrVersions.auto,
     // size: 300.0,

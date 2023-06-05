@@ -121,11 +121,22 @@ Future<List> processImage2(List list) async {
       }
     } catch (e) {}
 
-    final result = await ffi.api.generateThumbnailForImageFile(
+    final result = await ffi.apiVup.generateThumbnailForImageFile(
       imageType: type,
       path: imagePath,
       exifImageOrientation: exifImageOrientation ?? 1,
     );
+
+    final int width;
+    final int height;
+
+    if ([5, 6, 7, 8].contains(exifImageOrientation)) {
+      width = result.height;
+      height = result.width;
+    } else {
+      width = result.width;
+      height = result.height;
+    }
 
     logger.verbose('upload-timestamp-process-image-20 ${DateTime.now()}');
 
@@ -133,8 +144,8 @@ Future<List> processImage2(List list) async {
 
     if (type == 'image') {
       ext['image'] = {
-        'width': result.width,
-        'height': result.height,
+        'width': width,
+        'height': height,
       };
     }
 
@@ -145,7 +156,7 @@ Future<List> processImage2(List list) async {
 
     thumbnail = FileVersionThumbnail(
       cid: res[0] as EncryptedCID,
-      aspectRatio: (result.width / result.height) + 0.0,
+      aspectRatio: (width / height) + 0.0,
       thumbhash: result.thumbhashBytes,
     );
 

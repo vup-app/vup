@@ -1,4 +1,4 @@
-/* import 'dart:io';
+import 'dart:io';
 
 import 'package:simple_observable/simple_observable.dart';
 import 'package:uuid/uuid.dart';
@@ -20,6 +20,7 @@ class _JellyfinServerSettingsPageState
   final usernameCtrl = TextEditingController(text: jellyfinServerUsername);
   final passwordCtrl = TextEditingController(text: jellyfinServerPassword);
   var isPasswordHidden = true;
+  var isListenBrainzAuthTokenHidden = true;
 
   late final List<Map> list;
 
@@ -179,6 +180,16 @@ class _JellyfinServerSettingsPageState
                       ],
                     ),
                   ),
+                  if (jellyfinServerService.isStarting && devModeEnabled)
+                    ElevatedButton(
+                      onPressed: () {
+                        jellyfinServerService.isStarting = false;
+                        jellyfinServerService.isRunning = false;
+                        jellyfinServerService.stop();
+                        setState(() {});
+                      },
+                      child: Text('Force stop'),
+                    ),
                   SizedBox(
                     width: 8,
                   ),
@@ -186,7 +197,7 @@ class _JellyfinServerSettingsPageState
               ),
               if (isJellyfinServerEnabled)
                 SelectableText(
-                  '\nWarning: Authentication is not enforced because some players and API endpoints don\'t fully support it (yet). Please only run the server on localhost (this is the default) to prevent outside connections.\n\nJellyfin server running at http://${jellyfinServerBindIp}:${jellyfinServerPort}\nStop the Jellyfin server if you want to change any settings.',
+                  '\nWarning: Authentication is not enforced because some API endpoints don\'t fully support it (yet). Please only run the server on localhost (this is the default) to prevent outside connections.\n\nJellyfin server running at http://${jellyfinServerBindIp}:${jellyfinServerPort}\nStop the Jellyfin server if you want to change any settings.',
                 ),
             ],
           ),
@@ -276,6 +287,54 @@ class _JellyfinServerSettingsPageState
             ],
           ),
         ),
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(),
+              child: SwitchListTile(
+                value: listenBrainzService.isEnabled,
+                title: const Text('Enable ListenBrainz integration'),
+                onChanged: (val) {
+                  if (val) {
+                    dataBox.put('listenbrainz_auth_token', '');
+                  } else {
+                    dataBox.put('listenbrainz_auth_token', null);
+                  }
+
+                  setState(() {});
+                },
+              ),
+            ),
+            if (listenBrainzService.isEnabled)
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0, bottom: 8),
+                child: TextField(
+                  controller: TextEditingController(
+                      text: listenBrainzService.authToken ?? ''),
+                  decoration: InputDecoration(
+                    labelText: 'ListenBrainz Auth Token',
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          isListenBrainzAuthTokenHidden =
+                              !isListenBrainzAuthTokenHidden;
+                        });
+                      },
+                      icon: Icon(
+                        isListenBrainzAuthTokenHidden
+                            ? UniconsLine.eye_slash
+                            : UniconsLine.eye,
+                      ),
+                    ),
+                  ),
+                  obscureText: isListenBrainzAuthTokenHidden,
+                  onChanged: (str) {
+                    dataBox.put('listenbrainz_auth_token', str);
+                  },
+                ),
+              ),
+          ],
+        ),
         if (Platform.isLinux || Platform.isWindows)
           Column(
             children: [
@@ -309,7 +368,7 @@ class _JellyfinServerSettingsPageState
                     value: richStatusService.isDiscordThumbnailsEnabled,
                     title: Text('Show media thumbnails'),
                     subtitle: Text(
-                      'When enabled, thumbnails of the media files you are playing are uploaded to Skynet without encryption and shown in your status',
+                      'When enabled, thumbnails of the media files you are playing are uploaded to your primary S5 upload portal without encryption and shown in your status',
                     ),
                     onChanged: (val) {
                       dataBox.put(
@@ -355,7 +414,7 @@ class _JellyfinServerSettingsPageState
                             : () {
                                 setState(() {
                                   list.add({
-                                    'id': Uuid().v4(),
+                                    'id': Uuid().v4().replaceAll('-', ''),
                                   });
                                 });
                                 markChanges();
@@ -538,4 +597,3 @@ class _JellyfinServerSettingsPageState
     );
   }
 }
- */

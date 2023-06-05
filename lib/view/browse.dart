@@ -6,6 +6,8 @@ import 'package:flutter_state_notifier/flutter_state_notifier.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vup/actions/base.dart';
+import 'package:vup/actions/upload_directory.dart';
+import 'package:vup/actions/upload_files.dart';
 
 import 'package:vup/app.dart';
 import 'package:vup/main.dart';
@@ -349,7 +351,82 @@ class _BrowseViewState extends State<BrowseView> {
                             if (!context.isMobile ||
                                 !widget.pathNotifier.isSearching)
                               LayoutBuilder(builder: (context, cons) {
-                                final actions = <Widget>[];
+                                final actions = <Widget>[
+                                  PopupMenuButton(
+                                    tooltip: 'Upload files or directory',
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 5,
+                                        horizontal: 12,
+                                      ),
+                                      child: Text(
+                                        'Upload',
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    itemBuilder: (context) => [
+                                      for (final ai in generateActions(
+                                        false,
+                                        null,
+                                        pathNotifier,
+                                        context,
+                                        true,
+                                        widget.pathNotifier.hasWriteAccess(),
+                                        storageService.dac
+                                            .getDirectoryStateChangeNotifier(
+                                              widget.pathNotifier.value
+                                                  .join('/'),
+                                            )
+                                            .state,
+                                      ))
+                                        if (ai.action is UploadFilesVupAction ||
+                                            ai.action
+                                                is UploadDirectoryVupAction)
+                                          PopupMenuItem(
+                                            onTap: () async {
+                                              try {
+                                                await ai.action
+                                                    .execute(context, ai);
+                                              } catch (e, st) {
+                                                showErrorDialog(context, e, st);
+                                              }
+                                            },
+                                            child: Row(
+                                              children: [
+                                                Icon(ai.icon),
+                                                SizedBox(
+                                                  width: 8,
+                                                ),
+                                                Text(
+                                                  ai.label,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                    ],
+                                  ),
+
+                                  /* SizedBox(
+                                    width: 8,
+                                  ), */
+                                  /* ElevatedButton(
+                                    onPressed: () {
+                                      // TODO Create: directory or file (text, markdown)
+                                      // TODO seach more prominent, maybe fully right
+                                    },
+                                    child: Text('Create'),
+                                  ), */
+                                ];
 
                                 for (final ai in generateActions(
                                   false,
@@ -364,26 +441,49 @@ class _BrowseViewState extends State<BrowseView> {
                                       )
                                       .state,
                                 )) {
-                                  actions.add(Tooltip(
-                                    message: ai.label,
-                                    child: InkWell(
-                                      onTap: () async {
-                                        try {
-                                          await ai.action.execute(context, ai);
-                                        } catch (e, st) {
-                                          showErrorDialog(context, e, st);
-                                        }
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Icon(
-                                          ai.icon,
-                                          size: iconSize,
+                                  if (!(ai.action is UploadFilesVupAction ||
+                                      ai.action is UploadDirectoryVupAction))
+                                    actions.add(Tooltip(
+                                      message: ai.label,
+                                      child: InkWell(
+                                        onTap: () async {
+                                          try {
+                                            await ai.action
+                                                .execute(context, ai);
+                                          } catch (e, st) {
+                                            showErrorDialog(context, e, st);
+                                          }
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Icon(
+                                            ai.icon,
+                                            size: iconSize,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ));
+                                    ));
                                 }
+
+                                final searchButton = Tooltip(
+                                  message: 'Search',
+                                  child: InkWell(
+                                    onTap: () async {
+                                      if (pathNotifier.isSearching) {
+                                        pathNotifier.disableSearchMode();
+                                      } else {
+                                        pathNotifier.enableSearchMode();
+                                      }
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Icon(
+                                        UniconsLine.search,
+                                        size: iconSize,
+                                      ),
+                                    ),
+                                  ),
+                                );
 
                                 /* 
                                   if (storageService.dac.checkAccess(
@@ -409,7 +509,7 @@ class _BrowseViewState extends State<BrowseView> {
 
                                 
                                 ]; */
-                                final wrap = cons.maxWidth < 600;
+                                final wrap = cons.maxWidth < mobileBreakpoint;
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -511,10 +611,14 @@ class _BrowseViewState extends State<BrowseView> {
                                             );
                                           }),
                                         ),
-                                        if (!wrap) ...actions,
+                                        if (!wrap &&
+                                            !widget.pathNotifier.isSearching)
+                                          ...actions,
+                                        searchButton,
                                       ],
                                     ),
-                                    if (wrap)
+                                    if (wrap &&
+                                        !widget.pathNotifier.isSearching)
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.end,
@@ -544,6 +648,7 @@ class _BrowseViewState extends State<BrowseView> {
                                         autofocus: true,
                                         // scrollPadding: const EdgeInsets.only(top: 16),
                                         onChanged: (str) {
+                                          // TODO Color search (thumbhash) and full-text search for image captions
                                           pathNotifier.setQueryParameters({
                                             'q': str,
                                             // 'query_by': 'ext.audio,name',
@@ -570,7 +675,7 @@ class _BrowseViewState extends State<BrowseView> {
                                   SizedBox(
                                     width: 8,
                                   ),
-                                  _buildChip(
+                                  /*   _buildChip(
                                     context,
                                     isSelected: pathNotifier.searchMode ==
                                         SearchMode.fromHere,
@@ -599,7 +704,7 @@ class _BrowseViewState extends State<BrowseView> {
                                   ),
                                   SizedBox(
                                     width: 12,
-                                  ),
+                                  ), */
                                   _buildChip(
                                     context,
                                     isSelected: pathNotifier.searchType == '*',
@@ -787,7 +892,7 @@ class _BrowseViewState extends State<BrowseView> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          'You are browsing a shared directory.',
+                                          'You are browsing a shared directory',
                                           style: TextStyle(
                                             color: Colors.black,
                                             fontWeight: FontWeight.bold,
@@ -1030,6 +1135,7 @@ class _BrowseViewState extends State<BrowseView> {
                               height: 1,
                               thickness: 1,
                             ),
+                            // TODO Implement pinch to zoom (Android)
                             Expanded(
                               child: DirectoryView(
                                 key: ValueKey(pathNotifier.toUriString()),

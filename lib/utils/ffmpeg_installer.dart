@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive2/archive_io.dart';
+import 'package:archive/archive_io.dart';
 import 'package:path/path.dart';
 import 'package:vup/app.dart';
 

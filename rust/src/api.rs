@@ -1,220 +1,12 @@
-use chacha20poly1305::{
-    aead::{generic_array::GenericArray, Aead, KeyInit, OsRng},
-    XChaCha20Poly1305, XNonce,
-};
-
 use blake3::Hash;
 
+use chacha20poly1305::{
+    aead::{generic_array::GenericArray, Aead, KeyInit},
+    XChaCha20Poly1305, XNonce,
+};
 use flutter_rust_bridge::{support::from_vec_to_array, SyncReturn};
 use std::fs::File;
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
-
-use image::imageops::FilterType;
-
-pub struct ThumbnailResponse {
-    pub bytes: Vec<u8>,
-    pub thumbhash_bytes: Vec<u8>,
-    pub width: u32,
-    pub height: u32,
-}
-
-pub fn encrypt_file_xchacha20(
-    input_file_path: String,
-    output_file_path: String,
-    padding: usize,
-) -> Result<Vec<u8>, anyhow::Error> {
-    let input = File::open(input_file_path)?;
-    let reader = BufReader::new(input);
-
-    let output = File::create(output_file_path)?;
-
-    let res = encrypt_file_xchacha20_internal(reader, output, padding);
-
-    Ok(res.unwrap())
-}
-
-fn encrypt_file_xchacha20_internal<R: Read>(
-    mut reader: R,
-    mut output_file: File,
-    padding: usize,
-) -> Result<Vec<u8>, anyhow::Error> {
-    let key = XChaCha20Poly1305::generate_key(&mut OsRng);
-    let cipher = XChaCha20Poly1305::new(&key);
-
-    let mut chunk_index: u32 = 0;
-
-    let chunk_size = 262144;
-
-    let mut buffer = [0u8; 262144];
-
-    loop {
-        let count = reader.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-
-        /* if count < chunk_size {
-            println!("last chunk");
-        } else {
-            println!("normal chunk");
-        } */
-
-        let length = if count < chunk_size {
-            count + padding
-        } else {
-            count
-        };
-
-        let mut nonce = XNonce::default();
-
-        let mut foo = [0u8; 24];
-        for (place, data) in foo.iter_mut().zip(chunk_index.to_le_bytes().iter()) {
-            *place = *data
-        }
-
-        nonce.copy_from_slice(&foo);
-
-        let ciphertext = cipher.encrypt(&nonce, &buffer[..length]);
-
-        output_file.write(&ciphertext.unwrap()).unwrap();
-        chunk_index = chunk_index + 1;
-    }
-
-    output_file.flush().unwrap();
-
-    Ok(key.to_vec())
-}
-
-pub fn decrypt_file_xchacha20(
-    input_file_path: String,
-    output_file_path: String,
-    key: Vec<u8>,
-    padding: usize,
-    last_chunk_index: u32,
-) -> Result<u8, anyhow::Error> {
-    let input = File::open(input_file_path)?;
-    let reader = BufReader::new(input);
-
-    let output = File::create(output_file_path)?;
-
-    let res = decrypt_file_xchacha20_internal(reader, output, key, padding, last_chunk_index);
-
-    Ok(res.unwrap())
-}
-
-fn decrypt_file_xchacha20_internal<R: Read>(
-    mut reader: R,
-    mut output_file: File,
-    key: Vec<u8>,
-    padding: usize,
-    last_chunk_index: u32,
-) -> Result<u8, anyhow::Error> {
-    let cipher = XChaCha20Poly1305::new(GenericArray::from_slice(&key));
-
-    let mut chunk_index: u32 = 0;
-
-    let mut buffer = [0u8; 262160];
-
-    loop {
-        let count = reader.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-
-        let mut nonce = XNonce::default();
-
-        let mut foo = [0u8; 24];
-        for (place, data) in foo.iter_mut().zip(chunk_index.to_le_bytes().iter()) {
-            *place = *data
-        }
-
-        nonce.copy_from_slice(&foo);
-
-        let ciphertext = cipher.decrypt(&nonce, &buffer[..count]);
-
-        if chunk_index == last_chunk_index {
-            output_file
-                .write(&ciphertext.unwrap()[..(count - 16 - padding)])
-                .unwrap();
-        } else {
-            output_file.write(&ciphertext.unwrap()).unwrap();
-        }
-
-        chunk_index = chunk_index + 1;
-    }
-
-    output_file.flush().unwrap();
-
-    Ok(1)
-}
-
-pub fn generate_thumbnail_for_image_file(
-    image_type: String,
-    path: String,
-    exif_image_orientation: u8,
-) -> Result<ThumbnailResponse, anyhow::Error> {
-    // let img = image::open(path).unwrap();
-
-    let input = File::open(path)?;
-    let reader = BufReader::new(input);
-
-    let img = image::io::Reader::new(reader)
-        .with_guessed_format()?
-        .decode()?;
-
-    // TODO test resize
-    /* final thumbnail = type == 'audio'
-    ? img.copyResizeCropSquare(image, size)
-    : image.width > image.height
-         */
-
-    // TODO Maybe reduce thumbnail size
-    // TODO Maybe reduce webp quality
-    // TODO Maybe use other FilterType
-    let mut scaled = img.resize(384, 384, FilterType::Triangle);
-
-    if image_type == "audio" {
-        if scaled.height() > scaled.width() {
-            let diff = scaled.height() - scaled.width();
-            scaled = scaled.crop(0, diff / 2, scaled.width(), scaled.width())
-        } else if scaled.height() < scaled.width() {
-            let diff = scaled.width() - scaled.height();
-            scaled = scaled.crop(diff / 2, 0, scaled.height(), scaled.height())
-        }
-        // img.crop(x, y, width, height)
-    }
-
-    scaled = match &exif_image_orientation {
-        2 => scaled.fliph(),
-        3 => scaled.rotate180(),
-        4 => scaled.rotate180().fliph(),
-        5 => scaled.rotate90().fliph(),
-        6 => scaled.rotate90(),
-        7 => scaled.rotate270().fliph(),
-        8 => scaled.rotate270(),
-        _ => scaled,
-    };
-
-    // image::ImageOutputFormat::Jpeg(80)
-    let mut bytes: Vec<u8> = Vec::new();
-    scaled.write_to(&mut Cursor::new(&mut bytes), image::ImageOutputFormat::WebP)?;
-
-    // TODO Maybe reduce height and width here
-    let thumbhash_input_image = scaled.resize(100, 100, FilterType::Triangle);
-
-    let thumbhash_bytes = thumbhash::rgba_to_thumb_hash(
-        thumbhash_input_image.width().try_into().unwrap(),
-        thumbhash_input_image.height().try_into().unwrap(),
-        &thumbhash_input_image.to_rgba8().into_raw(),
-    );
-
-    Ok(ThumbnailResponse {
-        bytes: bytes,
-        width: img.width(),
-        height: img.height(),
-        thumbhash_bytes: thumbhash_bytes,
-    })
-}
 
 /* fn sha1_digest<R: Read>(mut reader: R) -> Result<Vec<u8>, anyhow::Error> {
     let mut hasher = Sha1::new();
@@ -259,13 +51,11 @@ pub fn hash_sha1_file(path: String) -> Result<Vec<u8>, anyhow::Error> {
     ZeroCopyBuffer(ciphertext.unwrap())
 } */
 
-// ! everything below this is copied from s5-server
-
 pub fn encrypt_xchacha20poly1305(
     key: Vec<u8>,
     nonce: Vec<u8>,
     plaintext: Vec<u8>,
-) -> Result<Vec<u8>, anyhow::Error> {
+) -> anyhow::Result<Vec<u8>> {
     let cipher = XChaCha20Poly1305::new(GenericArray::from_slice(&key));
     let xnonce = XNonce::from_slice(&nonce);
     let ciphertext = cipher.encrypt(&xnonce, &plaintext[..]);
@@ -276,7 +66,7 @@ pub fn decrypt_xchacha20poly1305(
     key: Vec<u8>,
     nonce: Vec<u8>,
     ciphertext: Vec<u8>,
-) -> Result<Vec<u8>, anyhow::Error> {
+) -> anyhow::Result<Vec<u8>> {
     let cipher = XChaCha20Poly1305::new(GenericArray::from_slice(&key));
     let xnonce = XNonce::from_slice(&nonce);
 
@@ -284,7 +74,7 @@ pub fn decrypt_xchacha20poly1305(
     Ok(plaintext.unwrap())
 }
 
-fn blake3_digest<R: Read>(mut reader: R) -> Result<Hash, anyhow::Error> {
+fn blake3_digest<R: Read>(mut reader: R) -> anyhow::Result<Hash> {
     let mut hasher = blake3::Hasher::new();
 
     let mut buffer = [0; 1048576];
@@ -300,7 +90,7 @@ fn blake3_digest<R: Read>(mut reader: R) -> Result<Hash, anyhow::Error> {
     Ok(hasher.finalize())
 }
 
-pub fn hash_blake3_file(path: String) -> Result<Vec<u8>, anyhow::Error> {
+pub fn hash_blake3_file(path: String) -> anyhow::Result<Vec<u8>> {
     let input = File::open(path)?;
     let reader = BufReader::new(input);
     let digest = blake3_digest(reader)?;
@@ -308,7 +98,7 @@ pub fn hash_blake3_file(path: String) -> Result<Vec<u8>, anyhow::Error> {
     Ok(digest.as_bytes().to_vec())
 }
 
-pub fn hash_blake3(input: Vec<u8>) -> Result<Vec<u8>, anyhow::Error> {
+pub fn hash_blake3(input: Vec<u8>) -> anyhow::Result<Vec<u8>> {
     let digest = blake3::hash(&input);
     Ok(digest.as_bytes().to_vec())
 }
@@ -323,17 +113,17 @@ pub fn verify_integrity(
     offset: u64,
     bao_outboard_bytes: Vec<u8>,
     blake3_hash: Vec<u8>,
-) -> Result<u8, anyhow::Error> {
-    let mut slice_stream = bao::encode::SliceExtractor::new_outboard(
+) -> anyhow::Result<u8> {
+    let mut slice_stream = abao::encode::SliceExtractor::new_outboard(
         FakeSeeker::new(&chunk_bytes[..]),
         Cursor::new(&bao_outboard_bytes),
         offset,
         262144,
     );
 
-    let mut decode_stream = bao::decode::SliceDecoder::new(
+    let mut decode_stream = abao::decode::SliceDecoder::new(
         &mut slice_stream,
-        &bao::Hash::from(from_vec_to_array(blake3_hash)),
+        &abao::Hash::from(from_vec_to_array(blake3_hash)),
         offset,
         262144,
     );
@@ -372,7 +162,7 @@ impl<R: Read> Seek for FakeSeeker<R> {
     }
 }
 
-pub fn hash_bao_file(path: String) -> Result<BaoResult, anyhow::Error> {
+pub fn hash_bao_file(path: String) -> anyhow::Result<BaoResult> {
     let input = File::open(path)?;
     let reader = BufReader::new(input);
 
@@ -381,7 +171,7 @@ pub fn hash_bao_file(path: String) -> Result<BaoResult, anyhow::Error> {
     Ok(result.unwrap())
 }
 
-pub fn hash_bao_memory(bytes: Vec<u8>) -> Result<BaoResult, anyhow::Error> {
+pub fn hash_bao_memory(bytes: Vec<u8>) -> anyhow::Result<BaoResult> {
     let result = hash_bao_file_internal(&bytes[..]);
 
     Ok(result.unwrap())
@@ -392,12 +182,12 @@ pub struct BaoResult {
     pub outboard: Vec<u8>,
 }
 
-fn hash_bao_file_internal<R: Read>(mut reader: R) -> Result<BaoResult, anyhow::Error> {
+fn hash_bao_file_internal<R: Read>(mut reader: R) -> anyhow::Result<BaoResult> {
     let mut encoded_incrementally = Vec::new();
 
     let encoded_cursor = std::io::Cursor::new(&mut encoded_incrementally);
 
-    let mut encoder = bao::encode::Encoder::new_outboard(encoded_cursor);
+    let mut encoder = abao::encode::Encoder::new_outboard(encoded_cursor);
 
     let mut buffer = [0; 262144];
 

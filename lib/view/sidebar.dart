@@ -13,10 +13,12 @@ import 'package:universal_platform/universal_platform.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vup/app.dart';
 import 'package:vup/page/settings.dart';
+import 'package:vup/page/settings/portal_auth.dart';
 import 'package:vup/utils/ffmpeg/base.dart';
 import 'package:vup/utils/ffmpeg_installer.dart';
 import 'package:vup/utils/show_portal_dialog.dart';
 import 'package:vup/utils/temp_dir.dart';
+import 'package:vup/view/active_queue_tasks.dart';
 import 'package:vup/view/queue_task_manager.dart';
 import 'package:vup/view/setup_sync_dialog.dart';
 import 'package:vup/widget/sidebar_shortcut.dart';
@@ -72,38 +74,58 @@ class SidebarViewState extends State<SidebarView>
   String get _linuxDesktopFilePath =>
       join(dataHome.path, 'applications', 'vup.desktop');
 
+  bool? isUpdateAvailable;
+  late String updateMessage;
+  late Map announcement;
+  bool showAnnouncement = false;
+
   Future<void> checkForUpdates() async {
     if (isUpdateAvailable != null) return;
-    // TODO Implement
-/*     try {
-      final res = await mySky.httpClient.get(
-        Uri.parse(
-          'https://040d88hlnnklrnsbsu3ptvpqep8970bst7v3ancobqk8h881k3239u8.${mySky.skynetClient.portalHost}',
-        ),
-        headers: mySky.headers,
+
+    try {
+      final resolverCID = CID.decode(
+        'zrjGVAauVsEvtATS5X8mioqGDr7p68Y75EUKQw6CcnkYSXL',
       );
+      final sre = await mySky.api.registryGet(
+        resolverCID.hash.fullBytes,
+      );
+      final staticCID = CID.fromBytes(sre!.data.sublist(1));
+      final res = await mySky.api.downloadRawFile(staticCID.hash);
+      final status = json.decode(utf8.decode(res));
 
-      final status = json.decode(res.body);
-      final versionData = status['platforms'][Platform.operatingSystem];
+      final versionData = status['currentVersion'][Platform.operatingSystem];
 
-      if (Platform.isLinux) {
+      /*  if (Platform.isLinux) {
         final desktopFile = File(_linuxDesktopFilePath);
         if (!desktopFile.existsSync()) {
           isInstallationAvailable = true;
           setState(() {});
           return;
         }
-      }
+      } */
 
-      final int versionCode = versionData['versionCode'];
+      final int versionCode = versionData['code'];
 
       if (versionCode > int.parse(packageInfo.buildNumber)) {
         isUpdateAvailable = true;
+        updateMessage =
+            versionData['message'] ?? 'An update for Vup is available';
       } else {
         isUpdateAvailable = false;
       }
-      setState(() {});
-    } catch (e) {} */
+
+      announcement = status['announcement'];
+
+      if (dataBox.get('last_read_announcement_id') != announcement['id']) {
+        showAnnouncement = true;
+      }
+
+      if (isUpdateAvailable! || showAnnouncement) {
+        setState(() {});
+      }
+    } catch (e, st) {
+      logger.catched(e, st);
+    }
   }
 
   Future<void> downloadAndInstallLatestVersion() async {
@@ -501,7 +523,7 @@ MimeType=x-scheme-handler/vup;
         StreamBuilder<Null>(
             stream: quotaService.stream,
             builder: (context, snapshot) {
-              if (quotaService.totalBytes == -1) {
+              /* if (quotaService.totalBytes == -1) {
                 return SizedBox(
                   child: Card(
                     color: Theme.of(context).primaryColor,
@@ -545,83 +567,38 @@ MimeType=x-scheme-handler/vup;
 
               if (quotaService.totalBytes == 0) {
                 return SizedBox();
-              }
+              } */
 
-              return Padding(
-                padding:
-                    const EdgeInsets.only(left: 8, right: 8, top: 0, bottom: 8),
-                child: Tooltip(
-                  richMessage: TextSpan(
-                    text: quotaService.tooltip,
-                    style: TextStyle(
-                      // color: Colors.black,
-                      fontSize: 14,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: LinearProgressIndicator(
-                          value:
-                              quotaService.usedBytes / quotaService.totalBytes,
-                          minHeight: 8,
-                          backgroundColor: Theme.of(context).dividerColor,
-                        ),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final key in mySky.portalAccounts['uploadPortalOrder'])
+                    QuotaWidget(context: context, portal: key),
+                  if (quotaService.accountInfos.length < 2)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 8,
+                        bottom: 8.0,
                       ),
-                      SizedBox(
-                        height: 4,
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                      text:
-                                          '${filesize(quotaService.usedBytes)} ',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(context).primaryColor,
-                                      )),
-                                  TextSpan(
-                                    text:
-                                        ' / ${filesize(quotaService.totalBytes)} (${(quotaService.usedBytes / quotaService.totalBytes * 100).toStringAsFixed(2)} %)',
-                                  ),
-                                ],
-                              ),
-                              style: TextStyle(
-                                fontSize: 13,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          context.push(
+                            MaterialPageRoute(
+                              builder: (context) => Scaffold(
+                                appBar: AppBar(
+                                  title: Text('Storage Services'),
+                                ),
+                                body: PortalAuthSettingsPage(),
                               ),
                             ),
-                          ),
-                          // TODO Implement this button
-                          /*  if (quotaService.usedBytes / quotaService.totalBytes >
-                              0.2)
-                            InkWell(
-                              onTap: () {
-                                launch(
-                                  'https://account.${mySky.skynetClient.portalHost}/payments',
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(0.0),
-                                child: Text(
-                                  'Upgrade',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
-                                ),
-                              ),
-                            ) */
-                        ],
+                          );
+                        },
+                        child: Text(
+                          'Add Storage Service',
+                        ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                ],
               );
             }),
         Divider(
@@ -639,26 +616,118 @@ MimeType=x-scheme-handler/vup;
               right: 4,
             ),
             children: [
-              StreamBuilder<void>(
-                stream: Stream.periodic(Duration(seconds: 1)),
-                builder: (context, snapshot) {
-                  return ElevatedButton(
-                    child: Text(
-                      'Queue Task Manager (${queue.runningTasks.length}+${queue.tasks.length})',
-                    ),
-                    onPressed: () {
-                      context.push(
-                        MaterialPageRoute(
-                          builder: (context) => QueueTaskManager(),
+              if (showAnnouncement)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.only(left: 8),
+                  margin: const EdgeInsets.only(bottom: 8, right: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              announcement['title'],
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              dataBox.put(
+                                'last_read_announcement_id',
+                                announcement['id'],
+                              );
+                              setState(() {
+                                showAnnouncement = false;
+                              });
+                            },
+                            icon: Icon(
+                              UniconsLine.times,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          right: 8,
+                          bottom: 8,
                         ),
-                      );
-                    },
-                  );
-                },
-              ),
-              SizedBox(
-                height: 8,
-              ),
+                        child: Text(
+                          announcement['content'],
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (isUpdateAvailable == true)
+                Container(
+                  decoration: BoxDecoration(
+                    color: SkyColors.warning,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(bottom: 8, right: 4),
+                  child: false
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'An update is available\nVup will be closed after the update and you will have to open it again.',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(
+                              height: 8,
+                            ),
+                            ElevatedButton(
+                              style: ButtonStyle(
+                                backgroundColor: MaterialStateProperty.all(
+                                  Colors.black,
+                                ),
+                                foregroundColor: MaterialStateProperty.all(
+                                  Colors.white,
+                                ),
+                              ),
+                              onPressed: () async {
+                                showLoadingDialog(
+                                  context,
+                                  'Downloading and installing Vup...',
+                                );
+                                try {
+                                  await downloadAndInstallLatestVersion();
+                                  exit(0);
+                                } catch (e, st) {
+                                  context.pop();
+                                  showErrorDialog(context, e, st);
+                                }
+                              },
+                              child: Text(
+                                'Download and install now',
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          updateMessage,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
               Text(
                 'Quick Access',
                 style: shortcutGroupTitleStyle,
@@ -667,9 +736,26 @@ MimeType=x-scheme-handler/vup;
                 path: '',
                 appLayoutState: widget.appLayoutState,
               ), */
+              // TODO Implement
+              // TODO Start area
+              if (false) ...[
+                SidebarShortcutWidget(
+                  path: storageService.trashPath,
+                  appLayoutState: widget.appLayoutState,
+                  title: 'Recently opened',
+                  icon: 'folder-temp', // or folder-update
+                ),
+                SidebarShortcutWidget(
+                  path: storageService.trashPath,
+                  appLayoutState: widget.appLayoutState,
+                  title: 'Available offline',
+                  icon: 'folder-resolver', // or folder-dump, folder-download
+                ),
+              ],
               SidebarShortcutWidget(
                 path: 'home',
                 appLayoutState: widget.appLayoutState,
+                title: 'Home',
               ),
               StreamBuilder(
                 stream: sidebarService.stream,
@@ -915,64 +1001,12 @@ MimeType=x-scheme-handler/vup;
               ],
             ),
           ),
-        if (isUpdateAvailable == true)
-          Container(
-            decoration: BoxDecoration(
-              color: SkyColors.warning,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: const EdgeInsets.all(8),
-            margin: const EdgeInsets.all(8),
-            child: Platform.isLinux
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'An update is available\nVup will be closed after the update and you will have to open it again.',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(
-                        height: 8,
-                      ),
-                      ElevatedButton(
-                        style: ButtonStyle(
-                          backgroundColor: MaterialStateProperty.all(
-                            Colors.black,
-                          ),
-                          foregroundColor: MaterialStateProperty.all(
-                            Colors.white,
-                          ),
-                        ),
-                        onPressed: () async {
-                          showLoadingDialog(
-                            context,
-                            'Downloading and installing Vup...',
-                          );
-                          try {
-                            await downloadAndInstallLatestVersion();
-                            exit(0);
-                          } catch (e, st) {
-                            context.pop();
-                            showErrorDialog(context, e, st);
-                          }
-                        },
-                        child: Text(
-                          'Download and install now',
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
-                    'An update is available\nCheck the Discord Server for more details and the changelog',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
+
+        ActiveQueueTasksView(),
+
+        SizedBox(
+          height: 8,
+        ),
         ValueListenableBuilder(
           valueListenable: syncTasks.listenable(),
           builder: (context, box, widget) {
@@ -1079,6 +1113,147 @@ MimeType=x-scheme-handler/vup;
           },
         ),
       ],
+    );
+  }
+}
+
+class QuotaWidget extends StatelessWidget {
+  const QuotaWidget({
+    Key? key,
+    required this.context,
+    required this.portal,
+  }) : super(key: key);
+
+  final BuildContext context;
+  final String portal;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!quotaService.accountInfos.containsKey(portal)) return SizedBox();
+    final ai = quotaService.accountInfos[portal]!;
+
+    final accentColor =
+        ai.isRestricted ? Colors.red : Theme.of(context).colorScheme.secondary;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, right: 8, top: 0, bottom: 8),
+      child: /* Tooltip(
+        
+        richMessage: TextSpan(
+          text: jsonEncode(portalStats),
+          style: TextStyle(
+            // color: Colors.black,
+            fontSize: 14,
+          ),
+        ),
+        child: */
+          Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 4.0),
+                child: Text(
+                  ai.serviceName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: ai.isRestricted ? Colors.red : null,
+                  ),
+                ),
+              ),
+              if (ai.totalStorageBytes != null)
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: LinearProgressIndicator(
+                      value: ai.usedStorageBytes / ai.totalStorageBytes!,
+                      minHeight: 8,
+                      color: accentColor,
+                      backgroundColor: Theme.of(context).dividerColor,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (ai.isRestricted)
+            Text(
+              'Account restricted (locked)',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          if (ai.warning != null)
+            Text(
+              ai.warning.toString(),
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          if (ai.expiryDays != null)
+            Text(
+              'Files expire after ${ai.expiryDays} days',
+              style: TextStyle(
+                color: Theme.of(context).hintColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          SizedBox(
+            height: 2,
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                          text: '${filesize(ai.usedStorageBytes)} ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: accentColor,
+                          )),
+                      ai.totalStorageBytes == null
+                          ? TextSpan(
+                              text: ' / ∞',
+                            )
+                          : TextSpan(
+                              text:
+                                  ' / ${filesize(ai.totalStorageBytes)} (${(ai.usedStorageBytes / ai.totalStorageBytes! * 100).toStringAsFixed(2)} %)',
+                            ),
+                    ],
+                  ),
+                  style: TextStyle(
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              // TODO Implement this button
+              /*  if (quotaService.usedBytes / quotaService.totalBytes >
+                                  0.2)
+                                InkWell(
+                                  onTap: () {
+                                    launch(
+                                      'https://account.${mySky.skynetClient.portalHost}/payments',
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(0.0),
+                                    child: Text(
+                                      'Upgrade',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Theme.of(context).primaryColor,
+                                      ),
+                                    ),
+                                  ),
+                                ) */
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

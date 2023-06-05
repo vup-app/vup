@@ -1,4 +1,4 @@
-import 'dart:ffi';
+/* import 'dart:ffi';
 import 'dart:io';
 
 import 'package:s5_server/rust/bridge_generated.dart';
@@ -10,3 +10,4 @@ RustImpl initializeExternalLibrary(String path) {
         : DynamicLibrary.open(path),
   );
 }
+ */

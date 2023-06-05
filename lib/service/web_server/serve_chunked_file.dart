@@ -12,6 +12,7 @@ import 'package:s5_server/download/uri_provider.dart';
 import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:lib5/util.dart';
+import 'package:s5_server/constants.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:vup/utils/download/generate_download_config.dart';
@@ -173,8 +174,14 @@ Stream<List<int>> openRead(
 
   Map<String, String>? customHeaders;
 
-  final dlUriProvider =
-      StorageLocationProvider(s5Node, encryptedCID.encryptedBlobHash);
+  final dlUriProvider = StorageLocationProvider(
+    s5Node,
+    encryptedCID.encryptedBlobHash,
+    /* fileVersion.cid.size! > defaultChunkSize
+        ? [storageLocationTypeFull]
+        :  */
+    [storageLocationTypeFile, storageLocationTypeFull],
+  );
 
   dlUriProvider.start();
 

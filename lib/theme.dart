@@ -135,8 +135,9 @@ class AppThemeState extends State<AppTheme> {
     );
   }
 
+  final defaultAccentColor = Color(0xff1ed660);
+
   ThemeData _buildThemeData(String theme) {
-    final _accentColor = Color(0xff1ed660);
     /* = RainbowColorTween([
       Colors.orange,
       Colors.red,
@@ -150,21 +151,21 @@ class AppThemeState extends State<AppTheme> {
 
     if (theme == 'light') {
       return _buildCustomThemeData(
-        accentColor: _accentColor,
+        accentColor: defaultAccentColor,
         backgroundColor: Color(0xfffafafa),
         cardColor: Color(0xffffffff),
         brightness: Brightness.light,
       );
     } else if (theme == 'dark') {
       return _buildCustomThemeData(
-        accentColor: _accentColor,
+        accentColor: defaultAccentColor,
         backgroundColor: Color(0xff202323),
         cardColor: Color(0xff424242),
         brightness: Brightness.dark,
       );
     } else {
       return _buildCustomThemeData(
-        accentColor: _accentColor,
+        accentColor: defaultAccentColor,
         backgroundColor: Colors.black,
         cardColor: Color(0xff424242),
         brightness: Brightness.dark,
@@ -179,6 +180,12 @@ class AppThemeState extends State<AppTheme> {
     required Brightness brightness,
     String? backgroundImageUrl,
   }) {
+    var secondaryColor = accentColor;
+
+    if (brightness == Brightness.light && accentColor == defaultAccentColor) {
+      secondaryColor = Color(0xff00bd36);
+    }
+
     var themeData = ThemeData(
       extensions: [
         ThemeImages(backgroundImageUrl: backgroundImageUrl),
@@ -193,7 +200,8 @@ class AppThemeState extends State<AppTheme> {
       colorScheme: ColorScheme.light(
         brightness: brightness,
         primary: accentColor,
-        secondary: accentColor,
+        onPrimary: Colors.black,
+        secondary: secondaryColor,
         /*      onBackground: Colors.red,
         onPrimary: Colors.red,
         onSecondary: Colors.red,

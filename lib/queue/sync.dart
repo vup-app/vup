@@ -11,6 +11,9 @@ class SyncQueueTask extends QueueTask {
   final List<String> dependencies;
 
   @override
+  final threadPool = 'sync';
+
+  @override
   double progress = 0;
 
   final Directory dir;

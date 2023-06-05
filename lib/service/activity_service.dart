@@ -5,8 +5,12 @@ import 'package:hive/hive.dart';
 import 'package:hive_crdt/hive_adapters.dart';
 import 'package:hive_crdt/hive_crdt.dart';
 import 'package:pool/pool.dart';
+import 'package:s5_server/http_api/serve_chunked_file.dart';
+import 'package:vup/app.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
+
+import 'jellyfin_server/id.dart';
 
 class ActivityService extends VupService {
   // final Map<String, int> playPositions = {};
@@ -115,35 +119,42 @@ class ActivityService extends VupService {
     }
   }
 
-  int getPlayCount(String hash) {
-    return playCounts.get(hash) ?? 0;
+  int getPlayCount(Multihash hash) {
+    return playCounts.get(hash.toBase64Url()) ?? 0;
   }
 
-  void setPlayPosition(String hash, int position) {
-    info('setPlayPosition $hash $position');
-    playPositions.put(hash, position);
-    lastPlayedDates.put(hash, DateTime.now().millisecondsSinceEpoch);
+  void setPlayPosition(JellyID id, int position) {
+    info('setPlayPosition $id $position');
+    playPositions.put(id.toBase64Url(), position);
+    lastPlayedDates.put(
+      id.toBase64Url(),
+      DateTime.now().millisecondsSinceEpoch,
+    );
 
     triggerSync();
   }
 
-  int getPlayPosition(String hash) {
+  int getPlayPosition(Multihash hash) {
     // logger.verbose('getPlayPosition $hash ${playPositions.get(hash) ?? 0}');
-    return playPositions.get(hash) ?? 0;
+    return playPositions.get(hash.toBase64Url()) ?? 0;
   }
 
-  void logPlayEvent(String hash /* , {DateTime? ts} */) async {
-    info('logPlayEvent $hash');
-    playCounts.put(hash, getPlayCount(hash) + 1);
-    lastPlayedDates.put(hash, DateTime.now().millisecondsSinceEpoch);
-    setPlayPosition(hash, 0);
+  void logPlayEvent(JellyID id, {required Map meta}) async {
+    info('logPlayEvent $id');
+    playCounts.put(id.toBase64Url(), getPlayCount(id) + 1);
+    lastPlayedDates.put(
+      id.toBase64Url(),
+      DateTime.now().millisecondsSinceEpoch,
+    );
+    setPlayPosition(id, 0);
+
 
     // TODO Add to activity list
   }
 
-  DateTime getLastPlayedDate(String? itemId) {
+  DateTime getLastPlayedDate(Multihash? itemId) {
     return DateTime.fromMillisecondsSinceEpoch(
-      itemId == null ? 0 : lastPlayedDates.get(itemId) ?? 0,
+      itemId == null ? 0 : lastPlayedDates.get(itemId.toBase64Url()) ?? 0,
     );
   }
 }

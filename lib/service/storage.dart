@@ -5,7 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:lib5/src/upload/tus/client.dart';
-import 'package:messagepack/messagepack.dart';
+import 'package:s5_msgpack/s5_msgpack.dart';
 import 'package:pool/pool.dart';
 import 'package:stash/stash_api.dart';
 import 'package:vup/app.dart';
@@ -22,6 +22,7 @@ import 'package:vup/utils/process_image.dart';
 import 'package:watcher/watcher.dart';
 import 'package:cancellation_token/cancellation_token.dart';
 import 'package:lib5/util.dart';
+import 'package:xml/xml.dart';
 import 'package:yaml/yaml.dart';
 
 import 'mysky.dart';
@@ -86,7 +87,7 @@ class StorageService extends VupService {
     required this.dataDirectory,
   });
 
-  get trashPath => 'home/.trash';
+  get trashPath => '.trash';
 
   Future<void> init() async {}
 
@@ -366,10 +367,14 @@ class StorageService extends VupService {
                 final index = int.parse(parts[0]);
                 final lang = parts.length < 2 ? 'eng' : parts[1];
 
+                String subtitleFileName =
+                    '${basenameWithoutExtension(file.path)}.$lang.vtt';
+
                 final subOutFile = File(join(
                   temporaryDirectory,
                   'subtitles',
-                  '$lang-${Uuid().v4()}.vtt',
+                  Uuid().v4(),
+                  subtitleFileName,
                 ));
 
                 logger.info(
@@ -391,17 +396,16 @@ class StorageService extends VupService {
                 /* logger.verbose(res.exitCode);
                 logger.verbose(res.stdout); */
                 if (subOutFile.existsSync()) {
-                  final fileData = await storageService.startFileUploadingTask(
-                    'vup.hns',
+                  await storageService.startFileUploadingTask(
+                    path,
                     subOutFile,
-                    returnFileData: true,
                   );
 
                   subtitles.add({
                     'lang': lang,
                     'index': index,
                     'format_name': 'vtt',
-                    'file': fileData,
+                    'path': basename(subOutFile.path),
                   });
                 }
               }
@@ -813,7 +817,6 @@ class StorageService extends VupService {
           hashes: [],
           ts: now,
         ),
-        modified: now,
         name: basename(file.path),
         version: -1,
       ),
@@ -1405,8 +1408,50 @@ class StorageService extends VupService {
         await sink.flush();
         await sink.close(); */
       } else */
+
+      final fileStateNotifier =
+          dac.getFileStateChangeNotifier(fileData.cid.hash);
+
       if (fileData.encryptedCID == null) {
-        throw 'Not implemented';
+        final cancelToken = CancellationToken();
+        final cancelSub = fileStateNotifier.onCancel.listen((event) async {
+          cancelToken.cancel();
+        });
+
+        try {
+          await s5Node.downloadFileByHash(
+            hash: fileData.plaintextCID!.hash,
+            size: fileData.plaintextCID!.size,
+            outputFile: (outFile ?? decryptedFile),
+            onProgress: (progress) {
+              dac.setFileState(
+                fileData.cid.hash,
+                FileState(
+                  type: FileStateType.downloading,
+                  progress: progress,
+                ),
+              );
+            },
+            cancelToken: cancelToken,
+          );
+          cancelSub.cancel();
+        } catch (_) {
+          fileStateNotifier.updateFileState(
+            FileState(
+              type: FileStateType.idle,
+              progress: null,
+            ),
+          );
+          cancelSub.cancel();
+          rethrow;
+        }
+
+        fileStateNotifier.updateFileState(
+          FileState(
+            type: FileStateType.idle,
+            progress: null,
+          ),
+        );
         /*    decryptedFile.createSync(recursive: true);
         final dc = await generateDownloadConfig(fileData);
 
@@ -1451,9 +1496,6 @@ class StorageService extends VupService {
                 (fileData.cid.size! % fileData.encryptedCID!.chunkSize) +
                 16 +
                 fileData.encryptedCID!.padding;
-
-        final fileStateNotifier =
-            dac.getFileStateChangeNotifier(fileData.cid.hash);
 
         final cancelToken = CancellationToken();
         final cancelSub = fileStateNotifier.onCancel.listen((event) async {
@@ -1523,7 +1565,7 @@ class StorageService extends VupService {
           ),
         );
 
-        await nativeRustApi.decryptFileXchacha20(
+        await nativeRustVupApi.decryptFileXchacha20(
           inputFilePath: encryptedCacheFile.path,
           outputFilePath: (outFile ?? decryptedFile).path,
           key: fileData.encryptedCID!.encryptionKey,
@@ -1770,7 +1812,7 @@ class StorageService extends VupService {
 
     logger.verbose('encryptFileXchacha20 ${file.path} ${outFile.path}');
 
-    final key = await nativeRustApi.encryptFileXchacha20(
+    final key = await nativeRustVupApi.encryptFileXchacha20(
       inputFilePath: file.path,
       outputFilePath: outFile.path,
       padding: padding,
@@ -1900,8 +1942,8 @@ class StorageService extends VupService {
 
     final SMALL_FILE_SIZE = 33554432; // 32 MiB
 
-    if (customRemote != null) {
-      /*    final rem = dac.customRemotes[customRemote]!;
+    // if (customRemote != null) {
+    /*    final rem = dac.customRemotes[customRemote]!;
       final config = rem['config']! as Map;
       final type = rem['type']!;
 
@@ -1973,7 +2015,26 @@ class StorageService extends VupService {
       } else {
         throw 'Remote type "$type" not supported';
       } */
-      throw UnimplementedError();
+    if (s5Node.store != null) {
+      final cancelToken = CancellationToken();
+      final cancelSub = fileStateNotifier.onCancel.listen((event) async {
+        cancelToken.cancel();
+      });
+      final cid = await s5Node.uploadLocalFile(
+        outFile,
+        withOutboard: false,
+        cancelToken: cancelToken,
+        onProgress: (value) {
+          fileStateNotifier.updateFileState(
+            FileState(
+              type: FileStateType.uploading,
+              progress: value,
+            ),
+          );
+        },
+      );
+      cancelSub.cancel();
+      encryptedBlobHash = cid.hash;
     } else {
       if (outFile.lengthSync() > SMALL_FILE_SIZE) {
         logger.verbose('fileMultiHash $fileMultiHash');

@@ -3,31 +3,29 @@ import 'dart:convert';
 import 'package:filesize/filesize.dart';
 import 'package:hive/hive.dart';
 import 'package:lib5/lib5.dart';
+import 'package:s5_server/store/base.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/library/state.dart';
 import 'package:vup/service/base.dart';
 
 class QuotaService extends VupService with CustomState {
-  int usedBytes = 0;
-  int totalBytes = 0;
+  // late Box<Map> historyBox;
 
-  late Box<Map> historyBox;
-
-  String tooltip = '';
+  // String tooltip = '';
 
   Future<void> init() async {
-    historyBox = await Hive.openBox('stats_history');
+    // historyBox = await Hive.openBox('stats_history');
   }
 
   int counter = 0;
 
   void clear() {
     // totalBytes = -1;
-    tooltip = '';
+    // tooltip = '';
     $();
   }
 
-  final portalStats = <String, Map>{};
+  final accountInfos = <String, AccountInfo>{};
 
   void update() async {
     verbose('update');
@@ -42,29 +40,28 @@ class QuotaService extends VupService with CustomState {
         );
         final stats = json.decode(res.body);
 
-        portalStats[pc.authority] = stats;
+        final int usedStorage = stats['stats']['total']['usedStorage'];
+        final int totalStorage = stats['tier']['storageLimit'];
+        final bool isRestricted = stats['isRestricted'] == true;
 
-        verbose('stats ${pc.authority} $stats');
+        accountInfos[pc.authority] = AccountInfo(
+          serviceName: pc.authority,
+          usedStorageBytes: usedStorage,
+          totalStorageBytes: totalStorage,
+          isRestricted: isRestricted,
+          userIdentifier: stats['email'],
+          subscription: stats['tier']['name'],
+        );
+
+        // verbose('stats ${pc.authority} $stats');
       } catch (e, st) {
         logger.verbose('quota $e $st');
       }
     }
-
-    if (mySky.api.storageServiceConfigs.isNotEmpty) {
-      final uc = mySky.api.storageServiceConfigs.first;
-      final primaryPortalStats = portalStats[uc.authority];
-      try {
-        usedBytes = primaryPortalStats!['stats']['total']['usedStorage'];
-
-        final tier = primaryPortalStats['tier'];
-
-        totalBytes = tier['storageLimit'];
-
-        tooltip = '';
-        tooltip +=
-            'Primary upload portal: ${uc.authority}\nCurrent tier: ${tier['name']}\nUpload speed: ${filesize(tier['uploadBandwidth'])}/s';
-      } catch (_) {}
+    if (s5Node.store != null) {
+      accountInfos['_local'] = await s5Node.store!.getAccountInfo();
     }
+
     $();
   }
 

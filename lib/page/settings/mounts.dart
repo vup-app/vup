@@ -1,6 +1,5 @@
-import 'dart:convert';
+/* import 'dart:convert';
 
-import 'package:adaptive_dialog/adaptive_dialog.dart';
 import 'package:vup/app.dart';
 import 'package:vup/utils/date_format.dart';
 
@@ -35,14 +34,15 @@ class _MountsSettingsPageState extends State<MountsSettingsPage> {
         SizedBox(
           height: 16,
         ),
-        ElevatedButton(
+        // TODO Implement
+        /* ElevatedButton(
           onPressed: () async {
             await showInfoDialog(
               context,
               'Create mount point manually',
               'Warning: You can break quite a lot of things with this tool. Please only use it when you know what you\'re doing',
             );
-            final res = await showTextInputDialog(
+            final res = await showDialog(
               context: context,
               textFields: [
                 DialogTextField(hintText: 'mount point uri'),
@@ -64,7 +64,7 @@ class _MountsSettingsPageState extends State<MountsSettingsPage> {
           child: Text(
             'Create new mount point',
           ),
-        ),
+        ), */
         SizedBox(
           height: 16,
         ),
@@ -115,3 +115,4 @@ class _MountsSettingsPageState extends State<MountsSettingsPage> {
     );
   }
 }
+ */

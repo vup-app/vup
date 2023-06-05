@@ -3,9 +3,11 @@
 
 import 'dart:ffi';
 
+import 'package:s5_server/rust/bridge_definitions.dart';
+import 'bridge_definitions_vup.dart';
+import 'bridge_generated_vup.dart';
+
 import 'bridge_generated.dart';
-import 'bridge_definitions.dart';
-export 'bridge_definitions.dart';
 
 // Re-export the bridge so it is only necessary to import this file.
 export 'bridge_generated.dart';
@@ -17,6 +19,9 @@ const _base = 'rust';
 // but rather directly **linked** against the binary.
 final _dylib = io.Platform.isWindows ? '$_base.dll' : 'lib$_base.so';
 
-final Rust api = RustImpl(io.Platform.isIOS || io.Platform.isMacOS
+final dylib = io.Platform.isIOS || io.Platform.isMacOS
     ? DynamicLibrary.executable()
-    : DynamicLibrary.open(_dylib));
+    : DynamicLibrary.open(_dylib);
+
+final Rust api = RustImpl(dylib);
+final RustVup apiVup = RustVupImpl(dylib);

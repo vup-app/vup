@@ -526,7 +526,6 @@ class _DirectoryViewState extends State<DirectoryView> {
                                   'Creating common directories...',
                                 );
                                 final dirs = [
-                                  '.trash',
                                   'Books',
                                   'Documents',
                                   'Music',
@@ -552,8 +551,8 @@ class _DirectoryViewState extends State<DirectoryView> {
                         : [
                             Text(
                               widget.pathNotifier.isSearching
-                                  ? 'No search results found.'
-                                  : 'This directory is empty.',
+                                  ? 'No search results found'
+                                  : 'This directory is empty',
                               style: TextStyle(
                                 fontSize: 24,
                               ),
@@ -613,25 +612,31 @@ class _DirectoryViewState extends State<DirectoryView> {
       List<String>? groupTags;
 
       if (zoomLevel.type == ZoomLevelType.mosaic) {
-        for (final entity in entities) {
-          String groupTag = '';
-          if (entity is FileReference) {
-            final String? dateTime = entity.ext?['exif']?['DateTime'];
-            if (dateTime != null) {
-              groupTag = dateTime.split(':').first;
-            }
-          } else {}
-          groups[groupTag] ??= [];
-          groups[groupTag]!.add(entity);
-        }
-        groupTags = groups.keys.toList();
-        groupTags.remove('');
-        groupTags.sort((a, b) => -a.compareTo(b));
-        if (groups.containsKey('')) {
-          groupTags.insert(0, '');
+        if (zoomLevel.groupBy == null) {
+          groups[''] = entities;
+          groupTags = [''];
+        } else {
+          for (final entity in entities) {
+            String groupTag = '';
+            if (entity is FileReference) {
+              final String? dateTime = entity.ext?['exif']?['DateTime'];
+              if (dateTime != null) {
+                groupTag = dateTime.split(':').first;
+              }
+            } else {}
+            groups[groupTag] ??= [];
+            groups[groupTag]!.add(entity);
+          }
+          groupTags = groups.keys.toList();
+          groupTags.remove('');
+          groupTags.sort((a, b) => -a.compareTo(b));
+          if (groups.containsKey('')) {
+            groupTags.insert(0, '');
+          }
         }
       }
-      double maxHeight = zoomLevel.sizeValue * 300;
+
+      double maxHeight = zoomLevel.sizeValue * 400 + 50;
 
       if (zoomLevel.type == ZoomLevelType.list) {
         contentViewBuilder = () => ListView.builder(
@@ -671,7 +676,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                       for (final title in item.titles)
                         Padding(
                           padding: EdgeInsets.only(
-                            top: zoomLevel.sizeValue * 52,
+                            top: maxHeight * 0.16,
                             left: title.offset + zoomLevel.sizeValue * 16,
                             bottom: zoomLevel.sizeValue * 16,
                           ),
@@ -679,7 +684,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                             title.title,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: zoomLevel.sizeValue * 52,
+                              fontSize: maxHeight * 0.16,
                             ),
                           ),
                         ),
@@ -687,7 +692,9 @@ class _DirectoryViewState extends State<DirectoryView> {
                   );
                 } else if (item is MosaicRow) {
                   return SizedBox(
-                    height: max(item.height, maxHeight),
+                    height: item.height == -1
+                        ? (maxHeight / 2)
+                        : max(item.height, maxHeight),
                     child: Row(
                       children: [
                         for (final entity in item.parts)
@@ -695,16 +702,10 @@ class _DirectoryViewState extends State<DirectoryView> {
                               ? SizedBox(width: entity.width)
                               : SizedBox(
                                   width: entity.width,
-                                  child: Padding(
-                                    // TODO Configure padding
-                                    padding: const EdgeInsets.all(
-                                      1,
-                                    ),
-                                    child: FileSystemEntityWidget(
-                                      entity.entity,
-                                      pathNotifier: widget.pathNotifier,
-                                      viewState: widget.viewState,
-                                    ),
+                                  child: FileSystemEntityWidget(
+                                    entity.entity,
+                                    pathNotifier: widget.pathNotifier,
+                                    viewState: widget.viewState,
                                   ),
                                 ),
                       ],
@@ -779,11 +780,25 @@ class _DirectoryViewState extends State<DirectoryView> {
 
                             final ratio = width / currentWidth;
 
+                            bool onlyNonThumbnailFiles = true;
+
                             currentRow.parts.forEach((element) {
                               element.width *= ratio;
+                              if (element.entity is FileReference &&
+                                  (element.entity as FileReference)
+                                          .file
+                                          .thumbnail !=
+                                      null) {
+                                onlyNonThumbnailFiles = false;
+                              }
                             });
 
-                            currentRow.height = maxHeight * ratio;
+                            if (onlyNonThumbnailFiles) {
+                              currentRow.height = -1;
+                            } else {
+                              currentRow.height = maxHeight * ratio;
+                            }
+
                             currentTitleRow.titles.forEach((element) {
                               element.offset *= ratio;
                             });
@@ -792,7 +807,9 @@ class _DirectoryViewState extends State<DirectoryView> {
                           bool isInFirstRow = true;
 
                           for (final tag in groupTags!) {
-                            currentTitleRow.titles.add(MosaicTitle(tag));
+                            if (zoomLevel.groupBy != null) {
+                              currentTitleRow.titles.add(MosaicTitle(tag));
+                            }
 
                             if (currentRow.parts.isNotEmpty) {
                               currentRow.parts.add(MosaicPart(maxHeight * 0.4));
@@ -807,13 +824,15 @@ class _DirectoryViewState extends State<DirectoryView> {
                               final aspectRatio = entity is FileReference
                                   ? (entity.file.thumbnail?.aspectRatio ?? 1)
                                   : 1;
+
                               currentRow.parts.add(MosaicPart(
                                 maxHeight * aspectRatio,
                                 entity: entity,
                               ));
-                              if (currentRow.parts.fold<double>(
-                                      0.0, (p, e) => p + e.width) >
-                                  width) {
+                              if ((isMobile && currentRow.parts.length > 2) ||
+                                  currentRow.parts.fold<double>(
+                                          0.0, (p, e) => p + e.width) >
+                                      width) {
                                 currentRow.parts.removeLast();
 
                                 adjustCurrentRowWidth();
@@ -842,6 +861,9 @@ class _DirectoryViewState extends State<DirectoryView> {
                               rows.add(currentTitleRow);
                               isInFirstRow = true;
                             }
+                          }
+                          if (currentRow.parts.isNotEmpty) {
+                            rows.add(currentRow);
                           }
                           return DraggableScrollbar.semicircle(
                             controller: widget.viewState.scrollCtrl,
@@ -1027,9 +1049,9 @@ class _DirectoryViewState extends State<DirectoryView> {
                 child: Padding(
                   padding: const EdgeInsets.only(left: 16.0),
                   child: LayoutBuilder(builder: (context, cons) {
-                    final isFullSize = cons.maxWidth >= 600;
+                    final isFullSize = cons.maxWidth >= mobileBreakpoint;
                     final hasRoundedCorners =
-                        MediaQuery.of(context).size.width < 600;
+                        MediaQuery.of(context).size.width < mobileBreakpoint;
                     return Row(
                       children: [
                         if (hasRoundedCorners)
@@ -1057,6 +1079,25 @@ class _DirectoryViewState extends State<DirectoryView> {
                             child: Icon(
                               UniconsLine.bars,
                               color: zoomLevel.type == ZoomLevelType.list
+                                  ? Theme.of(context).primaryColor
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              // TODO Value for mobile needs to change
+                              zoomLevel.sizeValue = isMobile ? 0.15 : 0.3;
+                              zoomLevel.type = ZoomLevelType.mosaic;
+                            });
+                            widget.viewState.save();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(
+                              UniconsSolid.grid,
+                              color: zoomLevel.type == ZoomLevelType.mosaic
                                   ? Theme.of(context).primaryColor
                                   : null,
                             ),
@@ -1093,24 +1134,6 @@ class _DirectoryViewState extends State<DirectoryView> {
                             child: Icon(
                               UniconsSolid.apps,
                               color: zoomLevel.type == ZoomLevelType.gridCover
-                                  ? Theme.of(context).primaryColor
-                                  : null,
-                            ),
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () {
-                            setState(() {
-                              zoomLevel.sizeValue = 0.3;
-                              zoomLevel.type = ZoomLevelType.mosaic;
-                            });
-                            widget.viewState.save();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Icon(
-                              UniconsSolid.grid,
-                              color: zoomLevel.type == ZoomLevelType.mosaic
                                   ? Theme.of(context).primaryColor
                                   : null,
                             ),

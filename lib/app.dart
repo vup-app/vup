@@ -15,7 +15,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart';
 import 'package:unicons/unicons.dart';
 import 'package:vup/library/state.dart';
-export 'package:build_context/build_context.dart';
 export 'package:flutter/material.dart';
 export 'package:unicons/unicons.dart';
 export 'package:beamer/beamer.dart';
@@ -24,6 +23,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/icon_pack_service.dart';
+import 'package:vup/service/jellyfin_server/activity/listenbrainz.dart';
 import 'package:vup/service/rich_status_service.dart';
 
 import 'package:lib5/lib5.dart';
@@ -32,6 +32,22 @@ export 'package:lib5/lib5.dart';
 export 'package:lib5/constants.dart';
 
 export 'package:hive_flutter/hive_flutter.dart';
+
+extension BuildContextExtension on BuildContext {
+  Future<T?> push<T>(Route<T> route) => Navigator.push(this, route);
+
+  void pop<T extends Object>([T? result]) => Navigator.pop(this, result);
+
+  Future<T?> pushNamed<T>(String routeName, {Object? arguments}) =>
+      Navigator.pushNamed<T?>(this, routeName, arguments: arguments);
+
+  bool canPop() => Navigator.canPop(this);
+
+  void popUntil(RoutePredicate predicate) =>
+      Navigator.popUntil(this, predicate);
+
+  ThemeData get theme => Theme.of(this);
+}
 
 bool get devModeEnabled => dataBox.get('dev_mode_enabled') ?? false;
 
@@ -80,11 +96,11 @@ bool isControlPressed = false;
 bool columnViewActive = false;
 
 bool? isFFmpegInstalled;
-bool? isUpdateAvailable;
 bool isInstallationAvailable = false;
 
 final iconPackService = IconPackService();
 final richStatusService = RichStatusService();
+final listenBrainzService = ListenBrainzService();
 
 FlutterLocalNotificationsPlugin? flutterLocalNotificationsPlugin;
 
@@ -128,14 +144,18 @@ class ZoomLevel {
   }
 
   double sizeValue = 0.2;
+
+  String? groupBy;
 }
 
 final audioPlayer = AudioPlayer();
 
 final borderRadius = BorderRadius.circular(8);
 
+const mobileBreakpoint = 542;
+
 extension IsMobileExtension on BuildContext {
-  bool get isMobile => MediaQuery.of(this).size.width < 600;
+  bool get isMobile => MediaQuery.of(this).size.width < mobileBreakpoint;
 }
 
 class SkyColors {
@@ -611,7 +631,7 @@ class PathNotifierState with CustomState {
     $();
   }
 
-  bool get isInTrash => (path.length >= 2) && path[1] == '.trash';
+  bool get isInTrash => path.isNotEmpty && path[0] == '.trash';
 
   bool hasWriteAccess() {
     return storageService.dac.checkAccess(path.join('/')) && !isInTrash;

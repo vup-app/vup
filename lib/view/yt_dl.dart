@@ -10,6 +10,7 @@ import 'package:path/path.dart';
 import 'package:pool/pool.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vup/app.dart';
+import 'package:vup/queue/mdl.dart';
 import 'package:vup/utils/yt_dl.dart';
 import 'package:vup/widget/file_system_entity.dart';
 
@@ -27,9 +28,13 @@ class _YTDLDialogState extends State<YTDLDialog> {
   bool _isFetchingMetadata = false;
 
   List<Map> videos = [];
+  List<Map> filteredVideos = [];
+
   List<String> selectedVideos = [];
 
   String format = 'm4a';
+
+  String videoResolution = '1080';
 
   List<String> logOutput = [];
 
@@ -38,6 +43,7 @@ class _YTDLDialogState extends State<YTDLDialog> {
   final audioFormats = ['m4a', 'mp3'];
 
   final _urlCtrl = TextEditingController();
+  final _filterTextCtrl = TextEditingController();
 
   final _userAgentCtrl = TextEditingController();
   final _browserProfileCtrl = TextEditingController();
@@ -59,8 +65,8 @@ class _YTDLDialogState extends State<YTDLDialog> {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('YT-DL'),
-          if (!_isRunning)
+          Text('Media DL'),
+          if (!_isFetchingMetadata)
             IconButton(
               onPressed: () {
                 context.pop();
@@ -78,6 +84,7 @@ class _YTDLDialogState extends State<YTDLDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 SizedBox(
                   width: 250,
@@ -131,7 +138,7 @@ class _YTDLDialogState extends State<YTDLDialog> {
                                               format = f;
                                             });
                                           },
-                                  )
+                                  ),
                               ],
                             ),
                           ],
@@ -140,7 +147,46 @@ class _YTDLDialogState extends State<YTDLDialog> {
                     ],
                   ),
                 ),
-                Spacer(),
+                if (format == 'mp4')
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: Column(
+                        children: [
+                          Text('Max. Video Resolution'),
+                          SizedBox(
+                            width: 210,
+                            child: Wrap(
+                              children: [
+                                for (final res in [
+                                  '144',
+                                  '360',
+                                  '720',
+                                  '1080',
+                                  '1440',
+                                  '2160'
+                                ])
+                                  Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: ChoiceChip(
+                                      label: Text('${res}p'),
+                                      selected: videoResolution == res,
+                                      onSelected: _isRunning
+                                          ? null
+                                          : (_) {
+                                              setState(() {
+                                                videoResolution = res;
+                                              });
+                                            },
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (devModeEnabled)
                   Switch(
                     value: advancedYtDlModeEnabled,
@@ -198,7 +244,6 @@ mp3: better compatibility''', // mkv: more features
                       decoration: InputDecoration(
                         labelText: 'Max download threads',
                       ),
-                      enabled: !_isRunning,
                     ),
                   ),
                   SizedBox(
@@ -262,78 +307,117 @@ mp3: better compatibility''', // mkv: more features
               height: 16,
             ),
             if (_isFetchingMetadata)
-              ListTile(
-                leading: CircularProgressIndicator(),
-                title: Text('Fetching metadata'),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: ListTile(
+                  leading: CircularProgressIndicator(),
+                  title: Text('Fetching metadata'),
+                ),
               ),
-            ElevatedButton(
-              onPressed: _isRunning
-                  ? null
-                  : () async {
-                      final text = _urlCtrl.text.trim();
-                      if (advancedYtDlModeEnabled && text.contains('\n')) {
-                        videos = [];
-                        selectedVideos = [];
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: _isRunning
+                      ? null
+                      : () async {
+                          var text = _urlCtrl.text.trim();
+                          if (advancedYtDlModeEnabled && text.contains('\n')) {
+                            videos = [];
+                            selectedVideos = [];
+                            filteredVideos = [];
 
-                        for (final url in text.split('\n')) {
-                          videos.add({
-                            'url': url,
-                            'webpage_url': url,
-                            'title': url,
+                            for (final url in text.split('\n')) {
+                              videos.add({
+                                'url': url,
+                                'webpage_url': url,
+                                'title': url,
+                              });
+                            }
+
+                            setState(() {});
+                            return;
+                          } else {
+                            text = text.replaceFirst(
+                              '/music.youtube.com',
+                              '/www.youtube.com',
+                            );
+                          }
+                          setState(() {
+                            _isFetchingMetadata = true;
                           });
-                        }
+                          final process = await Process.start(
+                            ytDlPath,
+                            [
+                              '--dump-json',
+                              '--flat-playlist',
+                              text,
+                            ],
+                            // workingDirectory: outDirectory.path,
+                          );
+                          videos = [];
+                          selectedVideos = [];
+                          process.stdout
+                              .transform(systemEncoding.decoder)
+                              .transform(const LineSplitter())
+                              .listen((event) {
+                            if (event.isNotEmpty) {
+                              // logger.verbose('$event');
+                              videos.add(json.decode(event.toString()));
+                            }
+                          });
 
-                        setState(() {});
-                        return;
-                      }
-                      setState(() {
-                        _isFetchingMetadata = true;
-                      });
-                      final process = await Process.start(
-                        ytDlPath,
-                        [
-                          '--dump-json',
-                          '--flat-playlist',
-                          text,
-                        ],
-                        // workingDirectory: outDirectory.path,
-                      );
-                      videos = [];
-                      selectedVideos = [];
-                      process.stdout
-                          .transform(systemEncoding.decoder)
-                          .transform(const LineSplitter())
-                          .listen((event) {
-                        if (event.isNotEmpty) {
-                          // logger.verbose('$event');
-                          videos.add(json.decode(event.toString()));
-                        }
-                      });
+                          process.stderr
+                              .transform(systemEncoding.decoder)
+                              .transform(const LineSplitter())
+                              .listen((event) {
+                            if (event.isNotEmpty) {
+                              logOutput.add('$event');
+                              // setState(() {});
+                            }
+                          });
 
-                      process.stderr
-                          .transform(systemEncoding.decoder)
-                          .transform(const LineSplitter())
-                          .listen((event) {
-                        if (event.isNotEmpty) {
-                          logOutput.add('$event');
-                          // setState(() {});
-                        }
-                      });
+                          final exitCode = await process.exitCode;
+                          // if (exitCode != 0) throw 'yt-dlp exit code $exitCode';
+                          filteredVideos = videos;
+                          _filterTextCtrl.clear();
 
-                      final exitCode = await process.exitCode;
-                      // if (exitCode != 0) throw 'yt-dlp exit code $exitCode';
+                          setState(() {});
 
-                      setState(() {});
+                          logger
+                              .info('[yt-dlp] total videos: ${videos.length}');
 
-                      logger.info('[yt-dlp] total videos: ${videos.length}');
-
-                      setState(() {
-                        _isFetchingMetadata = false;
-                      });
-                    },
-              child: Text(
-                videos.isEmpty ? 'Fetch metadata' : 'Re-fetch metadata',
-              ),
+                          setState(() {
+                            _isFetchingMetadata = false;
+                          });
+                        },
+                  child: Text(
+                    videos.isEmpty ? 'Fetch metadata' : 'Re-fetch metadata',
+                  ),
+                ),
+                if (videos.isNotEmpty)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: TextField(
+                        controller: _filterTextCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Filter',
+                        ),
+                        onChanged: (s) {
+                          final q = s.toLowerCase();
+                          filteredVideos = videos.where((video) {
+                            final String title = video['title'] ??
+                                video['filename'] ??
+                                video['url'] ??
+                                url;
+                            return title.toLowerCase().contains(q);
+                          }).toList();
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                  ),
+              ],
             ),
             if (videos.isNotEmpty) ...[
               Expanded(
@@ -341,9 +425,9 @@ mp3: better compatibility''', // mkv: more features
                 width: 700, */
                 child: ListView.builder(
                   controller: _scrollCtrl,
-                  itemCount: videos.length,
+                  itemCount: filteredVideos.length,
                   itemBuilder: (context, index) {
-                    final video = videos[index];
+                    final video = filteredVideos[index];
 
                     final url = video['webpage_url'] ?? video['original_url'];
 
@@ -359,7 +443,11 @@ mp3: better compatibility''', // mkv: more features
                       setState(() {});
                     }
 
-                    var title = video['title'];
+                    final String title = video['title'] ??
+                        video['filename'] ??
+                        video['url'] ??
+                        url;
+
                     var subtitle = '';
 
                     String? thumbnail;
@@ -447,10 +535,7 @@ mp3: better compatibility''', // mkv: more features
                     return ListTile(
                       leading:
                           thumbnail == null ? null : Image.network(thumbnail),
-                      title: Text(video['title'] ??
-                          video['filename'] ??
-                          video['url'] ??
-                          url),
+                      title: Text(title),
                       subtitle: Text(subtitle.trimRight()),
                       onTap: _isRunning ? null : onTap,
                       trailing: trailing,
@@ -482,8 +567,8 @@ mp3: better compatibility''', // mkv: more features
                     onPressed: _isRunning
                         ? null
                         : () async {
-                            final dirIndex = await storageService.dac
-                                .getDirectoryMetadataCached(
+                            final dirIndex =
+                                storageService.dac.getDirectoryMetadataCached(
                               widget.path,
                             )!;
                             final existingUrls = [];
@@ -500,6 +585,7 @@ mp3: better compatibility''', // mkv: more features
                             for (final video in videos) {
                               final url =
                                   video['webpage_url'] ?? video['original_url'];
+
                               if (!existingUrls.contains(url)) {
                                 selectedVideos.add(url);
                               }
@@ -574,17 +660,15 @@ mp3: better compatibility''', // mkv: more features
                                   int.tryParse(_maxDownloadThreadsCtrl.text);
 
                               if (customThreadCount != null) {
-                                pool = Pool(customThreadCount);
+                                queue.threadPools['mdl'] = customThreadCount;
                               }
                             }
 
                             for (final url in selectedVideos) {
                               futures.add(
-                                pool.withResource(
-                                  () => processVideo(
-                                    url,
-                                    context,
-                                  ),
+                                processVideo(
+                                  url,
+                                  context,
                                 ),
                               );
                             }
@@ -594,12 +678,14 @@ mp3: better compatibility''', // mkv: more features
                             setState(() {
                               _isDownloading = false;
                             });
+                            context.pop();
                           },
                     child: Text(
                       'Download selected',
                     ),
                   ),
-                  Spacer(),
+                  // TODO Cancel using task system
+                  /*  Spacer(),
                   if (_isDownloading)
                     ElevatedButton.icon(
                       onPressed: () {
@@ -611,7 +697,7 @@ mp3: better compatibility''', // mkv: more features
                       label: Text(
                         'Cancel downloads',
                       ),
-                    )
+                    ) */
                 ],
               )
           ],
@@ -620,13 +706,13 @@ mp3: better compatibility''', // mkv: more features
     );
   }
 
-  var pool = Pool(4);
+  // var pool = Pool(4);
 
   final cancelStream = StreamController<Null>.broadcast();
   bool isCancelled = false;
 
-  void processVideo(String url, BuildContext context) async {
-    if (isCancelled) return;
+  Future<void> processVideo(String url, BuildContext context) async {
+    // if (isCancelled) return;
     try {
       final additionalArgs = <String>[];
       if (advancedYtDlModeEnabled) {
@@ -669,91 +755,113 @@ mp3: better compatibility''', // mkv: more features
           ]);
         }
       }
-      await YTDLUtils.downloadAndUploadVideo(
-        url,
-        widget.path,
-        format,
-        onProgress: (progress) {
-          setState(() {
-            downloadProgress[url] = progress;
-          });
-        },
-        onUploadIdAvailable: (uploadId) {
-          setState(() {
-            uploadFileIds[url] = uploadId;
-            downloadProgress[url] = -1;
-          });
-        },
-        cancelStream: cancelStream.stream,
-        additionalArgs: additionalArgs,
-      );
-      if (advancedYtDlModeEnabled) {
-        if (splitByChapters) {
-          final dirIndex = storageService.dac.getDirectoryMetadataCached(
-            widget.path,
-          )!;
-          final files = <FileReference>[];
-          for (final file in dirIndex.files.values) {
-            if ((file.ext?['audio']?['comment'] ??
-                    file.ext?['video']?['comment']) ==
-                url) {
-              files.add(file);
-            }
-          }
-          final firstFile = files.first;
-          final String albumTitle = firstFile.ext?['audio']?['title'] ??
-              firstFile.ext?['video']?['title'];
-
-          files.sort((a, b) => -a.name.compareTo(b.name));
-
-          double lastDuration = 0;
-
-          for (final file in files) {
-            final mediaExt = file.ext?['audio'] ?? file.ext?['video'];
-
-            final afterTitle =
-                file.name.substring(albumTitle.length + 2).trimLeft();
-            final track = int.tryParse(afterTitle.split(' ').first);
-
-            final index = afterTitle.indexOf(' ');
-            if (index == -1) continue;
-            final title = afterTitle
-                .substring(index)
-                .trimLeft()
-                .split('[')
-                .first
-                .trimRight();
-            mediaExt['title'] = title;
-
-            mediaExt['album'] = albumTitle;
-            mediaExt.remove('description');
-            if (track != null) {
-              mediaExt['track'] = '$track';
-            }
-
-            final duration = mediaExt['duration'];
-
-            mediaExt['duration'] = duration - lastDuration;
-
-            lastDuration = duration;
-            if (file.ext?['audio'] != null) {
-              file.ext?['audio'] = mediaExt;
-            } else {
-              file.ext?['video'] = mediaExt;
-            }
-            storageService.dac.updateFileExtensionDataAndThumbnail(
-              file.uri!,
-              file.ext,
-              file.file.thumbnail,
-            );
+      if (!(advancedYtDlModeEnabled && splitByChapters)) {
+        queue.add(MediaDownloadQueueTask(
+          id: url,
+          dependencies: [],
+          url: url,
+          path: widget.path,
+          format: format,
+          videoResolution: videoResolution,
+          /* onProgress: (progress) {
+            setState(() {
+              downloadProgress[url] = progress;
+            });
+          },
+          onUploadIdAvailable: (uploadId) {
+            setState(() {
+              uploadFileIds[url] = uploadId;
+              downloadProgress[url] = -1;
+            });
+          }, */
+          cancelStream: cancelStream.stream,
+          additionalArgs: additionalArgs,
+        ));
+      } else {
+        await YTDLUtils.downloadAndUploadVideo(
+          url,
+          widget.path,
+          format,
+          videoResolution: videoResolution,
+          onProgress: (progress) {
+            setState(() {
+              downloadProgress[url] = progress;
+            });
+          },
+          onUploadIdAvailable: (uploadId) {
+            setState(() {
+              uploadFileIds[url] = uploadId;
+              downloadProgress[url] = -1;
+            });
+          },
+          cancelStream: cancelStream.stream,
+          additionalArgs: additionalArgs,
+        );
+        final dirIndex = storageService.dac.getDirectoryMetadataCached(
+          widget.path,
+        )!;
+        final files = <FileReference>[];
+        for (final file in dirIndex.files.values) {
+          if ((file.ext?['audio']?['comment'] ??
+                  file.ext?['video']?['comment']) ==
+              url) {
+            files.add(file);
           }
         }
+        final firstFile = files.first;
+        final String albumTitle = firstFile.ext?['audio']?['title'] ??
+            firstFile.ext?['video']?['title'];
+
+        files.sort((a, b) => -a.name.compareTo(b.name));
+
+        double lastDuration = 0;
+
+        for (final file in files) {
+          final mediaExt = file.ext?['audio'] ?? file.ext?['video'];
+
+          final afterTitle =
+              file.name.substring(albumTitle.length + 2).trimLeft();
+          final track = int.tryParse(afterTitle.split(' ').first);
+
+          final index = afterTitle.indexOf(' ');
+          if (index == -1) continue;
+          final title = afterTitle
+              .substring(index)
+              .trimLeft()
+              .split('[')
+              .first
+              .trimRight();
+          mediaExt['title'] = title;
+
+          mediaExt['album'] = albumTitle;
+          mediaExt.remove('description');
+          if (track != null) {
+            mediaExt['track'] = '$track';
+          }
+
+          final duration = mediaExt['duration'];
+
+          mediaExt['duration'] = duration - lastDuration;
+
+          lastDuration = duration;
+          if (file.ext?['audio'] != null) {
+            file.ext?['audio'] = mediaExt;
+          } else {
+            file.ext?['video'] = mediaExt;
+          }
+          storageService.dac.updateFileExtensionDataAndThumbnail(
+            file.uri!,
+            file.ext,
+            file.file.thumbnail,
+          );
+        }
       }
-      setState(() {
-        downloadProgress[url] = -2;
+      // TODO Do this after success download
+      /* setState(() {
+        // downloadProgress[url] = -2;
         selectedVideos.remove(url);
-        downloadedCount++;
-      });
+        // downloadedCount++;
+      }); */
     } catch (e, st) {
       if (isCancelled) return;
       showErrorDialog(context, e, st);

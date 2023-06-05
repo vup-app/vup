@@ -17,7 +17,11 @@ Future handlePlaintextFile(
 ) {
   // TODO Set relevant headers like content-type
 
-  final dlUriProvider = StorageLocationProvider(s5Node, df.file.cid.hash);
+  final dlUriProvider = StorageLocationProvider(
+    s5Node,
+    df.file.cid.hash,
+    // TODO small file support
+  );
 
   dlUriProvider.start();
 
@@ -26,7 +30,6 @@ Future handlePlaintextFile(
     res,
     df.file.cid.hash,
     df.file.cid.size!,
-    dlUriProvider,
     cachePath: join(vupTempDir, 'stream_plaintext'),
     logger: s5Node.logger,
     node: s5Node,

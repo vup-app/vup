@@ -1,4 +1,3 @@
-import 'package:adaptive_dialog/adaptive_dialog.dart';
 import 'package:filesystem_dac/dac.dart';
 import 'package:vup/app.dart';
 import 'package:vup/utils/strings.dart';
@@ -25,7 +24,7 @@ class PermanentDeleteVupAction extends VupFSAction {
     }
 
     for (final uri in uris) {
-      if (!uri.startsWith('skyfs://root/home/.trash/')) {
+      if (!uri.startsWith('skyfs://root/.trash/')) {
         return null;
       }
     }
@@ -35,13 +34,13 @@ class PermanentDeleteVupAction extends VupFSAction {
     if (!isSelected) {
       return VupFSActionInstance(
         label: 'Delete ${isFile ? 'file' : 'directory'} permanently',
-        icon: UniconsLine.trash,
+        icon: UniconsLine.trash_alt,
       );
     } else {
       return VupFSActionInstance(
         label:
             'Delete ${entity == null ? 'all' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)} permanently',
-        icon: UniconsLine.trash,
+        icon: UniconsLine.trash_alt,
       );
     }
   }

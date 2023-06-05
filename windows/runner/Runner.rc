@@ -69,7 +69,7 @@ IDI_APP_ICON            ICON                    "resources\\app_icon.ico"
 #ifdef FLUTTER_BUILD_NAME
 #define VERSION_AS_STRING #FLUTTER_BUILD_NAME
 #else
-#define VERSION_AS_STRING "0.13.3"
+#define VERSION_AS_STRING "0.14.0"
 #endif
 
 VS_VERSION_INFO VERSIONINFO
@@ -89,7 +89,7 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "redsolver" "\0"
+            VALUE "CompanyName", "Vup" "\0"
             VALUE "FileDescription", "Vup Cloud Storage" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "vup" "\0"

@@ -57,8 +57,8 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
   bool get isUploading => (!isDirectory && file.version == -1);
   bool get isInTrash =>
-      (widget.pathNotifier.path.length >= 2) &&
-      widget.pathNotifier.path[1] == '.trash';
+      widget.pathNotifier.path.isNotEmpty &&
+      widget.pathNotifier.path[0] == '.trash';
 
   bool get isSharePossible => widget.pathNotifier.value.length > 1;
 
@@ -427,13 +427,13 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                 ? Theme.of(context).colorScheme.secondary.withOpacity(0.4)
                 : Colors.transparent,
           ),
-          child: _buildContent(textColor),
+          child: _buildContent(textColor, isSelected),
         ),
       ),
     );
   }
 
-  Widget _buildContent(Color? textColor) {
+  Widget _buildContent(Color? textColor, bool isSelected) {
     final stateNotifier = isDirectory
         ? storageService.dac.getDirectoryStateChangeNotifier(
             [...widget.pathNotifier.value, dir.name].join('/'))
@@ -491,14 +491,21 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
       if ((widget.zoomLevel.type == ZoomLevelType.gridCover ||
               widget.zoomLevel.type == ZoomLevelType.mosaic) &&
           !isDirectory) {
-        if (file.file.thumbnail != null)
+        if (file.file.thumbnail != null) {
+          final thumbnailCoverWidget = ThumbnailCoverWidget(
+            thumbnail: file.file.thumbnail!,
+            isSquare: widget.zoomLevel.type == ZoomLevelType.gridCover,
+          );
           return Stack(
             fit: StackFit.passthrough,
             children: [
-              ThumbnailCoverWidget(
-                thumbnail: file.file.thumbnail!,
-                isSquare: widget.zoomLevel.type == ZoomLevelType.gridCover,
-              ),
+              widget.zoomLevel.type == ZoomLevelType.mosaic
+                  ? Padding(
+                      padding: isSelected
+                          ? const EdgeInsets.all(8)
+                          : const EdgeInsets.all(1),
+                      child: thumbnailCoverWidget)
+                  : thumbnailCoverWidget,
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
@@ -508,6 +515,53 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
               ),
             ],
           );
+        }
+      }
+
+      if (widget.zoomLevel.type == ZoomLevelType.mosaic) {
+        return Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Row(
+              children: [
+                Column(),
+                SizedBox(
+                  width: widget.zoomLevel.size * 0.2,
+                ),
+                _buildIconWidget(
+                  widget.zoomLevel.size * 0.8,
+                  isWidth: false,
+                ),
+                Flexible(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: widget.zoomLevel.size * 0.1,
+                    ),
+                    child: Text(
+                      widget._entity.name,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow
+                          .ellipsis, // TODO Add fade option in config
+                      maxLines: 4,
+                      style: TextStyle(
+                        fontSize: widget.zoomLevel.size * 0.23,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: EdgeInsets.only(
+                right: widget.zoomLevel.size * 0.3,
+                bottom: widget.zoomLevel.size * 0.2,
+                left: widget.zoomLevel.size * 0.3,
+              ),
+              child: fileStateWidget,
+            ),
+          ],
+        );
       }
 
       return Stack(
@@ -904,8 +958,8 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
           return SizedBox();
         });
 
-    final pins = pinningService
-        .getPinsForHash(file.file.encryptedCID!.encryptedBlobHash);
+    final pins = pinningService.getPinsForHash(
+        file.file.encryptedCID?.encryptedBlobHash ?? file.file.cid.hash);
 
     final pinWidget = Tooltip(
       message: 'Pinned on ' + pins.join(', '),
@@ -919,6 +973,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onPrimary,
             ),
           ),
         ),
@@ -938,6 +993,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
               ),
             ),
           ), */
+
         if (file.version > 0)
           Container(
             width: sortFilter.columnWidthVersion,
@@ -966,10 +1022,10 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
         Container(
           width: sortFilter.columnWidthModified,
           alignment: Alignment.centerRight,
-          child: modifiedWidget,
-        ),
-        SizedBox(
-          width: 8,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: modifiedWidget,
+          ),
         ),
       ];
     }
@@ -1003,13 +1059,22 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
     final highlightTextStyle = TextStyle(
       fontWeight: FontWeight.bold,
-      color: Theme.of(context).primaryColor,
+      color: Theme.of(context).colorScheme.secondary,
     );
+
+    if (map?['image']?['caption'] != null) {
+      spans.add(
+        TextSpan(
+          text: (map?['image']?['caption']).toString() + ' ',
+          // style: highlightTextStyle,
+        ),
+      );
+    }
 
     if (map?['image']['width'] != null) {
       spans.add(
         TextSpan(
-          text: 'Res: ',
+          text: '[',
         ),
       );
       spans.add(
@@ -1029,6 +1094,11 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
           style: highlightTextStyle,
         ),
       );
+      spans.add(
+        TextSpan(
+          text: ']',
+        ),
+      );
     }
 
     if (map?['exif']?['GPSLongitude'] != null) {
@@ -1044,6 +1114,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
         ),
       );
     }
+
     return spans;
   }
 
@@ -1052,7 +1123,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
     final highlightTextStyle = TextStyle(
       fontWeight: FontWeight.bold,
-      color: Theme.of(context).primaryColor,
+      color: Theme.of(context).colorScheme.secondary,
     );
 
     if (map?['title'] != null) {
@@ -1077,7 +1148,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
     final highlightTextStyle = TextStyle(
       fontWeight: FontWeight.bold,
-      color: Theme.of(context).primaryColor,
+      color: Theme.of(context).colorScheme.secondary,
     );
 
     if (map['track'] != null) {
@@ -1171,7 +1242,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
 
     final highlightTextStyle = TextStyle(
       fontWeight: FontWeight.bold,
-      color: Theme.of(context).primaryColor,
+      color: Theme.of(context).colorScheme.secondary,
     );
 
 /*     spans.add(

@@ -15,9 +15,10 @@ class YTDLUtils {
     String url,
     String path,
     String format, {
+    required String videoResolution,
     Function? onProgress,
     Function? onUploadIdAvailable,
-    Stream<Null>? cancelStream,
+    Stream<void>? cancelStream,
     List<String>? additionalArgs,
   }) async {
     final dlCount = 100;
@@ -49,7 +50,7 @@ class YTDLUtils {
     } else {
       args = [
         '--format-sort',
-        'res:1080',
+        'res:$videoResolution',
         '--embed-metadata',
         '--embed-thumbnail',
         '--embed-chapters',

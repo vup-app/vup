@@ -84,6 +84,7 @@ class YTDLAction extends VupAction {
             url,
             targetURI,
             format,
+            videoResolution: '1080', // TODO Configurable
             /* onProgress: (progress) {
         setState(() {
           downloadProgress[url] = progress;

@@ -16,17 +16,17 @@ class WindowButtons extends StatelessWidget {
       children: [
         MinimizeWindowButton(
           colors: WindowButtonColors(
-            iconNormal: Theme.of(context).primaryColor,
+            iconNormal: Theme.of(context).colorScheme.secondary,
           ),
         ),
         MaximizeWindowButton(
           colors: WindowButtonColors(
-            iconNormal: Theme.of(context).primaryColor,
+            iconNormal: Theme.of(context).colorScheme.secondary,
           ),
         ),
         CloseWindowButton(
           colors: WindowButtonColors(
-            iconNormal: Theme.of(context).primaryColor,
+            iconNormal: Theme.of(context).colorScheme.secondary,
           ),
           onPressed: () {
             isAppWindowVisible = false;
