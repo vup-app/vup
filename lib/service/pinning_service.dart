@@ -51,7 +51,7 @@ class PinningService extends VupService {
 
   Future<void> run() async {
     verbose('run');
-    for (final pc in mySky.storageServiceConfigs) {
+    for (final pc in List.from(mySky.storageServiceConfigs)) {
       try {
         portalPins[pc.authority] ??= <Multihash>{};
         final res = await mySky.httpClient.get(

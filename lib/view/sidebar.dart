@@ -1129,7 +1129,14 @@ class QuotaWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!quotaService.accountInfos.containsKey(portal)) return SizedBox();
+    if (!quotaService.accountInfos.containsKey(portal))
+      return Padding(
+        padding: const EdgeInsets.only(
+          left: 8,
+          bottom: 8,
+        ),
+        child: Text('No data for $portal'),
+      );
     final ai = quotaService.accountInfos[portal]!;
 
     final accentColor =

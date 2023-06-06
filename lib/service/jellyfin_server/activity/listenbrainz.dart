@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:vup/constants.dart';
 import 'package:vup/generic/state.dart';
 import 'package:vup/service/base.dart';
 import 'package:vup/service/jellyfin_server/id.dart';
@@ -49,8 +50,8 @@ class ListenBrainzService extends VupService {
       // TODO maybe "date": "2020-01-22",
       "media_player": "Jellyfin",
       "submission_client": "Vup",
-      "media_player_version": "0.14.0",
-      "submission_client_version": "0.14.0",
+      "media_player_version": vupVersion,
+      "submission_client_version": vupVersion,
       // TODO This should be the original "url" source for downloads
       // TODO optional: cid
       // "origin_url": "https://s5.cx/S5HASH.m4a",

@@ -52,17 +52,19 @@ class MySkyService extends VupService {
   late Map portalAccounts;
 
   List<String> get fileUploadServiceOrder =>
-      (portalAccounts['fileUploadServiceOrder'] ??
-              portalAccounts['uploadPortalOrder'])
-          ?.cast<String>();
+      portalAccounts['fileUploadServiceOrder']?.cast<String>();
 
   List<String> get metadataUploadServiceOrder =>
-      (portalAccounts['metadataUploadServiceOrder'] ??
-              portalAccounts['uploadPortalOrder'])
-          ?.cast<String>();
+      portalAccounts['metadataUploadServiceOrder']?.cast<String>();
 
-  List<String> get allUploadServices =>
-      (fileUploadServiceOrder + metadataUploadServiceOrder).toSet().toList();
+  List<String> get thumbnailUploadServiceOrder =>
+      portalAccounts['thumbnailUploadServiceOrder']?.cast<String>();
+
+  List<String> get allUploadServices => (fileUploadServiceOrder +
+          metadataUploadServiceOrder +
+          thumbnailUploadServiceOrder)
+      .toSet()
+      .toList();
 
   Future<void> loadPortalAccounts() async {
     final res = await hiddenDB.getJSON(
@@ -70,6 +72,7 @@ class MySkyService extends VupService {
     );
 
     portalAccounts = res.data;
+    fillPortalAccounts(portalAccounts);
 
     dataBox.put(
       'portal_accounts',
@@ -120,6 +123,10 @@ class MySkyService extends VupService {
   }
 
   Future<void> savePortalAccounts() async {
+    if (s5Node.store != null &&
+        !portalAccounts['enabledPortals'].contains('_local')) {
+      s5Node.store = null;
+    }
     await hiddenDB.setJSON(
       portalAccountsPath,
       portalAccounts,
@@ -143,19 +150,29 @@ class MySkyService extends VupService {
     }
   }
 
+  void fillPortalAccounts(Map portalAccounts) {
+    portalAccounts['fileUploadServiceOrder'] ??=
+        portalAccounts['uploadPortalOrder'];
+    portalAccounts['metadataUploadServiceOrder'] ??=
+        portalAccounts['uploadPortalOrder'];
+    portalAccounts['thumbnailUploadServiceOrder'] ??=
+        portalAccounts['uploadPortalOrder'];
+  }
+
   Future<void> setupPortalAccounts() async {
     if (!dataBox.containsKey('portal_accounts')) {
       return;
     }
     logger.verbose('setupPortalAccounts');
     portalAccounts = json.decode(dataBox.get('portal_accounts'));
-    final uploadPortalOrder = portalAccounts['uploadPortalOrder'];
+    fillPortalAccounts(portalAccounts);
 
+    storageServiceConfigs.clear();
     api.storageServiceConfigs.clear();
 
-    for (final u in uploadPortalOrder) {
+    for (final u in portalAccounts['enabledPortals']) {
       logger.verbose('setupPortalAccounts1 $u');
-      if (u == '_local') {
+      if (u == '_local' && portalAccounts['_local'] != null) {
         if (s5Node.store == null) {
           final stores = createStoresFromConfig(
             portalAccounts['_local'],
@@ -201,7 +218,6 @@ class MySkyService extends VupService {
     for (final uc in storageServiceConfigs) {
       connectToPortalNodes(uc);
     }
-    refreshPortalAccounts();
   }
 
   void connectToPortalNodes(StorageServiceConfig pc) async {
@@ -275,6 +291,7 @@ class MySkyService extends VupService {
       Future.delayed(const Duration(seconds: 30)).then((value) {
         updateDeviceList();
       });
+      refreshPortalAccounts();
       await directoryCacheSyncService.init(dataBox.get('deviceId'));
       await activityService.init(dataBox.get('deviceId'));
       await playlistService.init();
@@ -283,7 +300,10 @@ class MySkyService extends VupService {
 
       quotaService.update();
 
-      Stream.periodic(Duration(seconds: 60)).listen((event) {
+      Future.delayed(Duration(seconds: 10)).then((_) {
+        quotaService.update();
+      });
+      Stream.periodic(Duration(seconds: 60)).listen((_) {
         quotaService.update();
       });
 

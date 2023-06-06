@@ -27,10 +27,10 @@ class QuotaService extends VupService with CustomState {
 
   final accountInfos = <String, AccountInfo>{};
 
-  void update() async {
+  Future<void> update() async {
     verbose('update');
 
-    for (final pc in mySky.storageServiceConfigs) {
+    for (final pc in List.from(mySky.storageServiceConfigs)) {
       try {
         final res = await mySky.httpClient.get(
           pc.getAccountsAPIUrl(

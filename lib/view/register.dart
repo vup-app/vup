@@ -410,6 +410,9 @@ class _RegisterViewState extends State<RegisterView> {
 
                       final portalAccounts = {
                         'uploadPortalOrder': [portalConfig.authority],
+                        'fileUploadServiceOrder': [portalConfig.authority],
+                        'metadataUploadServiceOrder': [portalConfig.authority],
+                        'thumbnailUploadServiceOrder': [portalConfig.authority],
                         'enabledPortals': [portalConfig.authority],
                         'portals': {
                           portalConfig.authority: {
@@ -423,6 +426,7 @@ class _RegisterViewState extends State<RegisterView> {
                           },
                         }
                       };
+                      mySky.fillPortalAccounts(portalAccounts);
 
                       final identity = await S5UserIdentity.fromSeedPhrase(
                         mnemonic!,

@@ -2015,7 +2015,8 @@ class StorageService extends VupService {
       } else {
         throw 'Remote type "$type" not supported';
       } */
-    if (s5Node.store != null) {
+    // TODO Support combining local store and remote nodes
+    if (mySky.fileUploadServiceOrder[0] == '_local') {
       final cancelToken = CancellationToken();
       final cancelSub = fileStateNotifier.onCancel.listen((event) async {
         cancelToken.cancel();
@@ -2041,10 +2042,11 @@ class StorageService extends VupService {
 
         encryptedBlobHash = await getMultiHashForFile(outFile);
 
-        for (final uc in mySky.api.storageServiceConfigs +
-            mySky.api.storageServiceConfigs +
-            mySky.api.storageServiceConfigs) {
+        for (final service
+            in mySky.fileUploadServiceOrder + mySky.fileUploadServiceOrder) {
           try {
+            final uc = mySky.api.storageServiceConfigs
+                .firstWhere((sc) => sc.authority == service);
             final tusClient = S5TusClient(
               url: uc.getAPIUrl('/s5/upload/tus'),
               fileLength: outFile.lengthSync(),
@@ -2219,8 +2221,14 @@ class StorageService extends VupService {
     required FileStateNotifier fileStateNotifier,
   }) async {
     final errors = <String>[];
-    for (final sc in mySky.api.storageServiceConfigs) {
+
+    for (final service in mySky.fileUploadServiceOrder +
+        mySky.fileUploadServiceOrder +
+        mySky.fileUploadServiceOrder +
+        mySky.fileUploadServiceOrder) {
       try {
+        final sc = mySky.api.storageServiceConfigs
+            .firstWhere((sc) => sc.authority == service);
         if (fileStateNotifier.isCanceled) {
           throw CancelException();
         }
@@ -2300,7 +2308,7 @@ class StorageService extends VupService {
         }
         return cid;
       } catch (e, st) {
-        errors.add('${sc.authority}: $e: $st');
+        errors.add('$service: $e: $st');
         logger.verbose(e);
         logger.verbose(st);
       }

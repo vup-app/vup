@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:shimmer/shimmer.dart';
 // import 'package:skynet/dacs.dart' hide Image;
 import 'package:vup/app.dart';
+import 'package:vup/constants.dart';
 
 class UserWidget extends StatefulWidget {
   final String userId;
@@ -85,7 +86,7 @@ class _UserWidgetState extends State<UserWidget> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'v0.14.1 Beta',
+                  'v$vupVersion Beta',
                   // profile!.location ?? '',
                   overflow: TextOverflow.ellipsis,
                 ),

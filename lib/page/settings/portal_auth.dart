@@ -4,6 +4,7 @@ import 'package:clipboard/clipboard.dart';
 import 'package:filesize/filesize.dart';
 import 'package:s5_server/store/create.dart';
 import 'package:selectable_autolink_text/selectable_autolink_text.dart';
+import 'package:simple_observable/simple_observable.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:vup/app.dart';
 import 'package:lib5/util.dart';
@@ -35,6 +36,14 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
   String? get localStoreName =>
       mySky.portalAccounts['_local']?['store']?.keys.first;
 
+  final hasChanges = Observable(initialValue: false);
+
+  void updateQuota() {
+    quotaService.update().then((value) {
+      setState(() {});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -51,6 +60,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
 
                   context.pop();
                   setState(() {});
+                  updateQuota();
                 } catch (e, st) {
                   context.pop();
                   showErrorDialog(context, e, st);
@@ -72,6 +82,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
 
                   context.pop();
                   setState(() {});
+                  hasChanges.value = false;
                 } catch (e, st) {
                   context.pop();
                   showErrorDialog(context, e, st);
@@ -388,11 +399,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                                 }
                               }
                             };
-                            mySky.portalAccounts['uploadPortalOrder']
-                                .insert(0, portalConfig.authority);
-
-                            mySky.portalAccounts['enabledPortals']
-                                .add(portalConfig.authority);
+                            setupServiceOrder(portalConfig.authority);
 
                             dataBox.put(
                               'portal_${portalConfig.authority}_auth_token',
@@ -404,7 +411,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                             context.pop();
                             setState(() {});
 
-                            quotaService.update();
+                            updateQuota();
                           } catch (e, st) {
                             context.pop();
                             showErrorDialog(context, e, st);
@@ -495,14 +502,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                         }
                       };
 
-                      mySky.portalAccounts['uploadPortalOrder']
-                          .remove('_local');
-                      mySky.portalAccounts['enabledPortals'].remove('_local');
-
-                      mySky.portalAccounts['uploadPortalOrder']
-                          .insert(0, '_local');
-
-                      mySky.portalAccounts['enabledPortals'].add('_local');
+                      setupServiceOrder('_local');
 
                       await mySky.savePortalAccounts();
 
@@ -519,7 +519,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                       context.pop();
                       setState(() {});
 
-                      quotaService.update();
+                      updateQuota();
                     }
                   } catch (e, st) {
                     showErrorDialog(context, e, st);
@@ -626,14 +626,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                         }
                       };
 
-                      mySky.portalAccounts['uploadPortalOrder']
-                          .remove('_local');
-                      mySky.portalAccounts['enabledPortals'].remove('_local');
-
-                      mySky.portalAccounts['uploadPortalOrder']
-                          .insert(0, '_local');
-
-                      mySky.portalAccounts['enabledPortals'].add('_local');
+                      setupServiceOrder('_local');
 
                       await mySky.savePortalAccounts();
 
@@ -650,7 +643,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                       context.pop();
                       setState(() {});
 
-                      quotaService.update();
+                      updateQuota();
                     }
                   } catch (e, st) {
                     showErrorDialog(context, e, st);
@@ -664,20 +657,147 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
           ],
         ),
         SizedBox(
-          height: 16,
+          height: 12,
         ),
-
+        Text(
+          'Uploads',
+          style: titleTextStyle,
+        ),
+        SizedBox(
+          height: 6,
+        ),
+        Text(
+          'Files are only uploaded to the first (1.) service, the other ones are tried if the first one fails. Metadata and thumbnails are uploaded to the services you select below.',
+        ),
+        SizedBox(
+          height: 6,
+        ),
+        Row(
+          children: [
+            SizedBox(
+              width: 80,
+              child: Text(
+                'Files',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final service in mySky.portalAccounts['enabledPortals'])
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: ChoiceChip(
+                  avatar: mySky.fileUploadServiceOrder.contains(service)
+                      ? Text(
+                          '${mySky.fileUploadServiceOrder.indexOf(service) + 1}.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                  onSelected: (val) {
+                    if (val) {
+                      mySky.fileUploadServiceOrder.add(service);
+                    } else {
+                      mySky.fileUploadServiceOrder.remove(service);
+                    }
+                    setState(() {});
+                    hasChanges.value = true;
+                  },
+                  label: Text(getServiceName(service)),
+                  selected: mySky.fileUploadServiceOrder.contains(service),
+                ),
+              ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            SizedBox(
+              width: 80,
+              child: Text(
+                'Metadata',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final service in mySky.portalAccounts['enabledPortals'])
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: ChoiceChip(
+                  onSelected: (val) {
+                    if (val) {
+                      mySky.metadataUploadServiceOrder.add(service);
+                    } else {
+                      mySky.metadataUploadServiceOrder.remove(service);
+                    }
+                    setState(() {});
+                    hasChanges.value = true;
+                  },
+                  label: Text(getServiceName(service)),
+                  selected: mySky.metadataUploadServiceOrder.contains(service),
+                ),
+              ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            SizedBox(
+              width: 80,
+              child: Text(
+                'Thumbnails',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final service in mySky.portalAccounts['enabledPortals'])
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: ChoiceChip(
+                  onSelected: (val) {
+                    if (val) {
+                      mySky.thumbnailUploadServiceOrder.add(service);
+                    } else {
+                      mySky.thumbnailUploadServiceOrder.remove(service);
+                    }
+                    setState(() {});
+                    hasChanges.value = true;
+                  },
+                  label: Text(getServiceName(service)),
+                  selected: mySky.thumbnailUploadServiceOrder.contains(service),
+                ),
+              ),
+          ],
+        ),
+        StreamBuilder(
+          stream: hasChanges.values,
+          builder: (context, snapshot) {
+            if (snapshot.data == true)
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: Text(
+                  'You have unsaved changes. Remember to save!',
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            return SizedBox();
+          },
+        ),
+        SizedBox(
+          height: 12,
+        ),
+        /*  Text(
+          'Pinning Automation',
+          style: titleTextStyle,
+        ),
+        SizedBox(
+          height: 12,
+        ), */
         Text(
           'Advanced',
           style: titleTextStyle,
-        ),
-        if (s5Node.store != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              'Important: If a local store is configured, all new files and metadata are uploaded to the local store.',
-            ),
-          ),
+        ),        
         SizedBox(
           height: 6,
         ),
@@ -741,7 +861,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
         ),
         TextField(
           decoration: InputDecoration(
-            labelText: 'Upload Order',
+            labelText: 'Old Upload Order',
           ),
           controller: TextEditingController(
               text: json.encode(mySky.portalAccounts['uploadPortalOrder'])),
@@ -786,6 +906,26 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
     );
   }
 
+  void setupServiceOrder(String service) {
+    mySky.fileUploadServiceOrder.remove(service);
+    mySky.fileUploadServiceOrder.insert(0, service);
+
+    mySky.metadataUploadServiceOrder.remove(service);
+    mySky.metadataUploadServiceOrder.add(service);
+    mySky.thumbnailUploadServiceOrder.remove(service);
+    mySky.thumbnailUploadServiceOrder.add(service);
+
+    mySky.portalAccounts['enabledPortals'].remove(service);
+    mySky.portalAccounts['enabledPortals'].add(service);
+  }
+
+  String getServiceName(String name) {
+    if (name == '_local') {
+      return localStoreName ?? '_local';
+    }
+    return name;
+  }
+
   Card _buildLocalStoreCard(BuildContext context) {
     final accountInfo = quotaService.accountInfos['_local'];
 
@@ -809,6 +949,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                     setState(() {
                       mySky.portalAccounts['_local'] = null;
                     });
+                    hasChanges.value = true;
                   },
                   child: Text(
                     'Remove',
@@ -906,29 +1047,30 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
             ),
             if (accountInfo != null)
               QuotaWidget(context: context, portal: portal),
-            Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: 400,
-                child: SwitchListTile(
-                  dense: true,
-                  value: mySky.portalAccounts['portals'][portal]
-                          ['autoPinEnabled'] ??
-                      false,
-                  title: Text(
-                    'Auto-Pin enabled',
+            if (false)
+              Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  width: 400,
+                  child: SwitchListTile(
+                    dense: true,
+                    value: mySky.portalAccounts['portals'][portal]
+                            ['autoPinEnabled'] ??
+                        false,
+                    title: Text(
+                      'Auto-Pin enabled',
+                    ),
+                    subtitle: Text(
+                      'When enabled, all data stored on one of your upload portals is replicated on this portal too',
+                    ),
+                    onChanged: (val) {
+                      mySky.portalAccounts['portals'][portal]
+                          ['autoPinEnabled'] = val;
+                      setState(() {});
+                    },
                   ),
-                  subtitle: Text(
-                    'When enabled, all data stored on one of your upload portals is replicated on this portal too',
-                  ),
-                  onChanged: (val) {
-                    mySky.portalAccounts['portals'][portal]['autoPinEnabled'] =
-                        val;
-                    setState(() {});
-                  },
                 ),
               ),
-            ),
           ],
         ),
       ),
