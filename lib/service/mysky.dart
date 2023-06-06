@@ -17,10 +17,11 @@ import 'package:lib5/storage_service.dart';
 import 'package:lib5/util.dart';
 import 'package:vup/service/base.dart';
 import 'package:http/http.dart' as http;
+import 'package:vup/service/s5_api_provider.dart';
 
 class MySkyService extends VupService {
   late final CryptoImplementation crypto;
-  late S5APIProviderWithRemoteUpload api;
+  late VupS5ApiProvider api;
 
   late S5UserIdentity identity;
 
@@ -45,10 +46,23 @@ class MySkyService extends VupService {
       's5-deleted-cids',
     );
 
-    api = S5NodeAPIProviderWithRemoteUpload(s5Node, deletedCIDs: deletedCIDs);
+    api = VupS5ApiProvider(s5Node, deletedCIDs: deletedCIDs);
   }
 
   late Map portalAccounts;
+
+  List<String> get fileUploadServiceOrder =>
+      (portalAccounts['fileUploadServiceOrder'] ??
+              portalAccounts['uploadPortalOrder'])
+          ?.cast<String>();
+
+  List<String> get metadataUploadServiceOrder =>
+      (portalAccounts['metadataUploadServiceOrder'] ??
+              portalAccounts['uploadPortalOrder'])
+          ?.cast<String>();
+
+  List<String> get allUploadServices =>
+      (fileUploadServiceOrder + metadataUploadServiceOrder).toSet().toList();
 
   Future<void> loadPortalAccounts() async {
     final res = await hiddenDB.getJSON(
@@ -119,6 +133,16 @@ class MySkyService extends VupService {
     await loadPortalAccounts();
   }
 
+  void initS5Store() async {
+    try {
+      await s5Node.store!.init();
+      // TODO Configurable
+      s5Node.exposeStore = true;
+    } catch (e, st) {
+      logger.catched(e, st);
+    }
+  }
+
   Future<void> setupPortalAccounts() async {
     if (!dataBox.containsKey('portal_accounts')) {
       return;
@@ -139,9 +163,8 @@ class MySkyService extends VupService {
             node: s5Node,
           );
           s5Node.store = stores.values.first;
-          await s5Node.store!.init();
-          // TODO Configurable
-          s5Node.exposeStore = true;
+
+          initS5Store();
         }
         continue;
       }
@@ -178,6 +201,7 @@ class MySkyService extends VupService {
     for (final uc in storageServiceConfigs) {
       connectToPortalNodes(uc);
     }
+    refreshPortalAccounts();
   }
 
   void connectToPortalNodes(StorageServiceConfig pc) async {
@@ -209,6 +233,15 @@ class MySkyService extends VupService {
   // late ProfileDAC profileDAC;
 
   final isLoggedIn = Observable<bool?>(initialValue: null);
+
+  // TODO Apply changes
+  Future<void> refreshPortalAccounts() async {
+    try {
+      await loadPortalAccounts();
+    } catch (e, st) {
+      logger.catched(e, st);
+    }
+  }
 
   Future<void> autoLogin() async {
     info('autoLogin');

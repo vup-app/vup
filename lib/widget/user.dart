@@ -85,7 +85,7 @@ class _UserWidgetState extends State<UserWidget> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'v0.14.0 Beta',
+                  'v0.14.1 Beta',
                   // profile!.location ?? '',
                   overflow: TextOverflow.ellipsis,
                 ),

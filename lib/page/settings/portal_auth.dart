@@ -291,7 +291,8 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
         SizedBox(
           height: 8,
         ),
-        Row(
+        Wrap(
+          runSpacing: 10,
           children: [
             ElevatedButton(
               onPressed: () async {
@@ -402,6 +403,8 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                             context.pop();
                             context.pop();
                             setState(() {});
+
+                            quotaService.update();
                           } catch (e, st) {
                             context.pop();
                             showErrorDialog(context, e, st);
@@ -604,11 +607,19 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                     );
                     if (dialogRes == true) {
                       showLoadingDialog(context, 'Adding Sia Store...');
+                      String workerApiUrl = workerApiUrlCtrl.text;
+                      if (workerApiUrl.endsWith('/')) {
+                        workerApiUrl =
+                            workerApiUrl.substring(0, workerApiUrl.length - 1);
+                      }
+                      if (Uri.parse(workerApiUrl).path.length < 3) {
+                        workerApiUrl += '/api/worker';
+                      }
 
                       mySky.portalAccounts['_local'] = {
                         'store': {
                           'sia': {
-                            'workerApiUrl': workerApiUrlCtrl.text,
+                            'workerApiUrl': workerApiUrl,
                             'apiPassword': apiPasswordCtrl.text,
                             'downloadUrl': downloadUrlCtrl.text,
                           }
@@ -638,6 +649,8 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
 
                       context.pop();
                       setState(() {});
+
+                      quotaService.update();
                     }
                   } catch (e, st) {
                     showErrorDialog(context, e, st);
@@ -657,6 +670,49 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
         Text(
           'Advanced',
           style: titleTextStyle,
+        ),
+        if (s5Node.store != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Important: If a local store is configured, all new files and metadata are uploaded to the local store.',
+            ),
+          ),
+        SizedBox(
+          height: 6,
+        ),
+        Row(
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Storage Services JSON'),
+                    content: SizedBox(
+                      width: dialogWidth,
+                      height: dialogHeight,
+                      child: SingleChildScrollView(
+                        reverse: true,
+                        child: SelectableText(
+                          const JsonEncoder.withIndent('  ').convert(
+                            mySky.portalAccounts,
+                          ),
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+              child: Text(
+                'View full JSON',
+              ),
+            ),
+          ],
         ),
         SizedBox(
           height: 12,

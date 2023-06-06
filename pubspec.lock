@@ -1548,7 +1548,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "891205e50145aa2900bb46724c899aaea1a0ce38"
+      resolved-ref: eeb1f8cee2d01a17dc2c0a7c5cdcf8729abae6e8
       url: "https://github.com/s5-dev/S5.git"
     source: git
     version: "0.11.3"

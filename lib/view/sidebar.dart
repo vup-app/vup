@@ -572,7 +572,7 @@ MimeType=x-scheme-handler/vup;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final key in mySky.portalAccounts['uploadPortalOrder'])
+                  for (final key in mySky.allUploadServices)
                     QuotaWidget(context: context, portal: key),
                   if (quotaService.accountInfos.length < 2)
                     Padding(
