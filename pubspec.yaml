@@ -161,6 +161,11 @@ dependency_overrides:
   # meta: 1.9.0
   # collection: 1.17.1
   source_span: ^1.10.0
+  flutter_secure_storage_linux:
+    git:
+      url: https://github.com/Mino5531/flutter_secure_storage.git
+      ref: develop
+      path: flutter_secure_storage_linux
 
 flutter_icons:
   android: true

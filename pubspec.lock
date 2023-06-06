@@ -784,12 +784,13 @@ packages:
     source: hosted
     version: "8.0.0"
   flutter_secure_storage_linux:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: flutter_secure_storage_linux
-      sha256: "0912ae29a572230ad52d8a4697e5518d7f0f429052fd51df7e5a7952c7efe2a3"
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_secure_storage_linux
+      ref: develop
+      resolved-ref: "1b9b2f4e8fd3ca868b476872ba16599c90016575"
+      url: "https://github.com/Mino5531/flutter_secure_storage.git"
+    source: git
     version: "1.1.3"
   flutter_secure_storage_macos:
     dependency: transitive
