@@ -714,11 +714,14 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                             Flexible(
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(maxWidth: 150),
-                                child: LinearProgressIndicator(
-                                  value: state.progress,
-                                  minHeight: 8,
-                                  backgroundColor:
-                                      Theme.of(context).dividerColor,
+                                child: SizedBox(
+                                  height: 8,
+                                  child: LinearProgressIndicator(
+                                    value: state.progress,
+                                    // minHeight: 8,
+                                    backgroundColor:
+                                        Theme.of(context).dividerColor,
+                                  ),
                                 ),
                               ),
                             ),

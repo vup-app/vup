@@ -368,7 +368,7 @@ class StorageService extends VupService {
                 final lang = parts.length < 2 ? 'eng' : parts[1];
 
                 String subtitleFileName =
-                    '${basenameWithoutExtension(file.path)}.$lang.vtt';
+                    '${basenameWithoutExtension(file.path)}.$index.$lang.vtt';
 
                 final subOutFile = File(join(
                   temporaryDirectory,
@@ -399,6 +399,7 @@ class StorageService extends VupService {
                   await storageService.startFileUploadingTask(
                     path,
                     subOutFile,
+                    uploadPool: 'subtitles',
                   );
 
                   subtitles.add({
@@ -674,7 +675,8 @@ class StorageService extends VupService {
                 multihash,
                 encryptedCacheFile,
                 fileStateNotifier: fileStateNotifier,
-                customRemote: getCustomRemoteForPath(path),
+                customRemote: null,
+                // customRemote: getCustomRemoteForPath(path),
               );
               return res;
             } catch (e) {
@@ -782,6 +784,7 @@ class StorageService extends VupService {
     Function? onUploadIdAvailable,
     bool returnFileData = false,
     bool metadataOnly = false,
+    String? uploadPool,
   }) async {
     final changeNotifier = storageService.dac.getUploadingFilesChangeNotifier(
       storageService.dac.parsePath(path).toString(),
@@ -822,11 +825,11 @@ class StorageService extends VupService {
       ),
     );
 
-    final customRemote = getCustomRemoteForPath(path);
-    if (!uploadPools.containsKey(customRemote)) {
-      uploadPools[customRemote] = Pool(customRemote == null ? 8 : 16);
+    // final customRemote = getCustomRemoteForPath(path);
+    if (!uploadPools.containsKey(uploadPool)) {
+      uploadPools[uploadPool] = Pool(8);
     }
-    final pool = uploadPools[customRemote]!;
+    final pool = uploadPools[uploadPool]!;
 
     final cancelSub = fileStateNotifier.onCancel.listen((event) {
       changeNotifier.removeUploadingFile(basename(file.path));
@@ -2337,7 +2340,7 @@ class StorageService extends VupService {
     throw 'Could not upload file: ${json.encode(errors)}';
   }
 
-  String? getCustomRemoteForPath(String path) {
+/*   String? getCustomRemoteForPath(String path) {
     final uri = dac.parsePath(path).toString();
 
     for (final remoteId in storageService.dac.customRemotes.keys) {
@@ -2353,7 +2356,7 @@ class StorageService extends VupService {
     }
 
     return null;
-  }
+  } */
 }
 
 class PlaintextChunk {

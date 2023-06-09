@@ -49,55 +49,6 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Row(
-          children: [
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  showLoadingDialog(context, 'Loading...');
-
-                  await mySky.loadPortalAccounts();
-
-                  context.pop();
-                  setState(() {});
-                  updateQuota();
-                } catch (e, st) {
-                  context.pop();
-                  showErrorDialog(context, e, st);
-                }
-              },
-              child: Text(
-                'Reload accounts',
-              ),
-            ),
-            SizedBox(
-              width: 16,
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  showLoadingDialog(context, 'Saving...');
-
-                  await mySky.savePortalAccounts();
-
-                  context.pop();
-                  setState(() {});
-                  hasChanges.value = false;
-                } catch (e, st) {
-                  context.pop();
-                  showErrorDialog(context, e, st);
-                }
-              },
-              child: Text(
-                'Save configuration',
-              ),
-            ),
-          ],
-        ),
-        SizedBox(
-          height: 8,
-        ),
-
         /* StreamBuilder(
           stream: quotaService.stream,
           builder: (context, snapshot) {
@@ -181,7 +132,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
           ),
         ),  */ //
         const SizedBox(
-          height: 12,
+          height: 8,
         ),
 /*         if ((dataBox.get('mysky_portal_auth_ts') ?? 0) != 0) ...[
           SizedBox(
@@ -295,6 +246,54 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
         /*   SizedBox(
           height: 12,
         ), */
+        Row(
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  showLoadingDialog(context, 'Loading...');
+
+                  await mySky.loadPortalAccounts();
+
+                  context.pop();
+                  setState(() {});
+                  updateQuota();
+                } catch (e, st) {
+                  context.pop();
+                  showErrorDialog(context, e, st);
+                }
+              },
+              child: Text(
+                'Reload accounts',
+              ),
+            ),
+            SizedBox(
+              width: 16,
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  showLoadingDialog(context, 'Saving...');
+
+                  await mySky.savePortalAccounts();
+
+                  context.pop();
+                  setState(() {});
+                  hasChanges.value = false;
+                } catch (e, st) {
+                  context.pop();
+                  showErrorDialog(context, e, st);
+                }
+              },
+              child: Text(
+                'Save configuration',
+              ),
+            ),
+          ],
+        ),
+        SizedBox(
+          height: 12,
+        ),
         Text(
           'Add Storage Service',
           style: titleTextStyle,
@@ -797,7 +796,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
         Text(
           'Advanced',
           style: titleTextStyle,
-        ),        
+        ),
         SizedBox(
           height: 6,
         ),

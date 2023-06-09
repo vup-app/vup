@@ -20,7 +20,13 @@ class PermanentDeleteVupAction extends VupFSAction {
     final uris = pathNotifier.selectedFiles.toList() +
         pathNotifier.selectedDirectories.toList();
     if (!isSelected) {
-      uris.add(entity.uri);
+      if (entity?.uri == null) {
+        logger.error(
+          'PermanentDeleteVupAction: $entity URI is null (${pathNotifier.path})',
+        );
+      } else {
+        uris.add(entity.uri);
+      }
     }
 
     for (final uri in uris) {

@@ -119,6 +119,7 @@ class PinningService extends VupService {
       }
       if (s5Node.store != null) {
         if (await s5Node.store!.contains(cid.hash)) {
+          verbose('unpin _local $cid');
           await s5Node.store!.delete(cid.hash);
         }
       }
