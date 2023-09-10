@@ -11,6 +11,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:s5_server/logger/console.dart';
 import 'package:cryptography/helpers.dart';
 import 'package:s5_server/node.dart';
@@ -25,6 +26,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:vup/model/sync_task.dart';
 import 'package:vup/service/notification/provider/flutter.dart';
 import 'package:vup/theme.dart';
+import 'package:vup/utils/date_format.dart';
 import 'package:vup/utils/device_info/flutter.dart';
 import 'package:vup/utils/external_ip/flutter.dart';
 import 'package:vup/utils/ffmpeg/flutter.dart';
@@ -335,7 +337,7 @@ void main(List<String> args) async {
         headers: {
           'content-type': 'application/json',
         },
-      );
+      ).timeout(Duration(milliseconds: 1000));
       if (res.statusCode != 200) {
         throw 'Not running';
       }
@@ -528,10 +530,10 @@ void main(List<String> args) async {
 
     if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
       doWhenWindowReady(() {
-        appWindow.minSize = Size(300, 440);
-        appWindow.size = Size(1080, 640);
+        appWindow.minSize = const Size(300, 440);
+        // appWindow.size = Size(1080, 640);
         //appWindow.size = Size(1536, 960);
-        appWindow.alignment = Alignment.center;
+        // appWindow.alignment = Alignment.center;
         appWindow.title = 'Vup Cloud Storage'; // TODO Localization
 
         if (isStartMinimizedEnabled) {
@@ -541,6 +543,10 @@ void main(List<String> args) async {
         }
       });
     }
+
+    initializeDateFormatting().then((value) {
+      dateTimeLocale = Platform.localeName;
+    });
   }, (e, st) {
     logger.error(e);
     logger.verbose(st);
