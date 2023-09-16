@@ -1,5 +1,6 @@
 import 'package:vup/app.dart';
 import 'package:vup/queue/mdl.dart';
+import 'package:vup/queue/pin.dart';
 import 'package:vup/queue/sync.dart';
 import 'package:vup/view/queue_task_manager.dart';
 
@@ -39,7 +40,7 @@ class _ActiveQueueTasksViewState extends State<ActiveQueueTasksView> {
                       Padding(
                         padding: const EdgeInsets.all(2.0),
                         child: Text(
-                          '${task is SyncQueueTask ? 'Sync' : task is MediaDownloadQueueTask ? 'Download' : task.toString()} ${task.id}',
+                          '${task is SyncQueueTask ? 'Sync' : task is MediaDownloadQueueTask ? 'Download' : task is PinningQueueTask ? 'Pin' : task.toString()} ${task.id}',
                         ),
                       ),
                       if (task.progress > 0)

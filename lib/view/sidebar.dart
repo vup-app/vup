@@ -601,9 +601,7 @@ MimeType=x-scheme-handler/vup;
                 ],
               );
             }),
-        Divider(
-          height: 1,
-        ),
+        const Divider(height: 1),
         Expanded(
             child: Scrollbar(
           controller: _scrollCtrl,

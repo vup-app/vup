@@ -23,7 +23,9 @@ class TemporaryStreamingServerService extends VupService {
 
   final availableFiles = <String, FileReference>{};
 
-  Future<String> makeFileAvailable(FileReference file) async {
+  Future<String> makeFileAvailable(
+    FileReference file,
+  ) async {
     start(43913, '0.0.0.0');
     final streamingKey = randomAlphaNumeric(
       32,
@@ -36,6 +38,20 @@ class TemporaryStreamingServerService extends VupService {
     final ipAddress = await externalIpAddressProvider.getIpAddress();
 
     return 'http://$ipAddress:43913/stream/$streamingKey/${Uri.encodeComponent(file.name)}';
+  }
+
+  String makeFileAvailableLocalhost(
+    FileReference file,
+  ) {
+    start(43913, '0.0.0.0');
+    final streamingKey = randomAlphaNumeric(
+      32,
+      provider: CoreRandomProvider.from(
+        Random.secure(),
+      ),
+    ).toLowerCase();
+    availableFiles[streamingKey] = file;
+    return 'http://localhost:43913/stream/$streamingKey/${Uri.encodeComponent(file.name)}';
   }
 
   void start(int port, String bindIp) {
@@ -104,5 +120,11 @@ class TemporaryStreamingServerService extends VupService {
     info('server is running at $bindIp:$port');
 
     app.listen(port, bindIp);
+  }
+
+  String getPathOrStreamingUrl(FileReference file) {
+    final localFile = storageService.getLocalFile(file);
+    if (localFile != null) return localFile.path;
+    return makeFileAvailableLocalhost(file);
   }
 }

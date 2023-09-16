@@ -174,14 +174,18 @@ class MySkyService extends VupService {
       logger.verbose('setupPortalAccounts1 $u');
       if (u == '_local' && portalAccounts['_local'] != null) {
         if (s5Node.store == null) {
-          final stores = createStoresFromConfig(
-            portalAccounts['_local'],
-            httpClient: mySky.httpClient,
-            node: s5Node,
-          );
-          s5Node.store = stores.values.first;
+          try {
+            final stores = createStoresFromConfig(
+              portalAccounts['_local'],
+              httpClient: mySky.httpClient,
+              node: s5Node,
+            );
+            s5Node.store = stores.values.first;
 
-          initS5Store();
+            initS5Store();
+          } catch (e, st) {
+            logger.catched(e, st);
+          }
         }
         continue;
       }

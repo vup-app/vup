@@ -58,7 +58,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
                   ),
                   color: Theme.of(context).primaryColor,
                   child: Padding(
-                    padding: const EdgeInsets.all(2),
+                    padding: const EdgeInsets.all(4),
                     child: Icon(
                       UniconsLine.times,
                       color: Theme.of(context).colorScheme.onPrimary,

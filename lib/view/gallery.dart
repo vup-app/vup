@@ -66,7 +66,7 @@ class _GalleryViewState extends State<GalleryView> {
                   ),
                   color: Theme.of(context).primaryColor,
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(4),
                     child: Icon(
                       UniconsLine.times,
                       color: Theme.of(context).colorScheme.onPrimary,

@@ -7,6 +7,7 @@ import 'package:vup/actions/copy_uri.dart';
 import 'package:vup/actions/copy_web_server_url.dart';
 
 import 'package:vup/actions/create_directory.dart';
+import 'package:vup/actions/create_file.dart';
 import 'package:vup/actions/cut.dart';
 import 'package:vup/actions/delete_from_device.dart';
 import 'package:vup/actions/file_details.dart';
@@ -15,7 +16,7 @@ import 'package:vup/actions/move_to_trash.dart';
 import 'package:vup/actions/open_in_new_tab.dart';
 import 'package:vup/actions/open_parent_directory.dart';
 import 'package:vup/actions/permanent_delete.dart';
-import 'package:vup/actions/pin_all.dart';
+import 'package:vup/actions/pin.dart';
 import 'package:vup/actions/previous_versions.dart';
 import 'package:vup/actions/regenerate_metadata.dart';
 import 'package:vup/actions/remove_shared_directory.dart';
@@ -39,12 +40,12 @@ import 'package:vup/actions/yt_dl.dart';
 import 'package:vup/app.dart';
 
 // TODO New actions
-// CreateNewFileVupAction
 // Open terminal here
 
 final allActions = <VupFSAction>[
   // ! Directory view actions
   CreateDirectoryVupAction(),
+  CreateFileVupAction(),
   // TODO Implement MountDirectoryVupAction(),
   UploadFilesVupAction(),
   UploadDirectoryVupAction(),
@@ -75,7 +76,7 @@ final allActions = <VupFSAction>[
   PermanentDeleteVupAction(),
   AddToQuickAccessVupAction(),
   RemoveSharedDirectoryVupAction(),
-  // PinAllVupAction(),
+  PinVupAction(),
   PreviousFileVersionsVupAction(),
 
   OpenParentDirectoryVupAction(),

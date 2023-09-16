@@ -109,7 +109,10 @@ class _JellyfinServerSettingsPageState
               Row(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 2.0),
+                    padding: const EdgeInsets.only(
+                      top: 2.0,
+                      right: 12,
+                    ),
                     child: Switch(
                       value: isJellyfinServerEnabled,
                       onChanged: jellyfinServerService.isStarting

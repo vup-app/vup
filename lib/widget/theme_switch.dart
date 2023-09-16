@@ -63,14 +63,21 @@ class _ThemeSwitchState extends State<ThemeSwitch> {
             ),
             SizedBox(
               width: 110,
-              child: CheckboxListTile(
-                dense: true,
-                value: dataBox.get('theme_is_black') ?? false,
-                onChanged: (val) {
-                  dataBox.put('theme_is_black', val);
-                  AppTheme.of(context).updateTheme();
-                },
-                title: Text('Black'),
+              child: Theme(
+                data: context.theme.copyWith(
+                    visualDensity: VisualDensity(
+                  horizontal: -4,
+                  vertical: -4,
+                )),
+                child: CheckboxListTile(
+                  dense: true,
+                  value: dataBox.get('theme_is_black') ?? false,
+                  onChanged: (val) {
+                    dataBox.put('theme_is_black', val);
+                    AppTheme.of(context).updateTheme();
+                  },
+                  title: Text('Black'),
+                ),
               ),
             ),
           ],

@@ -70,7 +70,7 @@ class YTDLAction extends VupAction {
 
     info('total videos ${videos.length}');
 
-    final pool = Pool(8);
+    final pool = Pool(ytDlPoolSize);
 
     final futures = <Future>[];
 

@@ -621,7 +621,7 @@ mp3: better compatibility''', // mkv: more features
             if (logOutput.isNotEmpty) ...[
               SizedBox(
                 width: 700,
-                height: 50,
+                height: 120,
                 child: SingleChildScrollView(
                   reverse: true,
                   child: HighlightView(

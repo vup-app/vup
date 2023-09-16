@@ -1,1 +1,1 @@
-const vupVersion = '0.14.3';
+const vupVersion = '0.15.0';

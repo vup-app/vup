@@ -114,13 +114,17 @@ String get jellyfinServerUsername =>
 String get jellyfinServerPassword =>
     dataBox.get('jellyfin_server_password') ?? 'password';
 
+int get uploadPoolSize => dataBox.get('upload_pool_size') ?? 8;
+int get downloadPoolSize => dataBox.get('download_pool_size') ?? 8;
+int get ytDlPoolSize => dataBox.get('media_dl_pool_size') ?? 8;
+
 const jellyfinCollectionsPath = 'vup.hns/config/jellyfin/collections.json';
 const customThemesPath = 'vup.hns/config/custom_themes.json';
 
 final scriptsStatus = <String, Map>{};
 
 // Pools
-final downloadPool = Pool(8);
+late final Pool downloadPool;
 
 // Error handling
 final globalErrorsState = GlobalErrorStateNotifier();

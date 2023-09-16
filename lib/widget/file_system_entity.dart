@@ -16,12 +16,16 @@ import 'package:open_file/open_file.dart';
 import 'package:vup/main.dart';
 import 'package:vup/utils/date_format.dart';
 import 'package:image/image.dart' as img;
+import 'package:vup/view/gallery.dart';
+import 'package:vup/view/video_player.dart';
 
 class FileSystemEntityWidget extends StatefulWidget {
   final dynamic _entity;
 
   final PathNotifierState pathNotifier;
   final DirectoryViewState viewState;
+
+  final Function onOpenGallery;
 
   ZoomLevel get zoomLevel => viewState.zoomLevel;
 
@@ -30,6 +34,7 @@ class FileSystemEntityWidget extends StatefulWidget {
     Key? key,
     required this.pathNotifier,
     required this.viewState,
+    required this.onOpenGallery,
   }) : super(key: key);
 
   @override
@@ -334,72 +339,9 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                   setState(() {
                     enabled = false;
                   });
+
                   try {
-                    final openStreamingUrlInWebBrowser =
-                        file.ext?.containsKey('video') ?? false;
-                    if (openStreamingUrlInWebBrowser) {
-                      final url = await temporaryStreamingServerService
-                          .makeFileAvailable(
-                        file,
-                      );
-                      launchUrlString(url);
-                    } else {
-                      // logger.verbose(json.encode(file.file));
-                      final link = await downloadPool.withResource(
-                        () => storageService.downloadAndDecryptFile(
-                          fileData: file.file,
-                          name: file.name,
-                          outFile: null,
-                        ),
-                      );
-                      if (mounted) {
-                        setState(() {});
-                      }
-                      // logger.verbose(link);
-
-                      final ext = extension(file.name).toLowerCase();
-
-                      if (isIntegratedAudioPlayerEnabled &&
-                          supportedAudioExtensionsForPlayback.contains(ext) &&
-                          !(Platform.isWindows || Platform.isLinux)) {
-                        logger.info('use audioPlayer');
-                        audioPlayer.pause();
-
-                        audioPlayer.setFilePath(link);
-                        audioPlayer.play();
-                      } else {
-                        OpenFile.open(
-                          link,
-                          type: file.mimeType,
-                        );
-                        if (isWatchOpenedFilesEnabled &&
-                            sub == null &&
-                            file.file.cid.size! < (16 * 1000 * 1000)) {
-                          final localFile = File(link);
-                          var lastModified = localFile.lastModifiedSync();
-
-                          sub = Stream.periodic(Duration(seconds: 5))
-                              .listen((event) {
-                            if (!isWatchOpenedFilesEnabled ||
-                                !localFile.existsSync()) {
-                              sub?.cancel();
-                              sub = null;
-                              return;
-                            }
-                            if (localFile.lastModifiedSync() != lastModified) {
-                              lastModified = localFile.lastModifiedSync();
-
-                              storageService.startFileUploadingTask(
-                                widget.pathNotifier.value.join('/'),
-                                localFile,
-                                create: false,
-                                modified: lastModified.millisecondsSinceEpoch,
-                              );
-                            }
-                          });
-                        }
-                      }
-                    }
+                    await launchFile(context);
                   } catch (e, st) {
                     logger.verbose(e);
                     logger.verbose(st);
@@ -431,6 +373,77 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
         ),
       ),
     );
+  }
+
+  Future<void> launchFile(BuildContext context) async {
+    if (file.ext?.containsKey('video') ?? false) {
+      if (fileOpenDefaultVideo == 'vupVideoPlayer') {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => VideoPlayerView(file),
+          ),
+        );
+        return;
+      } else if (fileOpenDefaultVideo == 'webBrowser') {
+        final url = temporaryStreamingServerService.makeFileAvailableLocalhost(
+          file,
+        );
+        launchUrlString(url);
+        return;
+      } else if (fileOpenDefaultVideo == 'mpv') {
+        final path = temporaryStreamingServerService.getPathOrStreamingUrl(
+          file,
+        );
+        await Process.run('mpv', [path]);
+        return;
+      }
+    } else if (file.ext?.containsKey('image') ?? false) {
+      if (fileOpenDefaultImage == 'vupImageViewer') {
+        widget.onOpenGallery(file);
+        return;
+      }
+    }
+    // logger.verbose(json.encode(file.file));
+    final link = await downloadPool.withResource(
+      () => storageService.downloadAndDecryptFile(
+        fileData: file.file,
+        name: file.name,
+        outFile: null,
+      ),
+    );
+    if (mounted) {
+      setState(() {});
+    }
+    // logger.verbose(link);
+
+    OpenFile.open(
+      link,
+      type: file.mimeType,
+    );
+    if (isWatchOpenedFilesEnabled &&
+        sub == null &&
+        file.file.cid.size! < (16 * 1000 * 1000)) {
+      final localFile = File(link);
+      var lastModified = localFile.lastModifiedSync();
+
+      sub = Stream.periodic(Duration(seconds: 5)).listen((event) {
+        if (!isWatchOpenedFilesEnabled || !localFile.existsSync()) {
+          sub?.cancel();
+          sub = null;
+          return;
+        }
+        if (localFile.lastModifiedSync() != lastModified) {
+          lastModified = localFile.lastModifiedSync();
+
+          storageService.startFileUploadingTask(
+            widget.pathNotifier.value.join('/'),
+            localFile,
+            create: false,
+            modified: lastModified.millisecondsSinceEpoch,
+          );
+        }
+      });
+    }
   }
 
   Widget _buildContent(Color? textColor, bool isSelected) {
@@ -786,7 +799,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
     Color? textColor,
     bool fullSize,
   ) {
-    if (isDirectory)
+    if (isDirectory) {
       return [
         if (fullSize && dir.size != null)
           Container(
@@ -808,16 +821,7 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
               stream: Stream.periodic(Duration(minutes: 1)),
               builder: (context, snapshot) {
                 final dt = DateTime.fromMillisecondsSinceEpoch(dir.created);
-
-                final timeAgoWidget = Text(
-                  timeago.format(
-                    dt,
-                  ),
-                  textAlign: TextAlign.end,
-                  style: TextStyle(
-                    color: textColor,
-                  ),
-                );
+                final ts = timeago.format(dt);
 
                 var hovering = false;
                 return StatefulBuilder(
@@ -844,14 +848,14 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                                   ),
                                   textAlign: TextAlign.end,
                                 ),
-                                timeAgoWidget,
                               ],
                             )
-                          : Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 8.5,
+                          : Text(
+                              ts,
+                              textAlign: TextAlign.end,
+                              style: TextStyle(
+                                color: textColor,
                               ),
-                              child: timeAgoWidget,
                             ),
                     );
                   },
@@ -859,25 +863,14 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
               }),
         ),
       ];
+    }
     final modifiedWidget = StreamBuilder(
         stream: Stream.periodic(Duration(minutes: 1)),
         builder: (context, snapshot) {
           final dt = DateTime.fromMillisecondsSinceEpoch(file.modified);
-
-          final timeAgoWidget = Text(
-            timeago.format(
-              dt,
-            ),
-            textAlign: TextAlign.end,
-            style: TextStyle(
-              color: textColor,
-            ),
+          final ts = timeago.format(
+            dt,
           );
-
-          if (!fullSize) {
-            return timeAgoWidget;
-          }
-
           var hovering = false;
           return StatefulBuilder(builder: (context, setState) {
             return MouseRegion(
@@ -892,24 +885,19 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
                 });
               },
               child: hovering
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          formatDateTime(dt),
-                          style: TextStyle(
-                            color: textColor,
-                          ),
-                          textAlign: TextAlign.end,
-                        ),
-                        timeAgoWidget,
-                      ],
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8.5,
+                  ? Text(
+                      formatDateTime(dt),
+                      style: TextStyle(
+                        color: textColor,
                       ),
-                      child: timeAgoWidget,
+                      textAlign: TextAlign.end,
+                    )
+                  : Text(
+                      ts,
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        color: textColor,
+                      ),
                     ),
             );
           });
@@ -962,7 +950,8 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
         });
 
     final pins = pinningService.getPinsForHash(
-        file.file.encryptedCID?.encryptedBlobHash ?? file.file.cid.hash);
+      file.file.encryptedCID?.encryptedBlobHash ?? file.file.cid.hash,
+    );
 
     final pinWidget = Tooltip(
       message: 'Pinned on ' + pins.join(', '),
@@ -974,8 +963,8 @@ class _FileSystemEntityWidgetState extends State<FileSystemEntityWidget> {
           child: Text(
             pins.length.toString(),
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
               color: Theme.of(context).colorScheme.onPrimary,
             ),
           ),

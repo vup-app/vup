@@ -17,6 +17,160 @@ import 'package:s5_server/constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:vup/utils/download/generate_download_config.dart';
 
+import 'package:s5_server/download/open_read.dart' as s5;
+
+Future handleChunkedFile(
+  HttpRequest req,
+  HttpResponse res,
+  FileReference file,
+  int totalSize,
+  // required Logger logger,
+) async {
+  final rangeHeader = req.headers.value('range');
+
+  final cachePath = join(
+    storageService.temporaryDirectory,
+    'stream',
+  );
+
+  final encryptionMetadata = file.file.encryptedCID!;
+  final hash = encryptionMetadata.encryptedBlobHash;
+
+  final completer = Completer();
+
+  if (rangeHeader?.startsWith('bytes=') != true) {
+    res.headers.add('content-length', totalSize);
+    await res.addStream(s5.openRead(
+      mhash: hash,
+      start: 0,
+      totalSize: totalSize,
+      completer: completer,
+      cachePath: cachePath,
+      encryptionMetadata: encryptionMetadata,
+      node: s5Node,
+    ));
+    completer.complete();
+    return res.close();
+  } else {
+    var header = RangeHeader.parse(rangeHeader!);
+    final items = RangeHeader.foldItems(header.items);
+    header = RangeHeader(items);
+
+    for (var item in header.items) {
+      var invalid = false;
+
+      if (item.start != -1) {
+        invalid = item.end != -1 && item.end < item.start;
+      } else {
+        invalid = item.end == -1;
+      }
+
+      if (invalid) {
+        res.statusCode = 416;
+        res.write('416 Semantically invalid, or unbounded range.');
+        return res.close();
+      }
+
+      if (item.end >= totalSize) {
+        res.headers.add('content-length', totalSize);
+
+        await res.addStream(s5.openRead(
+          mhash: hash,
+          start: 0,
+          totalSize: totalSize,
+          completer: completer,
+          cachePath: cachePath,
+          encryptionMetadata: encryptionMetadata,
+          node: s5Node,
+        ));
+        completer.complete();
+        return res.close();
+      }
+
+      // Ensure it's within range.
+      if (item.start >= totalSize || item.end >= totalSize) {
+        res.statusCode = 416;
+        res.write('416 Given range $item is out of bounds.');
+        return res.close();
+      }
+    }
+
+    if (header.items.isEmpty) {
+      res.statusCode = 416;
+      res.write('416 `Range` header may not be empty.');
+      return res.close();
+    } else if (header.items.length == 1) {
+      var item = header.items[0];
+
+      Stream<List<int>> stream;
+      var len = 0;
+
+      if (item.start == -1) {
+        if (item.end == -1) {
+          len = totalSize;
+          stream = s5.openRead(
+            mhash: hash,
+            start: 0,
+            totalSize: totalSize,
+            completer: completer,
+            cachePath: cachePath,
+            encryptionMetadata: encryptionMetadata,
+            node: s5Node,
+          );
+        } else {
+          len = item.end + 1;
+          stream = s5.openRead(
+            mhash: hash,
+            start: 0,
+            end: item.end + 1,
+            totalSize: totalSize,
+            completer: completer,
+            cachePath: cachePath,
+            encryptionMetadata: encryptionMetadata,
+            node: s5Node,
+          );
+        }
+      } else {
+        if (item.end == -1) {
+          len = totalSize - item.start;
+          stream = s5.openRead(
+            mhash: hash,
+            start: item.start,
+            totalSize: totalSize,
+            completer: completer,
+            cachePath: cachePath,
+            encryptionMetadata: encryptionMetadata,
+            node: s5Node,
+          );
+        } else {
+          len = item.end - item.start + 1;
+          stream = s5.openRead(
+            mhash: hash,
+            start: item.start,
+            end: item.end + 1,
+            totalSize: totalSize,
+            completer: completer,
+            cachePath: cachePath,
+            encryptionMetadata: encryptionMetadata,
+            node: s5Node,
+          );
+        }
+      }
+
+      res.statusCode = 206;
+      res.headers.add('content-length', len.toString());
+      res.headers.add(
+        'content-range',
+        'bytes ' + item.toContentRange(totalSize),
+      );
+      await res.addStream(stream);
+      completer.complete();
+      return res.close();
+    } else {}
+  }
+}
+/* 
+
 Future handleChunkedFile(
   HttpRequest req,
   HttpResponse res,
@@ -145,6 +299,9 @@ Future handleChunkedFile(
     } else {}
   }
 }
+ */
+
+/* 
 
 Map<String, Completer> downloadingChunkLock = {};
 
@@ -430,3 +587,4 @@ Stream<List<int>> openRead(
 
   sub?.cancel();
 }
+ */

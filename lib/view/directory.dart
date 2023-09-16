@@ -9,6 +9,7 @@ import 'package:vup/actions/base.dart';
 import 'package:vup/app.dart';
 import 'package:vup/utils/strings.dart';
 import 'package:vup/view/browse.dart';
+import 'package:vup/view/gallery.dart';
 import 'package:vup/widget/file_system_entity.dart';
 import 'package:vup/widget/flat_action_button.dart';
 
@@ -174,6 +175,23 @@ class _DirectoryViewState extends State<DirectoryView> {
   }
 
   var entities = <dynamic>[];
+
+  void onOpenGallery(FileReference ref) {
+    final images = entities
+        .where(
+            (e) => e is FileReference && (e.ext?.containsKey('image') ?? false))
+        .toList()
+        .cast<FileReference>();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => GalleryView(
+          images: images,
+          initialIndex: images.indexOf(ref),
+        ),
+      ),
+    );
+  }
 
   // TODO Use sort feature in FS DAC instead (with alpha-sort)
   void sort() {
@@ -659,6 +677,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                         entities[index],
                         pathNotifier: widget.pathNotifier,
                         viewState: widget.viewState,
+                        onOpenGallery: onOpenGallery,
                       ),
                     ),
                   ],
@@ -706,6 +725,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                                     entity.entity,
                                     pathNotifier: widget.pathNotifier,
                                     viewState: widget.viewState,
+                                    onOpenGallery: onOpenGallery,
                                   ),
                                 ),
                       ],
@@ -728,6 +748,7 @@ class _DirectoryViewState extends State<DirectoryView> {
                     entities[index],
                     pathNotifier: widget.pathNotifier,
                     viewState: widget.viewState,
+                    onOpenGallery: onOpenGallery,
                   ),
                 );
               },

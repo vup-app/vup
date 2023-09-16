@@ -85,7 +85,9 @@ class StorageService extends VupService {
     required this.syncTasks,
     required this.localFiles,
     required this.dataDirectory,
-  });
+  }) {
+    downloadPool = Pool(downloadPoolSize);
+  }
 
   get trashPath => '.trash';
 
@@ -827,7 +829,7 @@ class StorageService extends VupService {
 
     // final customRemote = getCustomRemoteForPath(path);
     if (!uploadPools.containsKey(uploadPool)) {
-      uploadPools[uploadPool] = Pool(8);
+      uploadPools[uploadPool] = Pool(uploadPoolSize);
     }
     final pool = uploadPools[uploadPool]!;
 
@@ -2024,21 +2026,34 @@ class StorageService extends VupService {
       final cancelSub = fileStateNotifier.onCancel.listen((event) async {
         cancelToken.cancel();
       });
-      final cid = await s5Node.uploadLocalFile(
-        outFile,
-        withOutboard: false,
-        cancelToken: cancelToken,
-        onProgress: (value) {
-          fileStateNotifier.updateFileState(
-            FileState(
-              type: FileStateType.uploading,
-              progress: value,
-            ),
+      int retryCount = 0;
+      while (retryCount < 10) {
+        retryCount++;
+        try {
+          final cid = await s5Node.uploadLocalFile(
+            outFile,
+            withOutboard: false,
+            cancelToken: cancelToken,
+            onProgress: (value) {
+              fileStateNotifier.updateFileState(
+                FileState(
+                  type: FileStateType.uploading,
+                  progress: value,
+                ),
+              );
+            },
           );
-        },
-      );
-      cancelSub.cancel();
-      encryptedBlobHash = cid.hash;
+          cancelSub.cancel();
+          encryptedBlobHash = cid.hash;
+          break;
+        } catch (e, st) {
+          logger.catched(e, st);
+          if (retryCount > 8) {
+            rethrow;
+          }
+          await Future.delayed(Duration(seconds: 1));
+        }
+      }
     } else {
       if (outFile.lengthSync() > SMALL_FILE_SIZE) {
         logger.verbose('fileMultiHash $fileMultiHash');
@@ -2136,7 +2151,7 @@ class StorageService extends VupService {
     logger.verbose('upload-timestamp-8 ${DateTime.now()}');
 
     return EncryptAndUploadResponse(
-      encryptedBlobHash: encryptedBlobHash,
+      encryptedBlobHash: encryptedBlobHash!,
       secretKey: key,
       // encryptionType: 'ChaCha20-Poly1305',
       chunkSizeAsPowerOf2: maxChunkSizeAsPowerOf2,

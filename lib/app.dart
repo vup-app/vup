@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:lib5/constants.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -68,11 +67,20 @@ late bool isAppWindowVisible;
 bool get isWatchOpenedFilesEnabled =>
     dataBox.get('watch_opened_files_enabled') ?? false;
 
-bool get isIntegratedAudioPlayerEnabled =>
-    dataBox.get('integrated_audio_player_enabled') ?? false;
-
 bool get isColumnViewFeatureEnabled =>
     dataBox.get('column_view_enabled') ?? false;
+
+String get fileOpenDefaultImage =>
+    dataBox.get('file_open_default_image') ?? 'vupImageViewer';
+
+String get fileOpenDefaultVideo =>
+    dataBox.get('file_open_default_video') ?? 'vupVideoPlayer';
+
+String get fileOpenDefaultAudio =>
+    dataBox.get('file_open_default_audio') ?? 'native';
+
+String get fileOpenDefaultText =>
+    dataBox.get('file_open_default_text') ?? 'native';
 
 final localAuth = LocalAuthentication();
 
@@ -148,8 +156,6 @@ class ZoomLevel {
   String? groupBy;
 }
 
-final audioPlayer = AudioPlayer();
-
 final borderRadius = BorderRadius.circular(8);
 
 const mobileBreakpoint = 542;
@@ -157,6 +163,21 @@ const mobileBreakpoint = 542;
 extension IsMobileExtension on BuildContext {
   bool get isMobile => MediaQuery.of(this).size.width < mobileBreakpoint;
 }
+
+Widget createSettingsTitle(String title, {required BuildContext context}) =>
+    Padding(
+      padding: const EdgeInsets.only(
+        left: 16,
+        top: 16,
+        bottom: 4,
+      ),
+      child: Text(
+        title,
+        style: subTitleTextStyle.copyWith(
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+      ),
+    );
 
 class SkyColors {
   static const error = Colors.deepOrange;
@@ -193,12 +214,10 @@ enum SearchType {
   currentDir,
 }
 
-typedef dynamic ExtractFunction(FileReference f);
-
 abstract class SortStep {
   String get name;
   String get id;
-  ExtractFunction get f;
+  dynamic f(FileReference f);
 }
 
 /* class MediaSortStep extends SortStep {
@@ -219,19 +238,22 @@ abstract class SortStep {
 class NameSortStep extends SortStep {
   final id = 'name';
   final name = 'Name';
-  final f = (f) => f.name.toLowerCase();
+  @override
+  f(f) => f.name.toLowerCase();
 }
 
 class CreatedSortStep extends SortStep {
   final id = 'created';
   final name = 'Created';
-  final f = (f) => f.created;
+  @override
+  f(f) => f.created;
 }
 
 class ModifiedSortStep extends SortStep {
   final id = 'modified';
   final name = 'Modified';
-  final f = (f) => f.modified;
+  @override
+  f(f) => f.modified;
 }
 
 /* class VersionSortStep extends SortStep {
@@ -242,19 +264,22 @@ class ModifiedSortStep extends SortStep {
 class ExtensionSortStep extends SortStep {
   final id = 'extension';
   final name = 'Extension';
-  final f = (f) => extension(f.name);
+  @override
+  f(f) => extension(f.name);
 }
 
 class SizeSortStep extends SortStep {
   final id = 'size';
   final name = 'Size';
-  final f = (f) => f.file.cid.size ?? 0;
+  @override
+  f(f) => f.file.cid.size ?? 0;
 }
 
 class AvailableOfflineSortStep extends SortStep {
   final id = 'availableOffline';
   final name = 'Offline';
-  final f = (f) => localFiles.contains(f.file.cid.hash.fullBytes).toString();
+  @override
+  f(f) => localFiles.contains(f.file.cid.hash.fullBytes).toString();
 }
 
 final allSortSteps = {

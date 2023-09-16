@@ -4,6 +4,7 @@ import 'package:flutter/src/foundation/key.dart';
 import 'package:flutter/src/widgets/container.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:vup/app.dart';
+import 'package:vup/queue/pin.dart';
 import 'package:vup/queue/sync.dart';
 import 'package:vup/queue/task.dart';
 
@@ -113,6 +114,13 @@ class TaskRow extends StatelessWidget {
                   backgroundColor: Theme.of(context).cardColor,
                 ),
               ),
+            ),
+          if (task is PinningQueueTask)
+            TextButton(
+              onPressed: () {
+                queue.cancelTask(task);
+              },
+              child: Text('Cancel'),
             ),
           Expanded(
             child: Text(

@@ -69,29 +69,26 @@ class _UserWidgetState extends State<UserWidget> {
     if (widget.profilePictureOnly) return buildProfilePicture();
     return Row(
       children: [
-        buildProfilePicture(),
+        // buildProfilePicture(),
         // if (profile != null)
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Vup (S5)',
-                  // profile!.username,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Vup (S5)',
+                // profile!.username,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
                 ),
-                Text(
-                  'v$vupVersion Beta',
-                  // profile!.location ?? '',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                'v$vupVersion Beta',
+                // profile!.location ?? '',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         )
       ],

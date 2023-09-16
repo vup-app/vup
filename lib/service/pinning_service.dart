@@ -1,6 +1,7 @@
 import 'package:lib5/lib5.dart';
 import 'package:s5_server/store/pixeldrain.dart';
 import 'package:s5_server/store/sia.dart';
+import 'package:s5_server/store/s3.dart';
 import 'package:vup/generic/state.dart';
 import 'package:lib5/storage_service.dart';
 import 'package:vup/service/base.dart';
@@ -11,7 +12,7 @@ class PinningService extends VupService {
     run().then((_) {
       unpinDeletedHashes();
     });
-    Stream.periodic(Duration(seconds: 50)).listen((event) {
+    Stream.periodic(Duration(seconds: 30)).listen((event) {
       run();
     });
     Stream.periodic(Duration(minutes: 10)).listen((event) {
@@ -42,6 +43,10 @@ class PinningService extends VupService {
         }
       } else if (s5Node.store is SiaObjectStore) {
         if ((s5Node.store as SiaObjectStore).availableHashes.contains(hash)) {
+          pins.add(remoteName);
+        }
+      } else if (s5Node.store is S3ObjectStore) {
+        if ((s5Node.store as S3ObjectStore).availableHashes.contains(hash)) {
           pins.add(remoteName);
         }
       }

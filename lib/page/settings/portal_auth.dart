@@ -332,7 +332,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                         ),
                         TextField(
                           decoration: InputDecoration(
-                            labelText: 'Auth Token (optional)',
+                            labelText: 'Invite Code (optional)',
                           ),
                           controller: _authTokenCtrl,
                         ),
@@ -652,6 +652,117 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                   'Add Sia Renter',
                 ),
               ),
+              SizedBox(
+                width: 8,
+              ),
+              if (devModeEnabled)
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final accessKey = TextEditingController();
+                      final bucket = TextEditingController();
+                      final endpoint = TextEditingController();
+                      final secretKey = TextEditingController();
+
+                      final dialogRes = await showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('Add S3 Provider (advanced)'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextField(
+                                controller: endpoint,
+                                decoration: const InputDecoration(
+                                  labelText: 'endpoint',
+                                ),
+                                autofocus: true,
+                              ),
+                              SizedBox(
+                                height: 8,
+                              ),
+                              TextField(
+                                controller: bucket,
+                                decoration: const InputDecoration(
+                                  labelText: 'bucket',
+                                ),
+                              ),
+                              SizedBox(
+                                height: 8,
+                              ),
+                              TextField(
+                                controller: accessKey,
+                                decoration: const InputDecoration(
+                                  labelText: 'accessKey',
+                                ),
+                              ),
+                              SizedBox(
+                                height: 8,
+                              ),
+                              TextField(
+                                controller: secretKey,
+                                decoration: const InputDecoration(
+                                  labelText: 'secretKey',
+                                ),
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => context.pop(),
+                              child: Text(
+                                'Cancel',
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => context.pop(true),
+                              child: Text(
+                                'Add',
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (dialogRes == true) {
+                        showLoadingDialog(context, 'Setting up S3 remote...');
+
+                        mySky.portalAccounts['_local'] = {
+                          'store': {
+                            's3': {
+                              'accessKey': accessKey.text,
+                              'bucket': bucket.text,
+                              'endpoint': endpoint.text,
+                              'secretKey': secretKey.text,
+                            }
+                          }
+                        };
+
+                        setupServiceOrder('_local');
+
+                        await mySky.savePortalAccounts();
+
+                        final stores = createStoresFromConfig(
+                          mySky.portalAccounts['_local'],
+                          httpClient: mySky.httpClient,
+                          node: s5Node,
+                        );
+                        s5Node.store = stores.values.first;
+                        s5Node.exposeStore = true;
+                        await s5Node.store!.init();
+
+                        context.pop();
+                        setState(() {});
+
+                        updateQuota();
+                      }
+                    } catch (e, st) {
+                      showErrorDialog(context, e, st);
+                    }
+                  },
+                  child: Text(
+                    'Add S3 Provider',
+                  ),
+                ),
             ],
           ],
         ),

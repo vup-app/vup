@@ -9,6 +9,7 @@ class QueueService {
   final threadPools = <String, int>{
     'sync': 8,
     'mdl': 8,
+    'pin': 8,
   };
 
   // final finishedTaskIds = <String>{};
@@ -71,6 +72,11 @@ class QueueService {
       failTask(task.id);
       globalErrorsState.addError(e, '$task');
     }
+    runningTasks.remove(task.id);
+  }
+
+  void cancelTask(QueueTask task) {
+    task.cancel();
     runningTasks.remove(task.id);
   }
 

@@ -1,5 +1,48 @@
 # Vup Changelog
 
+## main
+
+### Added
+
+- New video player
+- New gallery view
+- Action for creating new text files
+- Mass-pin action and task for files and directories
+- Mobile sort view (including "sort by created" option)
+- New UI settings for configuring how to open specific file types
+- Dialog for configuring a S3 storage provider locally
+- New setting to configure pool sizes (concurrent upload/download count)
+
+### Changed
+
+- Migrated to Material 3 theming and changed visual density
+- Changed encrypted streaming implementation to use the new S5-powered core code
+- Some tasks can now be cancelled
+- Improved hover effect for timestamps
+- Updated dependencies
+
+### Fixed
+
+- Uploads to the local store retry now
+- Fixed date formatting
+- Fixed initial window size
+- Vup no longer crashes when the local store can't be initialized
+- Some other small bug fixes and improvements
+
+### Removed
+
+- Removed old integrated audio player (use Jellyfin instead)
+
+## 0.14.3 BETA
+
+Add support for using **Sia** and **Pixeldrain** directly. Plus a ton of new features and improvements, for example restore from trash, cancel uploads or downloads, new queue system, new Jellyfin and more!
+
+**Full Changelog**: https://github.com/vup-app/vup/compare/v0.13.3...v0.14.0
+
+## 0.13.3 BETA
+
+Switched to S5 Network and a lot of other new features and fixes.
+
 ## Beta 0.12.0
 
 - Added "Delete permanently" action for files and directories in trash

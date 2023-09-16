@@ -33,25 +33,11 @@ class _UISettingsPageState extends State<UISettingsPage> {
     super.initState();
   }
 
-  Widget _createTitle(String title, {required BuildContext context}) => Padding(
-        padding: const EdgeInsets.only(
-          left: 16,
-          top: 16,
-          bottom: 8,
-        ),
-        child: Text(
-          title,
-          style: subTitleTextStyle.copyWith(
-            color: Theme.of(context).colorScheme.secondary,
-          ),
-        ),
-      );
-
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        _createTitle(
+        createSettingsTitle(
           'Interface',
           context: context,
         ),
@@ -59,22 +45,10 @@ class _UISettingsPageState extends State<UISettingsPage> {
           value: isRecursiveDirectorySizesEnabled,
           title: Text('Show directory sizes'),
           subtitle: Text(
-            'When enabled, the total size of all files in a directory, including all subdirectories, is calculated and shown. This impacts performance.',
+            'When enabled, the total size of all files in a directory, including all subdirectories, is calculated and displayed. This impacts app performance!',
           ),
           onChanged: (val) {
             dataBox.put('recursive_directory_sizes_enabled', val!);
-
-            setState(() {});
-          },
-        ),
-        CheckboxListTile(
-          value: isDoubleClickToOpenEnabled,
-          title: Text('Double click'),
-          subtitle: Text(
-            'When enabled, you need to double-click to open files and directories',
-          ),
-          onChanged: (val) {
-            dataBox.put('double_click_enabled', val!);
 
             setState(() {});
           },
@@ -90,9 +64,9 @@ class _UISettingsPageState extends State<UISettingsPage> {
         ),
         CheckboxListTile(
           value: isColumnViewFeatureEnabled,
-          title: Text('Enable Column View (Experimental)'),
+          title: Text('Enable Column View (experimental)'),
           subtitle: Text(
-            'Adds a new button in the top left to enable a view with 4 linked columns',
+            'Adds a new top left button to toggle a view with 4 linked columns',
           ),
           onChanged: (val) {
             dataBox.put('column_view_enabled', val!);
@@ -100,8 +74,91 @@ class _UISettingsPageState extends State<UISettingsPage> {
             setState(() {});
           },
         ),
+        createSettingsTitle(
+          'Opening Files',
+          context: context,
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            SizedBox(width: 16),
+            Text('Images', style: subTitleTextStyle),
+            SizedBox(width: 16),
+            SegmentedButton(
+              segments: [
+                ButtonSegment(
+                  value: 'vupImageViewer',
+                  label: Text('Vup'),
+                ),
+                ButtonSegment(
+                  value: 'native',
+                  label: Text('Native'),
+                ),
+              ],
+              selected: {fileOpenDefaultImage},
+              onSelectionChanged: (s) {
+                setState(() {
+                  dataBox.put('file_open_default_image', s.first);
+                });
+              },
+            ),
+            SizedBox(
+              width: 16,
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            SizedBox(width: 16),
+            Text('Videos', style: subTitleTextStyle),
+            SizedBox(width: 16),
+            SegmentedButton(
+              segments: [
+                ButtonSegment(
+                  value: 'vupVideoPlayer',
+                  label: Text('Vup'),
+                ),
+                ButtonSegment(
+                  value: 'webBrowser',
+                  label: Text('Web Browser'),
+                ),
+                if (Platform.isLinux)
+                  ButtonSegment(
+                    value: 'mpv',
+                    label: Text('mpv'),
+                  ),
+                ButtonSegment(
+                  value: 'native',
+                  label: Text('Native'),
+                ),
+              ],
+              selected: {fileOpenDefaultVideo},
+              onSelectionChanged: (s) {
+                setState(() {
+                  dataBox.put('file_open_default_video', s.first);
+                });
+              },
+            ),
+            SizedBox(
+              width: 16,
+            ),
+          ],
+        ),
+        CheckboxListTile(
+          value: isDoubleClickToOpenEnabled,
+          title: Text('Double click'),
+          subtitle: Text(
+            'When enabled, you need to double-click to open files and directories',
+          ),
+          onChanged: (val) {
+            dataBox.put('double_click_enabled', val!);
+
+            setState(() {});
+          },
+        ),
         if (Platform.isAndroid || Platform.isIOS || Platform.isWindows) ...[
-          _createTitle(
+          createSettingsTitle(
             'Security',
             context: context,
           ),
@@ -136,8 +193,8 @@ class _UISettingsPageState extends State<UISettingsPage> {
             },
           ),
         ],
-        _createTitle(
-          'Behaviour',
+        createSettingsTitle(
+          'Behavior',
           context: context,
         ),
         CheckboxListTile(
@@ -187,30 +244,6 @@ class _UISettingsPageState extends State<UISettingsPage> {
             },
           ),
         ],
-        CheckboxListTile(
-          value: isIntegratedAudioPlayerEnabled,
-          title: Text('Integrated audio player enabled'),
-          subtitle: Text(
-            'Not recommended, use the Jellyfin server instead.',
-          ),
-          onChanged: (val) {
-            dataBox.put('integrated_audio_player_enabled', val!);
-
-            setState(() {});
-          },
-        ),
-        CheckboxListTile(
-          value: devModeEnabled,
-          title: Text('Dev Mode enabled'),
-          subtitle: Text(
-            'When enabled, more debug information and tools are visible',
-          ),
-          onChanged: (val) {
-            dataBox.put('dev_mode_enabled', val!);
-
-            setState(() {});
-          },
-        ),
       ],
     );
   }

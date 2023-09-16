@@ -124,7 +124,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     : null,
               ),
             ),
-            trailing: Icon(Icons.arrow_forward),
+            trailing: Icon(
+              Icons.arrow_forward,
+              color: currentPaneTitle == pane.title
+                  ? null
+                  : Theme.of(context).hintColor,
+            ),
             selected: currentPaneTitle == pane.title,
             onTap: context.isMobile
                 ? () {
@@ -242,6 +247,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 width: min(400, cons.maxWidth * 0.4),
                 child: listView,
               ),
+              VerticalDivider(width: 1),
               Expanded(
                 child: currentPaneChild,
               )

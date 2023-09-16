@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+String? dateTimeLocale;
+
 String formatDateTime(DateTime dt) {
-  return DateFormat.yMEd().format(dt) + ', ' + DateFormat.Hm().format(dt);
+  return '${DateFormat.yMEd(dateTimeLocale).format(dt)} ${DateFormat.Hm(dateTimeLocale).format(dt)}';
 }
