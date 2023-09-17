@@ -403,30 +403,6 @@ void main(List<String> args) async {
     vupServer.listen(43912, InternetAddress.loopbackIPv4, false);
   }
 
-  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-    await windowManager.ensureInitialized();
-
-    WindowOptions windowOptions = WindowOptions(
-      minimumSize: Size(300, 440),
-      title: 'Vup Cloud Storage', // TODO Localization
-
-      // size: Size(800, 600),
-      center: true,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden,
-    );
-
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      if (isStartMinimizedEnabled) {
-        await windowManager.hide();
-      } else {
-        await windowManager.show();
-        await windowManager.focus();
-      }
-    });
-  }
-
   /*  if (Platform.isWindows || Platform.isLinux) {
     await Window.initialize();
     await Window.setEffect(
@@ -547,6 +523,29 @@ void main(List<String> args) async {
       MyApp(),
       /*  ), */
     );
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      await windowManager.ensureInitialized();
+
+      WindowOptions windowOptions = WindowOptions(
+        minimumSize: Size(300, 440),
+        title: 'Vup Cloud Storage', // TODO Localization
+
+        // size: Size(800, 600),
+        center: true,
+        backgroundColor: Colors.transparent,
+        skipTaskbar: false,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
+
+      windowManager.waitUntilReadyToShow(windowOptions, () async {
+        if (isStartMinimizedEnabled) {
+          await windowManager.hide();
+        } else {
+          await windowManager.show();
+          await windowManager.focus();
+        }
+      });
+    }
 
     // await Window.initialize();
 
