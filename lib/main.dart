@@ -635,8 +635,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TrayListener {
-  late MultiSplitViewController splitCtrl;
-
   void handleSharedLink(String? link) {
     logger.info('handleSharedLink $link');
     if (link == null) return;
@@ -690,8 +688,6 @@ class _HomePageState extends State<HomePage> with TrayListener {
 
   @override
   void initState() {
-    initSplitCtrl();
-
     if (Platform.isAndroid || Platform.isIOS) {
       getInitialLink().then(handleSharedLink);
       linkStream.listen((event) {
@@ -709,19 +705,6 @@ class _HomePageState extends State<HomePage> with TrayListener {
     TrayManager.instance.removeListener(this);
 
     super.dispose();
-  }
-
-  void initSplitCtrl() {
-    final sidebarWeight = max(0.16, min(250 / (widget.initialWidth), 0.5));
-
-    final rest = 1 - sidebarWeight;
-
-    splitCtrl = MultiSplitViewController(
-      weights: [
-        sidebarWeight,
-        rest,
-      ],
-    );
   }
 
   late BuildContext buildContext;
@@ -977,20 +960,18 @@ class _HomePageState extends State<HomePage> with TrayListener {
           body: context.isMobile
               ? BrowseView(pathNotifier: appLayoutState.currentTab[0].state)
               : SafeArea(
-                  child: MultiSplitViewTheme(
-                    data: MultiSplitViewThemeData(
-                      dividerThickness: 6,
-                      dividerPainter: DividerPainters.background(
-                        color: Theme.of(context).dividerColor,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 220,
+                        child: SidebarView(appLayoutState: appLayoutState),
                       ),
-                    ),
-                    child: MultiSplitView(
-                      controller: splitCtrl,
-                      minimalSize: 200,
-                      children: [
-                        SidebarView(appLayoutState: appLayoutState),
-                        // for (final view in appLayoutState.views)
-                        Column(
+                      VerticalDivider(
+                        width: 4,
+                        thickness: 4,
+                      ),
+                      Expanded(
+                        child: Column(
                           children: [
                             SizedBox(
                               height: (Platform.isWindows || Platform.isLinux)
@@ -1013,10 +994,10 @@ class _HomePageState extends State<HomePage> with TrayListener {
                                                       50) >
                                                   cons.maxWidth;
                                               return /* Padding(
-                                                    padding: const EdgeInsets.only(
-                                                      top: 6.0,
-                                                    ),
-                                                    child: */
+                                                          padding: const EdgeInsets.only(
+                                                            top: 6.0,
+                                                          ),
+                                                          child: */
                                                   Row(
                                                 children: [
                                                   for (int i = 0;
@@ -1056,9 +1037,9 @@ class _HomePageState extends State<HomePage> with TrayListener {
                               ),
                             ),
                             /*    Container(
-                                height: 6,
-                                color: Theme.of(context).dividerColor,
-                              ), */
+                                      height: 6,
+                                      color: Theme.of(context).dividerColor,
+                                    ), */
                             Expanded(
                               child: StreamBuilder<Null>(
                                   stream: appLayoutState.stream,
@@ -1070,10 +1051,8 @@ class _HomePageState extends State<HomePage> with TrayListener {
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    /*   );
-                          }), */
+                      ),
+                    ],
                   ),
                 ),
         ),
