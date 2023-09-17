@@ -3,15 +3,16 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  bitsdojo_window_linux
   dart_discord_rpc
   desktop_drop
   file_selector_linux
   flutter_secure_storage_linux
   media_kit_libs_linux
   media_kit_video
+  screen_retriever
   tray_manager
   url_launcher_linux
+  window_manager
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

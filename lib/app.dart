@@ -92,6 +92,8 @@ class Settings {
       dataBox.get('security_biometric_authentication_enabled') ?? false;
 }
 
+const titleBarHeight = 32.0;
+
 late AppLocalizations al;
 bool isMobile = false;
 

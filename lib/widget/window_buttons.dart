@@ -1,8 +1,10 @@
 import 'dart:io';
 
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
 import 'package:vup/app.dart';
+import 'package:window_manager/window_manager.dart';
+
+import 'bitsdojo_window/window_button.dart';
 
 class WindowButtons extends StatelessWidget {
   const WindowButtons({Key? key}) : super(key: key);
@@ -12,25 +14,18 @@ class WindowButtons extends StatelessWidget {
     if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
       return SizedBox();
     }
+    final colors = WindowButtonColors(
+      iconNormal: Theme.of(context).colorScheme.onSurface,
+    );
     return Row(
       children: [
-        MinimizeWindowButton(
-          colors: WindowButtonColors(
-            iconNormal: Theme.of(context).colorScheme.secondary,
-          ),
-        ),
-        MaximizeWindowButton(
-          colors: WindowButtonColors(
-            iconNormal: Theme.of(context).colorScheme.secondary,
-          ),
-        ),
+        MinimizeWindowButton(colors: colors),
+        MaximizeWindowButton(colors: colors),
         CloseWindowButton(
-          colors: WindowButtonColors(
-            iconNormal: Theme.of(context).colorScheme.secondary,
-          ),
+          colors: colors,
           onPressed: () {
             isAppWindowVisible = false;
-            appWindow.hide();
+            windowManager.hide();
           },
         ),
       ],

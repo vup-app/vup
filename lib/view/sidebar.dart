@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:ffmpeg_kit_flutter_full/return_code.dart';
 import 'package:filesize/filesize.dart';
 import 'package:filesystem_dac/dac.dart';
@@ -21,10 +20,12 @@ import 'package:vup/utils/temp_dir.dart';
 import 'package:vup/view/active_queue_tasks.dart';
 import 'package:vup/view/queue_task_manager.dart';
 import 'package:vup/view/setup_sync_dialog.dart';
+import 'package:vup/widget/move_window.dart';
 import 'package:vup/widget/sidebar_shortcut.dart';
 import 'package:vup/widget/user.dart';
 import 'package:ffmpeg_kit_flutter_full/ffmpeg_kit.dart';
 import 'package:vup/widget/vup_logo.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:xdg_directories/xdg_directories.dart';
 
 class SidebarView extends StatefulWidget {
@@ -231,22 +232,19 @@ MimeType=x-scheme-handler/vup;
       children: [
         // userWidget,
         if (Platform.isMacOS)
-          SizedBox(
-            height: appWindow.titleBarHeight,
-            child: MoveWindow(),
+          MoveWindow(
+            child: SizedBox(
+              height: titleBarHeight,
+            ),
           ),
+
         if (!context.isMobile)
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onPanStart: (details) {
-                      appWindow.startDragging();
-                    },
-                    onDoubleTap: () => appWindow.maximizeOrRestore(),
+                  child: MoveWindow(
                     child: VupLogo(
                       alignment: Alignment.centerLeft,
                     ),

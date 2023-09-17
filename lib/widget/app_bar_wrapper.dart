@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
+import 'package:vup/widget/move_window.dart';
 
 class AppBarWrapper extends StatefulWidget implements PreferredSizeWidget {
   final PreferredSizeWidget child;
@@ -20,12 +20,7 @@ class _AppBarWrapperState extends State<AppBarWrapper> {
     if (!(Platform.isWindows || Platform.isLinux)) {
       return widget.child;
     }
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onPanStart: (details) {
-        appWindow.startDragging();
-      },
-      onDoubleTap: () => appWindow.maximizeOrRestore(),
+    return MoveWindow(
       child: widget.child,
     );
   }

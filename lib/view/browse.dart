@@ -153,7 +153,7 @@ class _BrowseViewState extends State<BrowseView> {
                     focusNode.requestFocus();
                   }
                 },
-                child: StreamBuilder<Null>(
+                child: StreamBuilder<void>(
                     stream: widget.pathNotifier.stream,
                     builder: (context, snapshot) {
                       final uri = storageService.dac
