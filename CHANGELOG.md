@@ -1,6 +1,6 @@
 # Vup Changelog
 
-## main
+## 0.15.0 BETA
 
 ### Added
 
