@@ -21,7 +21,7 @@ class RenameDirectoryVupAction extends VupFSAction {
     if (fileState.type != FileStateType.idle) return null;
 
     return VupFSActionInstance(
-      label: 'Rename directory',
+      label: 'Rename Directory',
       icon: UniconsLine.pen,
     );
   }

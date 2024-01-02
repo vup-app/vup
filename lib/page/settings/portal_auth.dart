@@ -264,7 +264,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                 }
               },
               child: Text(
-                'Reload accounts',
+                'Reload Accounts',
               ),
             ),
             SizedBox(
@@ -286,7 +286,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                 }
               },
               child: Text(
-                'Save configuration',
+                'Save Configuration',
               ),
             ),
           ],
@@ -777,7 +777,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
           height: 6,
         ),
         Text(
-          'Files are only uploaded to the first (1.) service, the other ones are tried if the first one fails. Metadata and thumbnails are uploaded to the services you select below.',
+          'Files are only uploaded to the first (1.) service, the other ones are tried if the first one fails. Metadata and thumbnails are uploaded to all services you select below.',
         ),
         SizedBox(
           height: 6,
@@ -795,6 +795,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
               Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: ChoiceChip(
+                  showCheckmark: false,
                   avatar: mySky.fileUploadServiceOrder.contains(service)
                       ? Text(
                           '${mySky.fileUploadServiceOrder.indexOf(service) + 1}.',
@@ -833,6 +834,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
               Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: ChoiceChip(
+                  showCheckmark: false,
                   onSelected: (val) {
                     if (val) {
                       mySky.metadataUploadServiceOrder.add(service);
@@ -862,6 +864,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
               Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: ChoiceChip(
+                  showCheckmark: false,
                   onSelected: (val) {
                     if (val) {
                       mySky.thumbnailUploadServiceOrder.add(service);
@@ -939,7 +942,7 @@ class _PortalAuthSettingsPageState extends State<PortalAuthSettingsPage> {
                 );
               },
               child: Text(
-                'View full JSON',
+                'View Full JSON',
               ),
             ),
           ],

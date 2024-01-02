@@ -102,6 +102,7 @@ class _YTDLDialogState extends State<YTDLDialog> {
                               children: [
                                 for (final f in audioFormats)
                                   ChoiceChip(
+                                    showCheckmark: false,
                                     label: Text(f),
                                     selected: format == f,
                                     onSelected: _isRunning
@@ -129,6 +130,7 @@ class _YTDLDialogState extends State<YTDLDialog> {
                               children: [
                                 for (final f in ['mp4' /* , 'mkv' */])
                                   ChoiceChip(
+                                    showCheckmark: false,
                                     label: Text(f),
                                     selected: format == f,
                                     onSelected: _isRunning
@@ -169,6 +171,7 @@ class _YTDLDialogState extends State<YTDLDialog> {
                                   Padding(
                                     padding: const EdgeInsets.all(2.0),
                                     child: ChoiceChip(
+                                      showCheckmark: false,
                                       label: Text('${res}p'),
                                       selected: videoResolution == res,
                                       onSelected: _isRunning

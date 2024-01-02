@@ -202,6 +202,7 @@ class _ShareDialogState extends State<ShareDialog> {
                     Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: ChoiceChip(
+                        showCheckmark: false,
                         label: Text(viewType[1]),
                         selected: currentViewType == viewType[0],
                         onSelected: (_) async {

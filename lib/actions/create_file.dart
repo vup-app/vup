@@ -21,7 +21,7 @@ class CreateFileVupAction extends VupFSAction {
     if (!hasWriteAccess) return null;
 
     return VupFSActionInstance(
-      label: 'Create new file',
+      label: 'Create new File',
       icon: UniconsLine.file_plus,
     );
   }

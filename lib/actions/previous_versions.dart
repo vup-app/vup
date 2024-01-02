@@ -24,7 +24,7 @@ class PreviousFileVersionsVupAction extends VupFSAction {
     if (fileState.type != FileStateType.idle) return null;
 
     return VupFSActionInstance(
-      label: 'Previous versions',
+      label: 'Previous Versions',
       icon: UniconsLine.history,
     );
   }

@@ -25,7 +25,7 @@ class PinVupAction extends VupFSAction {
 
     if (!isSelected) {
       return VupFSActionInstance(
-        label: 'Pin ${isFile ? 'file' : 'directory'}',
+        label: 'Pin ${isFile ? 'File' : 'Directory'}',
         icon: UniconsLine.map_pin,
       );
     } else {

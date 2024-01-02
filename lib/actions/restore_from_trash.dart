@@ -34,13 +34,13 @@ class RestoreFromTrashVupAction extends VupFSAction {
 
     if (!isSelected) {
       return VupFSActionInstance(
-        label: 'Restore from trash',
+        label: 'Restore from Trash',
         icon: UniconsLine.export,
       );
     } else {
       return VupFSActionInstance(
         label:
-            'Restore ${entity == null ? 'all' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)} from trash',
+            'Restore ${entity == null ? 'All' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)} from Trash',
         icon: UniconsLine.export,
       );
     }

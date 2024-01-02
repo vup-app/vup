@@ -22,7 +22,7 @@ class RemoveSharedDirectoryVupAction extends VupFSAction {
     }
 
     return VupFSActionInstance(
-      label: 'Remove shared directory',
+      label: 'Remove Shared Directory',
       icon: UniconsLine.times,
     );
   }

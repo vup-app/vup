@@ -21,13 +21,13 @@ class ShareVupAction extends VupFSAction {
 
     if (!isSelected) {
       return VupFSActionInstance(
-        label: 'Share ${isFile ? 'file' : 'directory'}',
+        label: 'Share ${isFile ? 'File' : 'Directory'}',
         icon: UniconsLine.share_alt,
       );
     } else {
       return VupFSActionInstance(
         label:
-            'Share ${entity == null ? 'all' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)}',
+            'Share ${entity == null ? 'All' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)}',
         icon: UniconsLine.share_alt,
       );
     }

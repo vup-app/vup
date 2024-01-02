@@ -33,7 +33,7 @@ class ShowFileDetailsVupAction extends VupFSAction {
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('File details'),
+        title: const Text('File Details'),
         content: SizedBox(
           width: dialogWidth,
           height: dialogHeight,

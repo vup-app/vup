@@ -22,13 +22,13 @@ class MoveToTrashVupAction extends VupFSAction {
 
     if (!isSelected) {
       return VupFSActionInstance(
-        label: 'Move to trash',
+        label: 'Move to Trash',
         icon: UniconsLine.trash,
       );
     } else {
       return VupFSActionInstance(
         label:
-            'Move ${entity == null ? 'all' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)} to trash',
+            'Move ${entity == null ? 'All' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)} to Trash',
         icon: UniconsLine.trash,
       );
     }

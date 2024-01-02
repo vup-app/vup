@@ -22,7 +22,7 @@ class CutVupAction extends VupFSAction {
 
     if (!isSelected) {
       return VupFSActionInstance(
-        label: 'Cut ${isFile ? 'file' : 'directory'}',
+        label: 'Cut ${isFile ? 'File' : 'Directory'}',
         icon: UniconsLine.file_export,
       );
     } else {

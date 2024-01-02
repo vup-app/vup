@@ -417,7 +417,9 @@ class _JellyfinServerSettingsPageState
                             : () {
                                 setState(() {
                                   list.add({
-                                    'id': Uuid().v4().replaceAll('-', ''),
+                                    'id': const Uuid().v4().replaceAll('-', ''),
+                                    'uri': 'home/Videos',
+                                    'type': 'mixed',
                                   });
                                 });
                                 markChanges();

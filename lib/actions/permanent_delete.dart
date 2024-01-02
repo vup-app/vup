@@ -39,13 +39,13 @@ class PermanentDeleteVupAction extends VupFSAction {
 
     if (!isSelected) {
       return VupFSActionInstance(
-        label: 'Delete ${isFile ? 'file' : 'directory'} permanently',
+        label: 'Delete ${isFile ? 'File' : 'Directory'} Permanently',
         icon: UniconsLine.trash_alt,
       );
     } else {
       return VupFSActionInstance(
         label:
-            'Delete ${entity == null ? 'all' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)} permanently',
+            'Delete ${entity == null ? 'all' : renderFileSystemEntityCount(pathNotifier.selectedFiles.length, pathNotifier.selectedDirectories.length)} Permanently',
         icon: UniconsLine.trash_alt,
       );
     }

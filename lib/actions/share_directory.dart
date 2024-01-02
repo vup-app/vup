@@ -23,7 +23,7 @@ class ShareDirectoryVupAction extends VupFSAction {
       }
     }
     return VupFSActionInstance(
-      label: 'Share directory',
+      label: 'Share Directory',
       icon: UniconsLine.share_alt,
     );
   }

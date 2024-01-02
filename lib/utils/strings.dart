@@ -9,9 +9,9 @@ String renderFileSystemEntityCount(
 
   if (dirCount > 0) {
     if (dirCount == 1) {
-      str += '1 directory';
+      str += '1 Directory';
     } else {
-      str += '$dirCount directories';
+      str += '$dirCount Directories';
     }
   }
 
@@ -19,9 +19,9 @@ String renderFileSystemEntityCount(
     if (str.isNotEmpty) str += ', ';
 
     if (filesCount == 1) {
-      str += '1 file';
+      str += '1 File';
     } else {
-      str += '$filesCount files';
+      str += '$filesCount Files';
     }
     if (totalFileSize != null) {
       str += ' (${filesize(

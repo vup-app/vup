@@ -25,7 +25,7 @@ class UploadDirectoryVupAction extends VupFSAction {
     if (!hasWriteAccess) return null;
 
     return VupFSActionInstance(
-      label: 'Upload directory',
+      label: 'Upload Directory',
       icon: UniconsLine.folder_upload,
     );
   }

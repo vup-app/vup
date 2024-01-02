@@ -21,7 +21,7 @@ class RenameFileVupAction extends VupFSAction {
     if (fileState.type != FileStateType.idle) return null;
 
     return VupFSActionInstance(
-      label: 'Rename file',
+      label: 'Rename File',
       icon: UniconsLine.pen,
     );
   }

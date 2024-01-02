@@ -22,7 +22,7 @@ class UploadFilesVupAction extends VupFSAction {
     if (!hasWriteAccess) return null;
 
     return VupFSActionInstance(
-      label: 'Upload files',
+      label: 'Upload Files',
       icon: UniconsLine.file_upload,
     );
   }

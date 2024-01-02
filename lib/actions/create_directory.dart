@@ -18,7 +18,7 @@ class CreateDirectoryVupAction extends VupFSAction {
     if (!hasWriteAccess) return null;
 
     return VupFSActionInstance(
-      label: 'Create new directory',
+      label: 'Create new Directory',
       icon: UniconsLine.folder_plus,
     );
   }
@@ -32,7 +32,7 @@ class CreateDirectoryVupAction extends VupFSAction {
     final name = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Name your new directory'),
+        title: const Text('Name your new Directory'),
         content: TextField(
           controller: ctrl,
           autofocus: true,

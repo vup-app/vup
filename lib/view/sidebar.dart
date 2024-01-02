@@ -843,15 +843,16 @@ MimeType=x-scheme-handler/vup;
                 for (final collection
                     in dataBox.get('jellyfin_server_collections') ?? [])
                   SidebarShortcutWidget(
-                    path: collection['uri'],
+                    path: collection['uri'] ?? 'home',
                     appLayoutState: widget.appLayoutState,
-                    title: collection['name'],
+                    title: collection['name'] ?? 'name',
                     icon: {
-                      'music': 'audio',
-                      'tvshows': 'video',
-                      'movies': 'video',
-                      'books': 'storybook',
-                    }[collection['type']],
+                          'music': 'audio',
+                          'tvshows': 'video',
+                          'movies': 'video',
+                          'books': 'storybook',
+                        }[collection['type']] ??
+                        'audio',
                     // icon: 'folder-shared', //
                   ),
               ],

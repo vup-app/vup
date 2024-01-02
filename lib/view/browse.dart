@@ -963,14 +963,15 @@ class _BrowseViewState extends State<BrowseView> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          'You are browsing a shared directory',
+                                          'You are browsing a Shared Directory',
                                           style: TextStyle(
                                             color: Colors.black,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-                                      if (!isDirectoryAddedToSharedWithMe)
+                                      if (!isDirectoryAddedToSharedWithMe &&
+                                          false)
                                         ElevatedButton(
                                           onPressed: () async {
                                             showLoadingDialog(

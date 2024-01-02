@@ -24,7 +24,7 @@ class SaveLocallyVupAction extends VupFSAction {
     if (fileState.type != FileStateType.idle) return null;
 
     return VupFSActionInstance(
-      label: 'Save file locally',
+      label: 'Save File Locally',
       icon: UniconsLine.download_alt,
     );
   }

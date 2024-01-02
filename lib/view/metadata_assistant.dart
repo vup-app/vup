@@ -166,6 +166,7 @@ class _MetadataAssistantState extends State<MetadataAssistant> {
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: ChoiceChip(
+                  showCheckmark: false,
                   label: Text(p.providerId),
                   selected: p.providerId == selectedProvider.providerId,
                   onSelected: (val) {

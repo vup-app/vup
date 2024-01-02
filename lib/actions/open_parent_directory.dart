@@ -21,7 +21,7 @@ class OpenParentDirectoryVupAction extends VupFSAction {
     if (!pathNotifier.isSearching) return null;
 
     return VupFSActionInstance(
-      label: 'Open parent directory',
+      label: 'Open Parent Directory',
       icon: UniconsLine.folder_open,
     );
   }
